@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.12 2004-04-20 20:56:00 guidod Exp $
+# $Id: mksite.sh,v 1.13 2004-04-20 22:41:11 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -200,16 +200,17 @@ info2test ()          # cut out all old-style <!--vars--> usages
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
    _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:=-->"
+   _y_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:?-->"
    echo "s/^/ /" > $OUT
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s%=text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
   -e "/=Text=/s%=Text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V9%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
-  -e "/=Name=/s%=Name=$V9%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V9%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
+  -e "/=Name=/s%=Name=$V9%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
   -e "/=text=/s%=text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
   -e "/=Text=/s%=Text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
-  -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
+  -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   echo "/^WARNING:/!d" >> $OUT
 }
@@ -499,6 +500,47 @@ site_get_rootsections () # return all sections from root of nav tree
    $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" ./$MK.$INFO
 }
 
+mksite_magic_option ()
+{
+    # $1 is word/option to check for
+    INP="$2" ; test ".$INP" = "." && INP="$SITEFILE"
+    $SED \
+      -e "s/\\(<!--mksite:\\)\\($1\\)-->/\\1\\2: -->/g" \
+      -e "s/\\(<!--mksite:\\)\\([$AA][$AA]*\\)\\($1\\)-->/\\1\\3:\\2-->/g" \
+      -e "/<!--mksite:$1:/!d" \
+      -e "s/.*<!--mksite:$1:\\([^<>]*\\)-->.*/\\1/" \
+      -e "s/.*<!--mksite:$1:\\([^-]*\\)-->.*/\\1/" \
+      -e "/<!--mksite:$1:/d" -e q $INP
+}
+
+DX_alternative ()        # detect wether page asks for alternative style
+{                        # which is generally a shortpage variant
+    x=`mksite_magic_option alternative $1 | sed -e "s/^ *//" -e "s/ .*//"`
+    if test ".$x" != "." ; then
+      DX_text alternative "$x"
+    fi
+}
+
+info2head_append ()      # append alternative handling script to $HEAD
+{
+    OUT="$1" ; test ".$OUT" = "." && OUT="$F.$HEAD"
+    have=`info_get_entry alternative`
+    if test ".$have" != "." ; then
+       echo "/<!--mksite:alternative:$have .*-->/{" >> $OUT
+       echo "s/<!--mksite:alternative:$have\\( .*\\)-->/\\1/" >> $OUT
+       echo "q" >> $OUT ; echo "}" >> $OUT
+    fi
+}
+info2body_append ()      # append alternative handling script to $BODY
+{
+    OUT="$1" ; test ".$OUT" = "." && OUT="$F.$HEAD"
+    have=`info_get_entry alternative`
+    if test ".$have" != "." ; then
+       _replace_="s/<!--mksite:alternative:$have\\( .*\\)-->/\\1/"
+       echo "/<!--mksite:alternative:$have .*-->/$_replace_" >> $OUT
+    fi
+}
+
 make_move () # experimental - make a ~move~ file that can be applied
 {            # to htm sourcefiles in a subdirectory of the sitefile.
     S=`back_path "$F"` 
@@ -770,15 +812,6 @@ sectionlayout="list"
 sitemaplayout="list"
 simplevars="warn"
 
-sitefile_magic_option ()
-{
-    $SED \
-      -e "s/\\(<!--mksite:\\)\\($1\\)-->/\\1\\2: -->/g" \
-      -e "s/\\(<!--mksite:\\)\\([$AA][$AA]*\\)\\($1\\)-->/\\1\\3:\\2-->/g" \
-      -e "/<!--mksite:$1[:-][^<>]*->/!d" \
-      -e "s/.*<!--mksite:$1:\\([^<>]*\\)-->.*/\\1/" -e q $SITEFILE
-}
-
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
 echo \
 "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " "$SITEFILE"
@@ -795,16 +828,16 @@ if $GREP "<!--mksite:multilayout-->"         $SITEFILE >$NULL ; then
 sectionlayout="multi"
 sitemaplayout="multi"
 fi
-x=`sitefile_magic_option sectionlayout` ; case "$x" in
+x=`mksite_magic_option sectionlayout` ; case "$x" in
 "list"|"multi") sectionlayout="$x" ;; esac
 test -d DEBUG && echo "NOTE: sectionlayout='$sectionlayout' '$x'"
-x=`sitefile_magic_option sitemaplayout` ; case "$x" in
+x=`mksite_magic_option sitemaplayout` ; case "$x" in
 "list"|"multi") sitemaplayout="$x" ;; esac
 test -d DEBUG && echo "NOTE: sitemaplayout='$sitemaplayout' '$x'"
-x=`sitefile_magic_option simplevars` ; case "$x" in
+x=`mksite_magic_option simplevars` ; case "$x" in
 " "|"no"|"warn") simplevars="$x" ;; esac
 test -d DEBUG && echo "NOTE: simplevars='$simplevars' '$x'"
-x=`sitefile_magic_option printerfriendly` ; case "$x" in
+x=`mksite_magic_option printerfriendly` ; case "$x" in
 " "|".*"|"-*") printerfriendly="$x" ;; esac
 test ".$opt_print" != "." && printerfriendly="$opt_print"
 test -d DEBUG && echo "NOTE: printerfriendly='$printerfriendly' '$x'"
@@ -845,8 +878,8 @@ fi ;;
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 
 #    echo "!! -> '$F' (skipping subdir index.html)"
 #    ;;
-*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
-if test "$SOURCEFILE" != "$F" ; then :
+*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`                  # SCAN :
+if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
 if test -f "$SOURCEFILE" ; then make_move
    echo "=text=today `$DATE_NOW +%Y-%m-%d`"  > $F.$INFO
    echo "=text=todays `$DATE_NOW +%Y-%m%d`" >> $F.$INFO
@@ -856,7 +889,7 @@ if test -f "$SOURCEFILE" ; then make_move
    DC_title "$SOURCEFILE"
    DC_isFormatOf "$SOURCEFILE" 
    DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE" ; DC_date "$SITEFILE"
-   DC_section "$F" ;  DC_selected "$F"
+   DC_section "$F" ;  DC_selected "$F" ;  DX_alternative "$SOURCEFILE"
    test ".$USER" != "." && DC_publisher "$USER"
    DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
    test ".$printerfriendly" != "." && \
@@ -983,7 +1016,9 @@ if test -f "$SOURCEFILE" ; then
    ;; esac
       echo "/<title>/d"                   > $F.$BODY #not that line
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$BODY #tag and vars
-      $CAT ./$F.~move~ >> $F.$HEAD
+      info2body_append                      $F.$BODY #cut early
+      info2head_append                      $F.$HEAD
+      $CAT ./$F.~move~                   >> $F.$HEAD
       $SED_LONGSCRIPT ./$F.$HEAD $SITEFILE               > $F # ~head~
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
