@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.24 2004-04-22 15:48:40 guidod Exp $
+# $Id: mksite.sh,v 1.25 2004-04-22 15:52:55 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -735,6 +735,7 @@ make_printsitefile ()
         -e "/<head>/p"   -e "/<head>/d" \
         -e "/<\/head>/p"   -e "/<\/head>/d" \
         -e "/<body>/p"   -e "/<body>/d" \
+        -e "/^.*<link [^<>]*rel=\"shortcut icon\"[^<>]*>.*\$/p" \
         -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
   
    sep=" - " ; _left_=" [ " ; _right_=" ] "
