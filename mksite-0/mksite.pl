@@ -23,10 +23,11 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.1 2004-10-10 09:56:29 guidod Exp $
+# $Id: mksite.pl,v 1.2 2004-10-10 13:33:23 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
+use POSIX qw(strftime);
 
 # initialize some defaults
 my $SITEFILE="";
@@ -297,6 +298,25 @@ sub trimm
     $T =~ s:\A\s*::s; $T =~ s:\s*\Z::s;
     return $T;
 }
+sub timezone
+{
+    # +%z is an extension while +%Z is supposed to be posix
+    my $tz;
+    eval { $tz = strftime("%z", localtime()) };
+    return $tz  if $tz =~ /[+]/;
+    return $tz  if $tz =~ /[-]/;
+    return strftime("%Z", localtime());
+}
+
+sub timetoday
+{
+    return strftime("+%Y-%m-%d", localtime());
+}
+sub timetodays
+{
+    return strftime("+%Y-%m%d", localtime());
+}
+
 sub esc
 {
     my ($TXT,$XXX) = @_;
@@ -307,10 +327,12 @@ sub esc
 my $F; # current file during loop <<<<<<<<<
 my $i = 100;
 sub savelist {
-    my $X = "$F._$i"; $i++;
-    open X, ">$X" or die "could not open $X: $!";
-    print X "#! /usr/bin/perl -".$#_."\n";
-    print X join("\n", @{$_[0]}); close X;
+    if (-d "DEBUG") {
+	my $X = "$F._$i"; $i++;
+	open X, ">DEBUG/$X" or die "could not open $X: $!";
+	print X "#! /usr/bin/perl -".$#_."\n";
+	print X join("\n", @{$_[0]}); close X;
+    }
 }
 
 sub eval_MK_SITE {
@@ -335,7 +357,6 @@ sub eval_MK_  {
     $script.= "   print STDERR '# could not open $FILENAME (ignored)';\n";
     $script.= "}else{ for (<FILE>) { \n";
     $script.= join(";\n  ", @_);
-    $script.= "\n;s/<style>/\$&<!- jigga jigga -->/;";
     $script.= "\n; \$result .= \$_; ";
     $script.= "\n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
     $script.= "\n} close FILE; }\n";
@@ -548,7 +569,7 @@ sub info2meta_sed     # generate <meta name..> text portion
     sub __TYPE_SCHEME { "name=\"DC.type\" content=\"$2\" scheme=\"$1\"" };
     sub __TYPEDCMI { "name=\"$1\" content=\"$2\" scheme=\"DCMIType\"" };
     sub __NAME { "name=\"$1\" content=\"$2\"" };
-    sub __NAME_TZ { "name=\"$1\" content=\"$2 `$DATE_NOW +%z`\"" };
+    sub __NAME_TZ { "name=\"$1\" content=\"$2 ".&timezone()."\"" };
     for (@$INP) {
 	if (/=....=today /) { next; }
 	if (/=meta=DC[.]DCMIType / && /=meta=$V9/ && $2) {
@@ -702,21 +723,20 @@ sub DC_modified     # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
     my ($Q,$Z) = @_; # target file
     if (not &info1grep ("DC.date.modified")) {
-	my $meta='<meta name="DC.date.modified"';
-	my $modified=`$STAT_R $Q 2>$NULL | grep modify:`;
-	my $modified =~ s|.*fy:||;
+	my $text=`$STAT_R $Q 2>$NULL | grep modify:`;
+	my $text =~ s|.*fy:||;
 
-	$modified =~ s/:..[.][$NN]*//; $modified = &trimm ($modified);
-	if (not $modified) {
-	    $modified=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`;   # GNU sed
+	$text =~ s/:..[.][$NN]*//; $text = &trimm ($text);
+	if (not $text) {
+	    $text=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`;   # GNU sed
 	}
-	if (not $modified) {
-	    $modified=`$LS_L "$Q"`;
+	if (not $text) {
+	    $text=`$LS_L "$Q"`;
 	    my $_42_chars=".........................................";
-	    $modified =~ s/^$_42_chars(.............).*/$1/; # cut -b 42-55
-	    $modified =~ s/^ *//g;
+	    $text =~ s/^$_42_chars(.............).*/$1/; # cut -b 42-55
+	    $text =~ s/^ *//g;
 	}
-	&DC_meta ("date.modified", $modified);
+	&DC_meta ("date.modified", $text);
     }
 }
 
@@ -1534,24 +1554,24 @@ sub scan_sitefile # $F
     $SOURCEFILE=&html_sourcefile($F);
     if ($SOURCEFILE ne $F) {
 	dx_init "$F";
-	dx_text ("today", "`$DATE_NOW +%Y-%m-%d`");
+	dx_text ("today", &timetoday());
 	my $short=$F; $short =~ "s:.*/::"; $short =~ "s:[.].*::";
 	$short .=" *";
 	DC_meta ("title", "$short");
-	DC_meta ("date.available", "`$DATE_NOW +%Y-%m-%d`");
+	DC_meta ("date.available", &timetoday());
 	DC_meta ("subject", "sitemap");
 	DC_meta ("DCMIType", "Collection");
 	DC_VARS_Of ($SOURCEFILE) ;
 	DC_modified ($SOURCEFILE) ; DC_date ($SOURCEFILE);
 	DC_section ($F);
-	DX_text ("date.formatted", `$DATE_NOW +%Y-%m-%d`);
+	DX_text ("date.formatted", &timetoday());
 	if ($printerfriendly) {
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
 	print "'$SOURCEFILE': $short (sitemap)";
 	site_map_list_title ($F, "$short");
 	site_map_long_title ($F, "generated sitemap index");
-	site_map_list_date  ($F, "`$DATE_NOW +%Y-%m-%d`");
+	site_map_list_date  ($F, &timetoday());
     }
 }
 
@@ -1563,8 +1583,8 @@ sub scan_htmlfile # "$F"
     if ( -f $SOURCEFILE) {
 	@{$FAST{$F}} = &make_fast ($F);
 	dx_init "$F";
-	dx_text ("today", "`$DATE_NOW +%Y-%m-%d`");
-	dx_text ("todays", "`$DATE_NOW +%Y-%m%d`");
+	dx_text ("today", &timetoday());
+	dx_text ("todays", &timetodays());
 	DC_VARS_Of ($SOURCEFILE);
 	DC_title ($SOURCEFILE);
 	DC_isFormatOf ($SOURCEFILE);
@@ -1572,7 +1592,7 @@ sub scan_htmlfile # "$F"
 	DC_date ($SOURCEFILE); DC_date ($SITEFILE);
 	DC_section ($F);  DC_selected ($F);  DX_alternative ($SOURCEFILE);
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
-	DX_text ("date.formatted", `$DATE_NOW +%Y-%m-%d`);
+	DX_text ("date.formatted", &timetoday());
 	if ($printerfriendly) {
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	my $sectn=&info_get_entry("DC.relation.section");

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.38 2004-10-10 09:56:29 guidod Exp $
+# $Id: mksite.sh,v 1.39 2004-10-10 13:33:23 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -278,6 +278,26 @@ trimm ()
 {
     echo "$1" | $SED -e "s:^ *::" -e "s: *\$::";
 }
+
+timezone ()
+{
+    # +%z is an extension while +%Z is supposed to be posix
+    _timezone=`$DATE_NOW +%z`
+    case "$_timezone" in
+	*+*) echo $_timezone ;;
+	*-*) echo $_timezone ;;
+	*) $DATE_NOW +%Z
+    esac
+}
+timetoday () 
+{
+    $DATE_NOW +%Y-%m-%d
+}
+timetodays ()
+{
+    $DATE_NOW +%Y-%m%d
+}
+    
 # ======================================================================
 #                                                                FUNCS
 
@@ -449,7 +469,7 @@ info2meta_sed ()         # generate <meta name..> text portion
   INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
   INFO_META_TYPEDCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
   INFO_META_NAME="name=\"\\1\" content=\"\\2\""
-  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `$DATE_NOW +%z`\"" 
+  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `timezone`\"" 
   $SED -e "/=....=today /d" \
   -e "/=meta=DC[.]DCMIType /s,=meta=$V9,<meta $INFO_META_TYPE_SCHEME />," \
   -e "/=meta=DC[.]type Collection$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
@@ -565,17 +585,18 @@ DC_modified ()         # make sure there is a DC.date.modified meta tag
    Q="$1" # target file
    if info1grep DC.date.modified 
    then :
-   else meta='<meta name="DC.date.modified"'
+   else
       _42_chars="........................................."
       cut_42_55="s/^$_42_chars\\(.............\\).*/\\1/" # i.e.`cut -b 42-55`
-      modified=`$STAT_R $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
-      modified=`echo "$modified" | $SED -e "s/:..[.][$NN]*//"`
-      modified=`trimm "$modified"`
-      test ".$modified" = "." && \
-      modified=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`   # GNU sed
-      test ".$modified" = "." && 
-      modified=`$LS_L "$Q" | $SED -e "$cut_42_55" -e "s/^ *//g" -e "q"`
-      DC_meta date.modified "$modified"
+      text=`$STAT_R $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
+      text=`echo "$text" | $SED -e "s/:..[.][$NN]*//"`
+      text=`trimm "$text"`
+      test ".$text" = "." && \
+      text=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`   # GNU sed
+      test ".$text" = "." && 
+      text=`$LS_L "$Q" | $SED -e "$cut_42_55" -e "s/^ *//g" -e "q"`
+      text=`echo "$text" | $SED -e "s/[$NN]*:.*//"` # cut way seconds
+      DC_meta date.modified `trimm "$text"`
    fi
 }
 
@@ -619,8 +640,9 @@ DC_date ()             # make sure there is this DC.date meta tag
       if test ".$text" != ".$text1" ; then
         kind="created" ; text=`echo "$text1" | $SED -e "s|,.*||"`
       fi
-      DC_meta date "$text"
-      DX_text issue "$kind $text"
+      text=`echo "$text" | $SED -e "s/[$NN]*:.*//"` # cut way seconds
+      DC_meta date `trimm "$text"`
+      DX_text issue `trimm "$kind $text"`
    fi
 }
 
@@ -1249,24 +1271,24 @@ scan_sitefile () # $F
  SOURCEFILE=`html_sourcefile "$F"`
  if test "$SOURCEFILE" != "$F" ; then
    dx_init "$F"
-   dx_text today "`$DATE_NOW +%Y-%m-%d`"
+   dx_text today "`timetoday`"
    short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"`
    short="$short *"
    DC_meta title "$short"
-   DC_meta date.available "`$DATE_NOW +%Y-%m-%d`"
+   DC_meta date.available "`timetoday`"
    DC_meta subject sitemap
    DC_meta DCMIType Collection
    DC_VARS_Of $SOURCEFILE 
    DC_modified $SOURCEFILE ; DC_date $SOURCEFILE
    DC_section "$F"
-   DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
+   DX_text date.formatted `timetoday`
    test ".$printerfriendly" != "." && \
    DX_text printerfriendly `fast_html_printerfile "$F"`
    test ".$USER" != "." && DC_publisher "$USER"
    echo "'$SOURCEFILE': $short (sitemap)"
    site_map_list_title "$F" "$short"
    site_map_long_title "$F" "generated sitemap index"
-   site_map_list_date  "$F" "`$DATE_NOW +%Y-%m-%d`"
+   site_map_list_date  "$F" "`timetoday`"
  fi
 }
 
@@ -1276,15 +1298,15 @@ scan_htmlfile() # "$F"
  if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
  if test -f "$SOURCEFILE" ; then make_fast "$F" > $F.$FAST
    dx_init "$F"
-   dx_text today "`$DATE_NOW +%Y-%m-%d`"
-   dx_text todays "`$DATE_NOW +%Y-%m%d`"
+   dx_text today "`timetoday`"
+   dx_text todays "`timetodays`"
    DC_VARS_Of "$SOURCEFILE" 
    DC_title "$SOURCEFILE"
    DC_isFormatOf "$SOURCEFILE" 
    DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE" ; DC_date "$SITEFILE"
    DC_section "$F" ;  DC_selected "$F" ;  DX_alternative "$SOURCEFILE"
    test ".$USER" != "." && DC_publisher "$USER"
-   DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
+   DX_text date.formatted "`timetoday`"
    test ".$printerfriendly" != "." && \
    DX_text printerfriendly `fast_html_printerfile "$F"`
    sectn=`info_get_entry DC.relation.section`
