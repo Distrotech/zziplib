@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.36 2004-05-09 15:14:07 guidod Exp $
+# $Id: mksite.sh,v 1.37 2004-05-25 12:39:26 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -966,7 +966,20 @@ echo_br_PP ()
     echo "/^$2*<a href=/s/^/$3/"
     echo "/^<>$2*<a href=/s/^/$3/"
     echo "/^$S$2*<a href=/s/^/$3/"
-}    
+}
+echo_sp_PP ()
+{
+    echo "/^<>$1*<a href=/s/^/$2/"
+    echo "/^$S$1*<a href=/s/^/$2/"
+    echo "/^<><>$1*<a href=/s/^/$2/"
+    echo "/^$S$S$1*<a href=/s/^/$2/"
+    echo "/^<>$1<>*<a href=/s/^/$2/"
+    echo "/^$S$1$S*<a href=/s/^/$2/"
+    echo "/^$1<><>*<a href=/s/^/$2/"
+    echo "/^$1$S$S*<a href=/s/^/$2/"
+    echo "/^$1<>*<a href=/s/^/$2/"
+    echo "/^$1$S*<a href=/s/^/$2/"
+}
 
 h1="[-|[]"
 b1="[*=]"
@@ -985,6 +998,7 @@ echo_br_EM_PP "<br>" "<small>"  "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
 echo_br_EM_PP "<br>" "<em>"     "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
 echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
 echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
+echo_sp_PP                      "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
 $SED -e "s/>\\[/> *[/" ./$MK.gets.tmp > $MK.puts.tmp
 # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
 # shall not be used otherwise for being generated - this is nice for
