@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.52 2005-01-30 11:08:50 guidod Exp $
+# $Id: mksite.sh,v 1.53 2005-01-30 12:00:04 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1512,7 +1512,7 @@ make_sitefile () # "$F"
 {
  SOURCEFILE=`html_sourcefile "$F"`
  if test "$SOURCEFILE" != "$F" ; then
- if test -f "$SOURCEFILE" ; then
+ if test -f "$SOURCEFILE" ; then 
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
    info2vars_sed > $MK_VARS           # have <!--title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
@@ -1545,6 +1545,11 @@ make_htmlfile() # "$F"
  SOURCEFILE=`html_sourcefile "$F"`                      #     2.PASS
  if test "$SOURCEFILE" != "$F" ; then
  if test -f "$SOURCEFILE" ; then
+   if grep '<meta name="formatter"' "$SOURCEFILE" >/dev/null ; then
+     echo "$SOURCEFILE: SKIP, this sourcefile looks like a formatted file"
+     echo "$SOURCEFILE:  (may be a sourcefile in place of a targetfile?)"
+     return
+   fi
    info2vars_sed > $MK_VARS           # have <!--$title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
    if test ".$simplevars" = ".warn" ; then
@@ -1574,7 +1579,7 @@ make_htmlfile() # "$F"
       test -f "$F_FOOT" && $CAT "$F_FOOT"               >> $F # ~foot~
       $SED -e "/<\\/body>/!d" -f "$MK_VARS" "$SITEFILE" >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
- else
+ else # test -f $SOURDEFILE
    echo "'$SOURCEFILE': does not exist"
  fi ; else
    echo "<$F> - skipped"
@@ -1593,6 +1598,7 @@ make_printerfriendly () # "$F"
           printsitefile=">=>" ; BODY_TXT="$tmp/$F.$FOOT"  ;;
   *.html) printsitefile="=>" ;  BODY_TXT="$SOURCEFILE" ;;
   esac
+  if grep '<meta name="formatter"' "$BODY_TXT" >/dev/null ; then return; fi
   if test ".$printsitefile" != ".0" && test -f "$SOURCEFILE" ; then
       make_printerfile_fast "$FILELIST" > ./$MK_FAST
       $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST" > "$P_HEAD"
@@ -1669,7 +1675,7 @@ if test ".$printerfriendly" != "." ; then           # .......... PRINT VERSION
 fi
 
 if test ".$simplevars" = ". " ; then
-mknewfile $MK_OLDS
+mknewfile $MK_OLDS 
 fi
 
 for F in $FILELIST ; do case "$F" in                        #### 2. PASS
@@ -1706,7 +1712,7 @@ fi
    fi
 done
 
-if test ".$simplevars" = ".warn" ; then 
+if test ".$simplevars" = ".warn" ; then if test -f "$MK_OLDS" ; then
 oldvars=`cat "$MK_OLDS" | wc -l | $SED -e "s/ *//g"`
 if test "$oldvars" = "0" ; then
 echo "HINT: you have no simplevars in your htm sources, so you may want to"
@@ -1721,7 +1727,7 @@ echo "hint: <!--mksite:simplevars--> somewhere to suppress this warning"
 echo "note: simplevars expansion will be an explicit option in the future."
 echo "note: errornous simplevar detection can be suppressed with a magic"
 echo "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now."
-fi fi
+fi fi fi
 
 rm $tmp/$MK.*.tmp
 if test ".$tmp_dir_was_created" != ".no" ; then rm $tmp/* ; rmdir $tmp ; fi

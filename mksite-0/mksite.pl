@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.23 2005-01-30 11:08:52 guidod Exp $
+# $Id: mksite.pl,v 1.24 2005-01-30 12:00:15 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1827,6 +1827,10 @@ sub make_htmlfile # "$F"
     $SOURCEFILE=&html_sourcefile($F);                      #     2.PASS
  if ("$SOURCEFILE" ne "$F") {
  if (-f "$SOURCEFILE") {
+    if (grep {/<meta name="formatter"/} source($SOURCEFILE)) {
+      print "$SOURCEFILE: SKIP, this sourcefile looks like a formatted file$n";
+      print "$SOURCEFILE:  (may be a sourcefile in place of a targetfile?)$n";
+    return; }
     @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
     if ( $simplevars eq "warn") {
@@ -1886,6 +1890,7 @@ sub make_printerfriendly # "$F"
     } elsif ("$F" =~ /^(.*[.]html)$/) {
 	$printsitefile="=>" ;  $BODY_TXT="$SOURCEFILE";
     }
+    if (grep {/<meta name="formatter"/} source($BODY_TXT)) { return; }
     if ($printsitefile ne "0" and -f $SOURCEFILE) {
       @MK_FAST = &make_printerfile_fast (\@FILELIST);
       push @P_HEAD, @MK_VARS; push @P_HEAD, @MK_TAGS; push @P_HEAD, @MK_FAST;
