@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.50 2005-01-29 16:50:40 guidod Exp $
+# $Id: mksite.sh,v 1.51 2005-01-29 20:23:35 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1116,12 +1116,12 @@ echo_current_line () # $sect $extra
 make_current_entry () # $sect $file      ## requires $MK_SITE
 {
   S="$1" ; R="$2"
-  RR=`sed_slash_key "$R"`  
+  SSS=`sed_slash_key "$S"`  
   sep=" - " ; _left_=" [ " ; _right_=" ] "
-  echo_current_line "$R" "<a href=\"$S\"><!--\"$S\"--><!--name--></a>$sep" \
+  echo_current_line "$S" "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep" \
        | $SED -f "$MK_SITE" -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
-        -e "/<a href=\"$RR\"/s/<a href/$_left_&/" \
-        -e "/<a href=\"$RR\"/s/<\\/a>/&$_right_/" \
+        -e "/<a href=\"$SSS\"/s/<a href/$_left_&/" \
+        -e "/<a href=\"$SSS\"/s/<\\/a>/&$_right_/" \
         -e "s/<!--\"[^\"]*\"--><!--name-->//" # $+++
 }
 echo_subpage_line () # $sect $extra
@@ -1144,8 +1144,6 @@ make_printsitefile ()
    # building the printsitefile looks big but its really a loop over sects
    INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
-   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
-   _tabb_="<td>\\&nbsp\\;</td>" 
    make_printsitefile_head $SITEFILE # $++
 
    sep=" - "
@@ -1153,50 +1151,56 @@ make_printsitefile ()
    _sect2="<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep"
    _sect3="<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep"
    site_get_rootsections > "$MK_SECT1"
+   # round one - for each root section print a current menu
    for r in `cat "$MK_SECT1"` ; do
-   echo_current_line "$r" "<!--mksite:sect1:A--><br>$_sect1" # $++
-   for s in `cat "$MK_SECT1"` ; do 
-       make_current_entry "$r" "$s" # $++
-   done
-   echo_current_line "$r" "<!--mksite:sect1:Z-->" # $++
+       echo_current_line "$r" "<!--mksite:sect1:A--><br>$_sect1" # $++
+       for s in `cat "$MK_SECT1"` ; do 
+	   make_current_entry "$r" "$s" # $++
+       done
+       echo_current_line "$r" "<!--mksite:sect1:Z-->" # $++
+   done # "$r"
 
-#  site_get_sectionpages "$r" > "$MK_SECT2"
+   # round two - for each subsection print a current and subpage menu
+   for r in `cat "$MK_SECT1"` ; do
    site_get_subpages "$r"     > "$MK_SECT2"
    for s in `cat "$MK_SECT2"` ; do test "$r" = "$s" && continue
        echo_current_line  "$s" "<!--mksite:sect2:A--><br>$_sect2" # $++
-   for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
-       make_current_entry "$s" "$t" # $++
-   done # "$t"
+       for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
+	   make_current_entry "$s" "$t" # $++
+       done # "$t"
        echo_current_line  "$s" "<!--mksite:sect2:Z-->" # $++
+   done # "$s"
+       _have_children_="0"
+       for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
+	   test "$_have_children_" = "0" && _have_children_="1" && \
+       echo_subpage_line  "$r" "<!--mksite:sect2:A--><br>$_sect2" # $++
+	   make_subpage_entry "$r" "$t" # $++
+       done # "$t"
+           test "$_have_children_" = "1" && \
+       echo_subpage_line  "$r" "<!--mksite:sect2:Z-->" # $++
+   done # "$r"
 
-#  site_get_sectionpages "$s" > "$MK_SECT3"
+   # round three - for each subsubsection print a current and subpage menu
+   for r in `cat "$MK_SECT1"` ; do
+   site_get_subpages "$r"     > "$MK_SECT2"
+   for s in `cat "$MK_SECT2"` ; do test "$r" = "$s" && continue
    site_get_subpages "$s"     > "$MK_SECT3"
    for t in `cat "$MK_SECT3"` ; do test "$s" = "$t" && continue
        echo_current_line  "$t" "<!--mksite:sect3:A--><br>$_sect3" # $++
-   for u in `cat "$MK_SECT3"` ; do test "$s" = "$u" && continue
-       make_current_entry "$t" "$u" # $++
-   done # "$u"
+       for u in `cat "$MK_SECT3"` ; do test "$s" = "$u" && continue
+	   make_current_entry "$t" "$u" # $++
+       done # "$u"
        echo_current_line  "$t" "<!--mksite:sect3:Z-->" # $++
    done # "$t"
-
-   _have_children_="0"
-   for u in `cat "$MK_SECT3"` ; do test "$u" = "$s" && continue
-   test "$_have_children_" = "0" && _have_children_="1" && \
-        echo_subpage_line  "$s" "<!--mksite:sect3:A--><br>$_sect3" # $++
-        make_subpage_entry "$s" "$u" # $++
-   done # "$u"
-   test "$_have_children_" = "1" && \
-        echo_subpage_line  "$s" "<!--mksite:sect3:Z-->" # $++
+       _have_children_="0"
+       for u in `cat "$MK_SECT3"` ; do test "$u" = "$s" && continue
+	   test "$_have_children_" = "0" && _have_children_="1" && \
+       echo_subpage_line  "$s" "<!--mksite:sect3:A--><br>$_sect3" # $++
+	   make_subpage_entry "$s" "$u" # $++
+       done # "$u"
+           test "$_have_children_" = "1" && \
+       echo_subpage_line  "$s" "<!--mksite:sect3:Z-->" # $++
    done # "$s"
-
-   _have_children_="0"
-   for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
-   test "$_have_children_" = "0" && _have_children_="1" && \
-        echo_subpage_line  "$r" "<!--mksite:sect2:A--><br>$_sect2" # $++
-        make_subpage_entry "$r" "$t" # $++
-   done # "$t"
-   test "$_have_children_" = "1" && \
-        echo_subpage_line  "$r" "<!--mksite:sect2:Z-->" # $++
    done # "$r"
    echo "<a name=\".\"></a>" # $++
    echo "</body></html>"    # $++
@@ -1599,8 +1603,9 @@ make_printerfriendly () # "$F"
       select_in_printsitefile "$F"                    >> "$P_HEAD"
       _ext_=`print_extension "$printerfriendly"`                     # head-
       $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_HEAD" # hrefs
-      line_=`sed_slash_key "$printsitefile_img_2"`                   # back-
-      echo "/$line_/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD" # link.
+      # line_=`sed_slash_key "$printsitefile_img_2"`                   # back-
+      echo "/||topics:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
+      echo "/|||pages:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
       $CAT                             "$F_FAST"      >> "$P_HEAD" # subdir
       $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST"            > "$P_BODY"
       $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_BODY" # body-

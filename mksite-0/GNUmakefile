@@ -1,17 +1,17 @@
 all : index.html
 
+diffs = diff -U1
+
 known = -e "/formatter/d"
 test : test1x test2x
 test1x : test1x.html
 	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; if grep :alternative: $$i >/dev/null ; then : \
 	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
-	; diff -Bu0 $$i.orig $$i.made ; fi done ; rm $@/*.orig test1x/*.made
+	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
 test2x : test2x.html
 	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; if grep :alternative: $$i >/dev/null ; then : \
 	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
-	; diff -Bu0 $$i.orig $$i.made ; fi done ; rm $@/*.orig test1x/*.made
+	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
 
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
@@ -211,5 +211,5 @@ mksite_.pl : mksite.sh GNUmakefile mksiteperl.pl
 	perl mksiteperl.pl $< > $@
 
 q : mksite_.pl
-	diff -u0 mksite.pl mksite_.pl
+	diff -U0 mksite.pl mksite_.pl
 
