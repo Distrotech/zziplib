@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.3 2004-04-19 13:12:13 guidod Exp $
+# $Id: mksite.sh,v 1.4 2004-04-19 14:42:22 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -40,6 +40,7 @@ BODY="~body~" # extension for body sed script
 
 NULL="/dev/null"                             # to divert stdout/stderr
 CATNULL="$CAT $NULL"                         # to create 0-byte files
+SED_LONGSCRIPT="$SED -f"
 
 az="abcdefghijklmnopqrstuvwxyz"              # some old sed tools can not
 AZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ"              # use char-ranges in the 
@@ -52,6 +53,8 @@ AZ="A-Z"                                     # then we assume there are
 NN="0-9"                                     # char-ranges available
 AA="_$NN$AZ$az"                              # that makes the resulting
 AX="$AA.+-"                                  # script more readable
+elif uname -s | $GREP HP-UX >$NULL ; then
+SED_LONGSCRIPT="sed_longscript"              # due to 100 sed lines limit
 fi
 
 # ==========================================================================
@@ -151,9 +154,20 @@ done
 TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
 # ======================================================================
 #                                                                FUNCS
-sed_file ()
+sed_longscript ()
 {
     # hpux sed has a limit of 100 entries per sed script !
+    $SED             -e "100q" "$1" > "$1~1~"
+    $SED -e "1,100d" -e "200q" "$1" > "$1~2~"
+    $SED -e "1,200d" -e "300q" "$1" > "$1~3~"
+    $SED -e "1,300d" -e "400q" "$1" > "$1~4~"
+    $SED -e "1,400d" -e "500q" "$1" > "$1~5~"
+    $SED -e "1,500d" -e "600q" "$1" > "$1~6~"
+    $SED -e "1,600d" -e "700q" "$1" > "$1~7~"
+    $SED -e "1,700d" -e "800q" "$1" > "$1~8~"
+    $SED -e "1,800d" -e "900q" "$1" > "$1~9~"
+    $SED -f "$1~1~"  -f "$1~2~" -f "$1~3~" -f "$1~4~" -f "$1~5~" \
+         -f "$1~6~"  -f "$1~7~" -f "$1~8~" -f "$1~9~" "$2"
 }
 
 sed_anchor ()      # helper to escape chars special in /anchor/ regex
@@ -645,8 +659,8 @@ if test -f "$SOURCEFILE" ; then
    multi) make_multisitemap $F.$BODY ;;       # here we use ~body~ as
    *)     make_listsitemap  $F.$BODY ;;       # a plain text file
    esac
-   $SED -f $F.$HEAD                          $SITEFILE  > $F   # ~head~
-   $CAT    $F.$BODY                                    >> $F   # ~body~
+   $SED_LONGSCRIPT $F.$HEAD                  $SITEFILE  > $F   # ~head~
+   $CAT            $F.$BODY                            >> $F   # ~body~
    $SED -e "/<\\/body>/!d" -f ./$MK.vars.tmp $SITEFILE >> $F   #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F` "(sitemap)"
 else
@@ -700,8 +714,8 @@ if test -f "$SOURCEFILE" ; then
       echo "/<title>/d"                   > $F.$BODY #not that line
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$BODY #tag and vars
       $CAT ./$F.~move~ >> $F.$HEAD
-      $SED -f ./$F.$HEAD $SITEFILE                       > $F # ~head~
-      $SED -f ./$F.$BODY $SOURCEFILE                    >> $F # ~body~
+      $SED_LONGSCRIPT ./$F.$HEAD $SITEFILE               > $F # ~head~
+      $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
 else
