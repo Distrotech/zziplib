@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.40 2004-10-10 14:09:26 guidod Exp $
+# $Id: mksite.sh,v 1.41 2004-10-12 03:03:11 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -126,7 +126,10 @@ do if test ".$opt" != "." ; then
          opt="" ;;
       esac
    fi
-done
+done ; if test ".$opt" != "." ; then
+      eval "export opt_$opt='$arg'"
+      opt=""
+fi
 ### env | grep ^opt
 
 test ".$opt_main_file" != "." && test -f "$opt_main_file" && \
@@ -1486,6 +1489,16 @@ make_printerfriendly () # "$F"
 # ========================================================================
 # ========================================================================
 # ========================================================================
+
+if test ".$opt_help" != "." ; then
+    F="$SITEFILE"
+    echo "$0 [sitefile]";
+    echo "  default sitefile = $F";
+    echo "options:";
+    echo " --file-list = show list of target files as ectracted from $F";
+    exit;
+fi
+
 # ========================================================================
 #                                                          #### 0. INIT
 make_sitemap_init
@@ -1494,6 +1507,9 @@ make_sitemap_sect
 make_sitemap_page
 
 FILELIST=`echo_site_filelist`
+if test ".$opt_file_list" != "." || test ".$opt_list" = ".file"; then
+   for F in $FILELIST; do echo $F ; done ; exit
+fi
 if test ".$FILELIST" = "."; then
     echo "nothing to do"
 fi

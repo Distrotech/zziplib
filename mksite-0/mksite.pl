@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.10 2004-10-11 11:52:31 guidod Exp $
+# $Id: mksite.pl,v 1.11 2004-10-12 03:03:11 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -132,7 +132,11 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	    $opt="" ;;
 	};
     }
-}
+} ; if ($opt) {
+	$o{$opt}=" ";
+	$opt="";
+    }
+
 	
 ### env | grep ^opt
 
@@ -1867,6 +1871,16 @@ sub make_printerfriendly # "$F"
 # ========================================================================
 # ========================================================================
 # ========================================================================
+
+if ($o{help}) {
+    $_=$SITEFILE;
+    print "$0 [sitefile]\n";
+    print "  default sitefile = $_\n";
+    print "options:\n";
+    print " --file-list = show list of target files as ectracted from $_\n";
+    exit;
+}
+
 # ========================================================================
 #                                                          #### 0. INIT
 $F=$SITEFILE;
@@ -1877,6 +1891,14 @@ $F=$SITEFILE;
 savelist(\@MK_INFO);
 
 @FILELIST=&echo_site_filelist();
+if ($o{file_list} or $o{list} eq "file" or $o{list} eq "files") {
+    for (@FILELIST) { print $_,"\n";  } exit;
+}
+
+if ($#FILELIST < 0) {
+    print "nothing to do";
+}
+
 
 for (@FILELIST) {                                    #### 1. PASS
     $F = $_;
