@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.19 2004-04-21 13:24:38 guidod Exp $
+# $Id: mksite.sh,v 1.20 2004-04-21 16:44:51 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -136,7 +136,7 @@ if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
 $CATNULL > $MK.tags.tmp
 for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
          B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
-         CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS
+         CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE
 do M=`echo $P | $SED -e "y/$UPPER/$LOWER/"`
   echo "s|<$P>|<$M class=\"$P\">|g"         >>$MK.tags.tmp
   echo "s|<$P |<$M class=\"$P\" |g"         >>$MK.tags.tmp
