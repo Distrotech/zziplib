@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.24 2005-01-30 12:00:15 guidod Exp $
+# $Id: mksite.pl,v 1.25 2005-01-30 16:59:21 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -509,10 +509,6 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
     elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
 	}
-        for (split / /, $o{variables}) {
-	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_-->|\$1$SS\$Z|;"}
-	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_\\?-->|\$1$SS\$Z|;"}
-	}
     }
     if ($simplevars ne "no" && $updatevars ne "no") {
 	for (@_INP) { my $Q = "[$AX]*";
@@ -656,6 +652,11 @@ sub dx_init
 {
     @{$INFO{$F}} = ();
     &dx_meta ("formatter", basename($o{formatter}));
+    for (split / /, $o{variables}) {        # commandline --def=value
+	if (/_/) { my $u=$_; $u =~ y/_/-/;  # makes for <!--$def--> override
+                   &dx_meta ($u, $o{$_}); 
+	} else {   &dx_text ($_, $o{$_}); }
+    }
 }
 
 sub dx_line

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.53 2005-01-30 12:00:04 guidod Exp $
+# $Id: mksite.sh,v 1.54 2005-01-30 16:59:21 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -474,10 +474,6 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
-  if test ".$expandvars" != ".no" ; then for opt in $opt_variables ; do
-      opt_value=`eval "echo \$opt_$opt"` 
-      echo "s|<!--$V1$opt[?]*-->|\\\\1$SS$opt_value|" # $++
-  done ; fi
   test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\2|," \
@@ -518,10 +514,6 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=Name=/s,=Name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
-  if test ".$attribvars" != ".no" ; then for opt in $opt_variables ; do
-      opt_value=`eval "echo \$opt_$opt"` 
-      echo "s|<$V1{$opt:[=?]$V2}$V3>|<\\\\1$SS$opt_value\\\\3>|" # $++
-  done ; fi
   test ".$simplevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
@@ -589,6 +581,11 @@ dx_init()
 {
     mkpathdir "$tmp"
     dx_meta formatter `basename $opt_formatter` > "$tmp/$F.$INFO"
+    for opt in $opt_variables ; do case "$opt" in # commandline --def=value
+      *_*) op_=`echo "$opt" | sed -e "y/_/-/"`    # makes for <!--$def-->
+           dx_meta "$op_" `eval echo "\\\$opt_$opt"` ;; 
+      *)   dx_text "$opt" `eval echo "\\\$opt_$opt"` ;;
+    esac ; done
 }
 
 dx_line ()
@@ -1641,7 +1638,7 @@ FILELIST=`echo_site_filelist`
 if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
    for F in $FILELIST; do echo "$F" ; done ; exit # --filelist
 fi
-if test ".$opt_files" ; then FILELIST="$opt_files" ; fi # --files
+if test ".$opt_files" != "." ; then FILELIST="$opt_files" ; fi # --files
 if test ".$FILELIST" = "."; then echo "nothing to do" >&2 ; fi
 if test ".$FILELIST" = ".SITEFILE" ; then echo "only '$SITEFILE'?!" >&2 ; fi
 
