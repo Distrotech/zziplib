@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.39 2004-10-10 13:33:23 guidod Exp $
+# $Id: mksite.sh,v 1.40 2004-10-10 14:09:26 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -754,15 +754,15 @@ info2head_sed ()      # append alternative handling script to $HEAD
     if test ".$have" != "." ; then
        echo "/<!--mksite:alternative:$have .*-->/{" # $++
        echo "s/<!--mksite:alternative:$have\\( .*\\)-->/\\1/" # $++
-       echo "q" # $++ ; echo "}" # $++
+       echo "q" # $++ 
+       echo "}" # $++
     fi
 }
 info2body_sed ()      # append alternative handling script to $BODY
 {
     have=`info_get_entry alternative`
     if test ".$have" != "." ; then
-       _replace_="s/<!--mksite:alternative:$have\\( .*\\)-->/\\1/"
-       echo "/<!--mksite:alternative:$have .*-->/$_replace_" # $++
+       echo "s/<!--mksite:alternative:$have\\( .*\\)-->/\\1/" # $++
     fi
 }
 
