@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.42 2004-10-16 23:19:38 guidod Exp $
+# $Id: mksite.sh,v 1.43 2004-10-16 23:46:33 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -291,7 +291,6 @@ done
    echo "s|\\(<[^<>]*\\)\\\${[$AX]*:[?=]\\([^<{}>]*\\)}\\([^<>]*>\\)|\\1\\2\\3|g"        >>$MK_TAGS
 
 
-TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
 trimm ()
 {
     echo "$1" | $SED -e "s:^ *::" -e "s: *\$::";
@@ -571,9 +570,10 @@ DC_VARS_Of () # check DC vars as listed in $DC_VARS global and generate DC_meta
    FILENAME="$1" ; test ".$FILENAME" = "." && FILENAME="$SOURCEFILE"   
    for M in $DC_VARS title ; do
       # scan for a <markup> of this name
-      term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
-      part=`eval $SED $term $TRIMM -e q $FILENAME`
-      text=`echo "$part" | eval $SED -e "'s|^[$AA]*:||'" $TRIMM`
+      part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $FILENAME`
+      part=`trimm "$part"`
+      text=`echo  "$part" | $SED -e "s|^[$AA]*:||"`
+      text=`trimm "$text"`
       # <mark:part> will be <meta name="mark.part">
       if test ".$text" != ".$part" ; then
          N=`echo "$part" | $SED -e "s/:.*//"`
@@ -632,17 +632,17 @@ DC_date ()             # make sure there is this DC.date meta tag
       done
       if test ".$text" = "." ; then
         M="date"
-        term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
-        part=`eval $SED $term $TRIMM -e q $Q`
+        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $Q`
+	part=`trimm "$part"`
         text=`echo "$part" | $SED -e "s|^[$AA]*:||"`
 	text=`trimm "$text"`
       fi
       if test ".$text" = "." ; then 
-         # this should be rewritten.... ugly way to parse out a date:
-         CLEAN=" -e '/^%%%%%/!d' -e 's:^%*::' -e 's:</.*::' -e 's:.*>::'"
-         EDATE=" -e 's:.*<date>:%%%%%%:' -e 's:.*<!--date-->:%%%%%%:' $CLEAN"
-         text=`eval $SED $EDATE $TRIMM -e "'s|^ *[$AA]*:||'" -e q $Q` 
-         text=`echo "$text" | $SED -e 's|\\&.*||'`
+        M="!--date:*=*--" # takeover updateable variable...
+        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</.*||" -e q $Q`
+	part=`trimm "$part"`
+        text=`echo "$part" | $SED -e "s|^[$AA]*:||" -e "s|\\&.*||"`
+	text=`trimm "$text"`
       fi
       text=`echo "$text" | $SED -e "s/[$NN]*:.*//"` # cut way seconds
       DX_text updated "$text"
@@ -673,12 +673,11 @@ DC_title ()
    then :
    else
       for M in TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6 ; do
-        term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
-        text=`eval $SED $term $TRIMM -e q $Q`
-        test ".$text" != "." && break
-        term="-e '/<$M [^<>]*>/!d' -e 's|.*<$M [^<>]*>||' -e 's|</$M>.*||'"
-        text=`eval $SED $term $TRIMM -e q $Q`
-        test ".$text" != "." && break
+        text=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $Q`
+	text=`trimm "$text"` ; test ".$text" != "." && break
+        MM="$M [^<>]*"
+        text=`$SED -e "/<$MM>/!d" -e "s|.*<$MM>||" -e "s|</$M>.*||" -e q $Q`
+	text=`trimm "$text"` ; test ".$text" != "." && break
       done
       if test ".text" = "." ; then
 	text=`basename $Q .html`

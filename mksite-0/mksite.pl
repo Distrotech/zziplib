@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.13 2004-10-16 23:19:38 guidod Exp $
+# $Id: mksite.pl,v 1.14 2004-10-16 23:46:33 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -747,7 +747,7 @@ sub DC_date         # make sure there is this DC.date meta tag
 	    last if $text;
 	}
 	if (not $text) {
-	    my $M="date"; my $part;
+	    my $part; my $M="date";
 	    for (source($Q)) {
 		/<$M>/ or next; s|.*<$M>||; s|</$M>.*||;
 		$part=trimm($_); last;
@@ -756,11 +756,13 @@ sub DC_date         # make sure there is this DC.date meta tag
 	    $text = &trimm ($text);
 	}
 	if (not $text) {
-	    # this should be rewritten.... ugly way to parse out a date:
-	    my $CLEAN=" -e '/^%%%%%/!d' -e 's:^%*::' -e 's:</.*::' -e 's:.*>::'";
-	    my $EDATE=" -e 's:.*<date>:%%%%%%:' -e 's:.*<!--date-->:%%%%%%:' $CLEAN";
-##	    $text=`eval $SED $EDATE $TRIMM -e "'s|^ *[$AA]*:||'" -e q $Q`;
-	    $text=~ s|\\&.*||;
+	    my $part; my $M="!--date:*=*--"; # takeover updateable variable...
+	    for (source($Q)) {
+		/<$M>/ or next; s|.*<$M>||; s|</.*||;
+		$part=trimm($_); last;
+	    }
+	    $text=$part; $text =~ s|^[$AA]*:||; $text =~ s|\&.*||;
+	    $text = &trimm ($text);
 	}
 	$text =~ s/[$NN]*:.*//; # cut way seconds
 	&DX_text ("updated", $text);
@@ -997,7 +999,6 @@ sub make_fast # experimental - make a FAST file that can be applied
 	    next if /\$/; # some href="${...}" is problematic
 	    next if $ref eq $_; # uniq
 	    $ref = $_; push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
-#	    $ref = $_; print "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;\n";
 	}
 	return @OUT;
     }
