@@ -36,8 +36,8 @@ clean :
 	- rm *.html */*.html */*.tmp
 
 DISTFILES = GNUmakefile README.TXT COPYING.ZLIB \
-            mksite.txt mksite.sh mksite.gif \
-            doc/*.htm test*/*.htm doc/*.gif
+            mksite.txt mksite.sh \
+            doc/*.htm doc/*.gif test*/*.htm 
 SUBDIRS =
 PACKAGE = mksite
 
