@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.9 2004-04-20 17:09:44 guidod Exp $
+# $Id: mksite.sh,v 1.10 2004-04-20 20:02:11 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -119,7 +119,7 @@ if test ".$SITEFILE" = "." ; then
    echo "error: no SITEFILE found (default would be 'site.htm')"
    exit 1
 else
-   echo "sitefile: `ls -s $SITEFILE`"
+   echo "NOTE: sitefile: `ls -s $SITEFILE`"
 fi
 
 if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
@@ -745,10 +745,22 @@ FILELIST=`$SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK.$INFO`
 printerfriendly=""
 sectionlayout="list"
 sitemaplayout="list"
-simplevars="test"
+simplevars="warn"
+
+sitefile_magic_option ()
+{
+    $SED \
+      -e "s/\\(<!--mksite:\\)\\($1\\)-->/\\1\\2: -->/g" \
+      -e "s/\\(<!--mksite:\\)\\([$AA][$AA]*\\)\\($1\\)-->/\\1\\3:\\2-->/g" \
+      -e "/<!--mksite:$1[:-][^<>]*->/!d" \
+      -e "s/.*<!--mksite:$1:\\([^<>]*\\)-->.*/\\1/" -e q $SITEFILE
+}
+
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
-echo "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " \
-     "$SITEFILE" >&2
+echo \
+"WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " "$SITEFILE"
+echo \
+"warning: or <!--mksite:multisectionlayout--> <!--mksite:multisitemaplayout-->"
 sectionlayout="multi"
 sitemaplayout="multi"
 fi
@@ -760,34 +772,20 @@ if $GREP "<!--mksite:multilayout-->"         $SITEFILE >$NULL ; then
 sectionlayout="multi"
 sitemaplayout="multi"
 fi
-if $GREP "<!--mksite:multisectionlayout-->"  $SITEFILE >$NULL ; then
-sectionlayout="multi"
-fi
-if $GREP "<!--mksite:multisitemaplayout-->"  $SITEFILE >$NULL ; then
-sitemaplayout="multi"
-fi
-if $GREP "<!--mksite:listlayout-->"          $SITEFILE >$NULL ; then
-sectionlayout="list"
-sitemaplayout="list"
-fi
-if $GREP "<!--mksite:listsectionlayout-->"   $SITEFILE >$NULL ; then
-sectionlayout="list"
-fi
-if $GREP "<!--mksite:listsitemaplayout-->"   $SITEFILE >$NULL ; then
-sitemaplayout="list"
-fi
-if $GREP "<!--mksite:no-simplevars-->"   $SITEFILE >$NULL ; then
-simplevars="no"
-fi
-if $GREP "<!--mksite:simplevars-->"   $SITEFILE >$NULL ; then
-simplevars="do"
-fi
-if $GREP "<!--mksite:printerfriendly-->"   $SITEFILE >$NULL ; then
-printerfriendly=" "
-fi
-if test ".$opt_print" != "." ; then
-printerfriendly="$opt_print"
-fi
+x=`sitefile_magic_option sectionlayout` ; case "$x" in
+"list"|"multi") sectionlayout="$x" ;; esac
+test -d DEBUG && echo "NOTE: sectionlayout='$sectionlayout' '$x'"
+x=`sitefile_magic_option sitemaplayout` ; case "$x" in
+"list"|"multi") sitemaplayout="$x" ;; esac
+test -d DEBUG && echo "NOTE: sitemaplayout='$sitemaplayout' '$x'"
+x=`sitefile_magic_option simplevars` ; case "$x" in
+" "|"no"|"warn") simplevars="$x" ;; esac
+test -d DEBUG && echo "NOTE: simplevars='$simplevars' '$x'"
+x=`sitefile_magic_option printerfriendly` ; case "$x" in
+" "|".*"|"-*") printerfriendly="$x" ;; esac
+test ".$opt_print" != "." && printerfriendly="$opt_print"
+test -d DEBUG && echo "NOTE: printerfriendly='$printerfriendly' '$x'"
+
 
 # ==========================================================================
 # originally this was a one-pass compiler but the more information
@@ -864,7 +862,7 @@ fi ;;
    ;;
 esac done
 
-if test ".$simplevars" = ".do" ; then
+if test ".$simplevars" = ". " ; then
 $CATNULL > $MK.olds.tmp
 fi
 
@@ -887,11 +885,11 @@ ${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
-   test ".$simplevars" = ".test" && \
+   test ".$simplevars" = ".warn" && \
    info2test $MK.test.tmp          # check <!--title--> vars old-style
    info2vars $MK.vars.tmp          # have <!--title--> vars substituted
    info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
-   test ".$simplevars" = ".test" && \
+   test ".$simplevars" = ".warn" && \
    $SED_LONGSCRIPT ./$MK.test.tmp $SOURCEFILE | tee -a ./$MK.olds.tmp
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
    $CAT ./$MK.puts.tmp                                       > $F.$HEAD 
@@ -924,11 +922,11 @@ fi fi ;;
 *.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`            #     2.PASS
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
-   test ".$simplevars" = ".test" && \
+   test ".$simplevars" = ".warn" && \
    info2test $MK.test.tmp          # check <!--title--> vars old-style
    info2vars $MK.vars.tmp          # have <!--$title--> vars substituted
    info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
-   test ".$simplevars" = ".test" && \
+   test ".$simplevars" = ".warn" && \
    $SED_LONGSCRIPT ./$MK.test.tmp $SOURCEFILE | tee -a ./$MK.olds.tmp
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
    CURRENT_SECTION=`info_get_entry DC.relation.section`
@@ -1007,10 +1005,10 @@ esac
       done
    fi
 done
-if test ".$simplevars" = ".test" ; then oldvars=`cat ./$MK.olds.tmp | wc -l`
+if test ".$simplevars" = ".warn" ; then oldvars=`cat ./$MK.olds.tmp | wc -l`
 if test "$oldvars" = "0" ; then
 echo "HINT: you have no simplevars in your htm sources, so you may want to"
-echo "hint: set the magic <!--mksite:no-simplevars--> in your $SITEFILE"
+echo "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE"
 echo "hint: which makes execution _faster_ actually in the 2. pass"
 echo "note: simplevars expansion was the oldstyle way of variable expansion"
 else
@@ -1020,7 +1018,7 @@ echo "hint: future. If you do not want change then add the $SITEFILE magic"
 echo "hint: <!--mksite:simplevars--> somewhere to suppress this warning"
 echo "note: simplevars expansion will be an explicit option in the future."
 echo "note: errornous simplevar detection can be suppressed with a magic"
-echo "note: hint of <!--mksite:no-simplevars--> in the $SITEFILE for now."
+echo "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now."
 fi fi
 
 rm ./$MK.*.tmp

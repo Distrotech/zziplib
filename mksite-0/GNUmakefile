@@ -73,8 +73,8 @@ snapshot : distdir
 
 # -----------------------------------------------------------------------
 INSTALLDIRS =
-INSTALLFILES = doc/*.html doc/site.htm mksite.sh mksite.txt \
-               COPYING.ZLIB _dist/$(DISTNAME).tar.bz2
+INSTALLFILES = doc/*.html doc/site.htm doc/site.print.htm \
+               mksite.sh mksite.txt COPYING.ZLIB _dist/$(DISTNAME).tar.bz2
 
 datadir ?= /usr
 mkinstalldirs ?= mkdir -p
