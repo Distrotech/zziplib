@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.5 2004-04-19 19:01:20 guidod Exp $
+# $Id: mksite.sh,v 1.6 2004-04-19 19:24:54 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -42,8 +42,10 @@ NULL="/dev/null"                             # to divert stdout/stderr
 CATNULL="$CAT $NULL"                         # to create 0-byte files
 SED_LONGSCRIPT="$SED -f"
 
-az="abcdefghijklmnopqrstuvwxyz"              # some old sed tools can not
-AZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ"              # use char-ranges in the 
+LOWER="abcdefghijklmnopqrstuvwxyz"
+UPPER="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+az="$LOWER"                                  # some old sed tools can not
+AZ="$UPPER"                                  # use char-ranges in the 
 NN="0123456789"                              # match expressions so that
 AA="_$NN$AZ$az"                              # we use their unrolled
 AX="$AA.+-"                                  # definition here
@@ -56,6 +58,10 @@ AX="$AA.+-"                                  # script more readable
 elif uname -s | $GREP HP-UX >$NULL ; then
 SED_LONGSCRIPT="sed_longscript"              # due to 100 sed lines limit
 fi
+
+LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
+export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
+                                             # treat A-Z to include a-z
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -131,7 +137,7 @@ $CATNULL > $MK.tags.tmp
 for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
          B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
          CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS
-do M=`echo $P | $SED -e "y|$AZ|$az|"`
+do M=`echo $P | $SED -e "y/$UPPER/$LOWER/"`
   echo "s|<$P>|<$M class=\"$P\">|g"         >>$MK.tags.tmp
   echo "s|<$P |<$M class=\"$P\" |g"         >>$MK.tags.tmp
   echo "s|</$P>|</$M>|g"                    >>$MK.tags.tmp
@@ -247,20 +253,20 @@ info1grep () # test for a <!--vars--> substition to be already present
 
 DX_text ()   # add a <!--vars--> substition includings format variants
 {
-   N="$1" ; T="$2"
-   if test ".$N" != "." ; then
-      if test ".$T" != "." ; then
-         text=`echo "$T" | $SED -e "y/$AZ/$az/"`
-         echo       "=text=$N $T"                       >> $F.$INFO
-         echo       "=name=$N $text"                    >> $F.$INFO
-         varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
-         if test ".$N" != ".$varname" ; then 
-         text=`echo "$varname $T" | $SED -e "y/$AZ/$az/"`
-         echo       "=Text=$varname $T"                 >> $F.$INFO
-         echo       "=Name=$varname $text"              >> $F.$INFO
-         fi
+  N="$1" ; T="$2"
+  if test ".$N" != "." ; then
+    if test ".$T" != "." ; then
+      text=`echo "$T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
+      echo       "=text=$N $T"                       >> $F.$INFO
+      echo       "=name=$N $text"                    >> $F.$INFO
+      varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
+      if test ".$N" != ".$varname" ; then 
+      text=`echo "$varname $T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
+      echo       "=Text=$varname $T"                 >> $F.$INFO
+      echo       "=Name=$varname $text"              >> $F.$INFO
       fi
-   fi
+    fi
+  fi
 }
 
 DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
