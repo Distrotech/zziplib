@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.25 2005-01-30 16:59:21 guidod Exp $
+# $Id: mksite.pl,v 1.26 2005-01-31 02:12:41 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1541,6 +1541,23 @@ sub echo_sp_PP
 		"/^$U$S*<a href=/ and s/^/$V/;" );
     return @list;
 }
+sub echo_sp_sp
+{
+    my ($U,$V,$Z) = @_;
+    my @list = (
+		"/^$U*<a name=/ and s/^/$V/;",
+		"/^<>$U*<a name=/ and s/^/$V/;",
+		"/^$S$U*<a name=/ and s/^/$V/;",
+		"/^<><>$U*<a name=/ and s/^/$V/;",
+		"/^$S$S$U*<a name=/ and s/^/$V/;",
+		"/^<>$U<>*<a name=/ and s/^/$V/;",
+		"/^$S$U$S*<a name=/ and s/^/$V/;",
+		"/^$U<><>*<a name=/ and s/^/$V/;",
+		"/^$U$S$S*<a name=/ and s/^/$V/;",
+		"/^$U<>*<a name=/ and s/^/$V/;",
+		"/^$U$S*<a name=/ and s/^/$V/;" );
+    return @list;
+}
 
 sub make_sitemap_init
 {
@@ -1565,33 +1582,40 @@ sub make_sitemap_init
     push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "<!--sect3-->");
+    push @MK_GETS, &echo_sp_sp   (                   "$q3"   , "<!--sect9-->");
     @MK_PUTS = map { my $x=$_; $x =~ s/(>)(\[)/$1 *$2/; $x } @MK_GETS;
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
 }
 
-my $_uses_= sub{"=use$1=$2 $3" }; 
+my $_uses_= sub{"=use$1=$2 $3" }; my $_name_= sub{"=use$1=name:$2 $3" }; 
+my $_getW_="<!--sect([$NN])-->";
 my $_getX_="<!--sect([$NN])--><[^<>]*>[^<>]*";
 my $_getY_="<!--sect([$NN])--><[^<>]*>[^<>]*<[^<>]*>[^<>]*";
 
 sub make_sitemap_list
 {
-    # scan sitefile for references pages - store as =use+= relation
+    # scan sitefile for references pages - store as "=use+=href+ anchortext"
     for (source($SITEFILE)) {
 #	print join("$n;",@MK_GETS),$n;
 	$_ = &eval_MK_LIST($_, @MK_GETS);
 	/^<!--sect[$NN]-->/ or next;
 	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	s{^$_getY_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
+	s{^$_getW_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
+	s{^$_getX_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
+	s{^$_getY_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	/^=....=/ or next;
-	push @MK_INFO, trimm($_);
+	push @MK_INFO, $_;
     }
 }
 
 sub make_sitemap_sect
 {
-    # scan used pages and store relation =sect= pointing to section group
+    # scan used pages and store prime section group relation =sect= and =node=
+    # (A) each "use1" creates "=sect=href+ href1" for all following non-"use1"
+    # (B) each "use1" creates "=node=href2 href1" for all following "use2"
     my $sect = "";
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
@@ -1600,8 +1624,7 @@ sub make_sitemap_sect
     }
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=use1=([^ ]*) .*/) { $sect = $1; }
-	/=[u]se1=/ and next;
-	/=[u]se3=/ and next;
+	/=[u]se[13456789]=/ and next;
 	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/;
 	push @MK_INFO, "$x $sect";
     }
@@ -1609,20 +1632,20 @@ sub make_sitemap_sect
 
 sub make_sitemap_page
 {
-    # scan used pages and store relation =page= pointing to topic group
+    # scan used pages and store secondary group relation =page= and =node=
+    # the parenting =node= for use3 is usually a use2 (or use1 if none there)
     my $sect = "";
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
 	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
-	/=use1=/ and next;
+	/=[u]se[1]=/ and next;
 	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=page=$1/;
 	push @MK_INFO, "$x $sect";
     }
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
 	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
-	/=use1=/ and next;
-	/=use2=/ and next;
+	/=[u]se[12456789]=/ and next;
 	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/;
 	push @MK_INFO, "$x $sect";
     }
@@ -1718,6 +1741,25 @@ sub scan_htmlfile # "$F"
     }
 }
 
+sub scan_namespec 
+{
+    # nothing so far
+    my ($U,$ZZZ) = @_;
+    print "skip: $U$n";
+}
+sub scan_httpspec
+{
+    # nothing so far
+}
+
+sub skip_namespec 
+{
+    # nothing so far
+}
+sub skip_httpspec
+{
+    # nothing so far
+}
 
 # ==========================================================================
 # and now generate the output pages
@@ -1949,8 +1991,10 @@ if ($#FILELIST == 0 and
 
 for (@FILELIST) {                                    #### 1. PASS
     $F = $_;
-    if (/^(http:.*|.*:\/\/.*)$/) { 
-	next; # skip
+    if (/^(name:.*)$/) { 
+	&scan_namespec ("$F"); 
+    } elsif (/^(http:.*|.*:\/\/.*)$/) { 
+	&scan_httpspec ("$F"); 
     } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
 	&scan_sitefile ("$F") ;;                      # ........... SCAN SITE
     } elsif (/^(\.\.\/.*)$/) { 
@@ -1996,10 +2040,13 @@ if ($simplevars eq " ") {
 
 for (@FILELIST) {                                          #### 2. PASS
   $F = $_;
-  if (/^(http:.*|.*:\/\/.*)$/) { 
-      next ;; # skip
+  if (/^(name:.*)$/) { 
+      &skip_namespec ("$F") ;;
+  } elsif (/^(http:.*|.*:\/\/.*)$/) { 
+      &skip_httpspec ("$F") ;;
   } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
       &make_sitefile ("$F") ;;                         # ........ SITE FILE
+      &make_printerfriendly ("$F") if ($printerfriendly);
   } elsif (/^(\.\.\/.*)$/) {
       print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 
@@ -2010,16 +2057,12 @@ for (@FILELIST) {                                          #### 2. PASS
 #   ;;
   } elsif (/^(.*\.html)$/) {
       &make_htmlfile ("$F") ;;               # .................. HTML FILES
+      &make_printerfriendly ("$F") if ($printerfriendly);
   } elsif (/^(.*\/)$/) {
       print "'$F' : directory - skipped$n";
   } else {
       print "?? -> '$F'$n";
   }
-
-   # ............................................................ FAST FILES
-if ($printerfriendly) {
-    &make_printerfriendly ("$F");
-}
 # .............. debug ....................
 ##   if test -d DEBUG && test -f "./$F" ; then
 ##      cp ./$F.$INFO DEBUG/$F.info.TMP

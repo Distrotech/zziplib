@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.54 2005-01-30 16:59:21 guidod Exp $
+# $Id: mksite.sh,v 1.55 2005-01-31 02:12:41 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1085,7 +1085,7 @@ make_printsitefile_head() # $sitefile
    echo_printsitefile_style > "$MK_STYLE"
    $SED -e "/<title>/p" -e "/<title>/d" \
         -e "/<head>/p"   -e "/<head>/d" \
-        -e "/<\/head>/p"   -e "/<\/head>/d" \
+        -e "/<\/head>/p"  -e "/<\/head>/d" \
         -e "/<body>/p"   -e "/<body>/d" \
         -e "/^.*<link [^<>]*rel=\"shortcut icon\"[^<>]*>.*\$/p" \
         -e "d" $SITEFILE | $SED -e "/<head>/r $MK_STYLE" # $+++
@@ -1303,6 +1303,21 @@ echo_sp_PP ()
     echo "/^$1$S*<a href=/s/^/$2/"
 }
 
+echo_sp_sp ()
+{
+    echo "/^$1*<a name=/s/^/$2/"
+    echo "/^<>$1*<a name=/s/^/$2/"
+    echo "/^$S$1*<a name=/s/^/$2/"
+    echo "/^<><>$1*<a name=/s/^/$2/"
+    echo "/^$S$S$1*<a name=/s/^/$2/"
+    echo "/^<>$1<>*<a name=/s/^/$2/"
+    echo "/^$S$1$S*<a name=/s/^/$2/"
+    echo "/^$1<><>*<a name=/s/^/$2/"
+    echo "/^$1$S$S*<a name=/s/^/$2/"
+    echo "/^$1<>*<a name=/s/^/$2/"
+    echo "/^$1$S*<a name=/s/^/$2/"
+}
+
 make_sitemap_init()
 {
     # build a list of detectors that map site.htm entries to a section table
@@ -1325,54 +1340,60 @@ make_sitemap_init()
     echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
     echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> "$MK_GETS"
     echo_sp_PP                      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    echo_sp_sp                      "$q3"    "<!--sect9-->"     >> "$MK_GETS"
     $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
 }
 
-_uses_="=use\\1=\\2 \\3" ; 
+_uses_="=use\\1=\\2 \\3" ; _name_="=use\\1=name:\\2 \\3" ; 
+_getW_="<!--sect\\([$NN]\\)-->"
 _getX_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*"
 _getY_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*<[^<>]*>[^<>]*"
 
 make_sitemap_list()
 {
-    # scan sitefile for references pages - store as =use+= relation
+    # scan sitefile for references pages - store as "=use+=href+ anchortext"
     $SED -f $MK_GETS           -e "/^<!--sect[$NN]-->/!d" \
-	-e "s:^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
-	-e "s:^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
+	-e "s|^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
+	-e "s|^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
+	-e "s|^$_getW_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
+	-e "s|^$_getX_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
+	-e "s|^$_getY_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "/^=....=/!d"    "$SITEFILE" > "$MK_INFO"
 }
 
 make_sitemap_sect() 
 {
-    # scan used pages and store relation =sect= pointing to section group
+    # scan used pages and store prime section group relation =sect= and =node=
+    # (A) each "use1" creates "=sect=href+ href1" for all following non-"use1"
+    # (B) each "use1" creates "=node=href2 href1" for all following "use2"
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
 	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use1=/d" \
-	-e "/=use3=/d" \
+	-e "/=use[13456789]=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
 	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
 }
 
 make_sitemap_page()
 {
-    # scan used pages and store relation =page= pointing to topic group
+    # scan used pages and store secondary group relation =page= and =node=
+    # the parenting =node= for use3 is usually a use2 (or use1 if none there)
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use1=/d" \
+	-e "/=use[1]=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=page=\\1/" \
 	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use1=/d" \
-	-e "/=use2=/d" \
+	-e "/=use[12456789]=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
 	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     # and for the root sections we register ".." as the parenting group
@@ -1455,6 +1476,27 @@ scan_htmlfile() # "$F"
  fi
 }
 
+scan_namespec ()
+{
+    # nothing so far
+    echo "skip: $1"
+}
+scan_httpspec ()
+{
+    # nothing so far
+    return;
+}
+
+skip_namespec ()
+{
+    # nothing so far
+    return;
+}
+skip_httpspec ()
+{
+    # nothing so far
+    return;
+}
 
 # ==========================================================================
 # and now generate the output pages
@@ -1643,7 +1685,8 @@ if test ".$FILELIST" = "."; then echo "nothing to do" >&2 ; fi
 if test ".$FILELIST" = ".SITEFILE" ; then echo "only '$SITEFILE'?!" >&2 ; fi
 
 for F in $FILELIST ; do case "$F" in                       #### 1. PASS
-http:*|*://*) ;; # skip
+name:*)                   scan_namespec "$F" ;;
+http:*|*://*)             scan_httpspec "$F" ;;
 ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
 ../*) 
    echo "!! -> '$F' (skipping topdir build)"
@@ -1676,28 +1719,26 @@ mknewfile $MK_OLDS
 fi
 
 for F in $FILELIST ; do case "$F" in                        #### 2. PASS
-http:*|*://*) : ;; # skip
-${SITEFILE}|${SITEFILE}l)  make_sitefile "$F" ;;      # ........ SITE FILE
+name:*)                    skip_namespec "$F" ;; 
+http:*|*://*)              skip_httpspec "$F" ;;
+${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
+    if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
 ../*) 
-   echo "!! -> '$F' (skipping topdir build)"
-   ;;
+    echo "!! -> '$F' (skipping topdir build)"
+    ;;
 # */*.html) 
 #   echo "!! -> '$F' (skipping subdir build)"
 #   ;;
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 
 #   echo "!! -> '$F' (skipping subdir index.html)"
 #   ;;
-*.html)  make_htmlfile "$F" ;;               # .................. HTML FILES
+*.html)  make_htmlfile "$F"                  # .................. HTML FILES
+    if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
 */) echo "'$F' : directory - skipped"
-   ;;
-*) echo "?? -> '$F'"
-   ;;
+    ;;
+*)  echo "?? -> '$F'"
+    ;;
 esac
-
-   # ............................................................ FAST FILES
-if test ".$printerfriendly" != "." ; then                         # PRINTER
-  make_printerfriendly "$F"
-fi
 # .............. debug ....................
    if test -d DEBUG && test -f "./$F" ; then
       FFFF=`echo "$F" | sed -e s,/,:,g`
