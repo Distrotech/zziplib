@@ -1,0 +1,66 @@
+<H3>Variable Expansion</H3>
+
+<P> 
+   Originally I was using a simple scheme of <code>&lt;!--varname--&gt;</code>
+   to express variable references that shall be expanded into the text. And
+   later I discovered it would be good that it can overwrite some text in
+   the sourcefile so that it was expanded to cut out any filename-like text
+   directly following this text. And even more later I did want to have a
+   lowercased and parenthesed variant which was selectable by choosing the
+   variant name <code>&lt;!--varname?--&gt;</code>.
+</P>
+<P>
+   This "simplevars" style will be discontinued now in the near future. It
+   was a necessary construction when using sed -e snippets directly in a
+   makefile since the natural syntax is much harder to create - where one
+   would escape a "$" standing in front of each varname. That escaping
+   however might add up to 15x"\" (i.e. "\\\\\\\\\\\\\\$") for a fact
+   just to get to expand a simple <code>&lt;!--$varname--&gt;</code> in
+   the actual sourecfile text. With the upbringing of a shell script 
+   with loops and shell functions there is no need anymore to try to get 
+   around this. That's why it does exist now - and the oldstyle "simplevars" 
+   is left in as an explicit option but warned about strongly.
+</P>
+<P>
+   The recommended style is therefore <b><code>&lt;!--$varname--&gt;</code></b>
+   to expand the value of <code>$varname</code> in the place of this 
+   hot comment. If you want to cut away some text following this
+   <code>$varname</code> varname expansion then add a trailing ":"
+   to the varname, i.e. <b><code>&lt;!--$varname:--&gt;</code></b>. This is
+   the way the oldstyle simplevars were working up to on default.
+</P>
+<P>
+   Additionally you can prefix the <code>$varname</code> now with some
+   extra text like <b><code>&lt;!-- generated $today--&gt;</code></b> which
+   makes a lot of expansion code look nicer and lifts away the need
+   to invent too many flavours of variables all with some extra
+   formatting. Atleast this simple addition gives lots of opportunities
+   for nice visualisations.
+</P>
+<table border="1" width="100%"><tr valign="top">
+<th> sourcefile reference </th>
+<th> resulting text </th>
+</tr><tr>
+<td> <code>&lt;!--$modified--&gt;</code>+xxxx </td>
+<td> <!--$modified-->+xxxx </td>
+</tr><tr>
+<td> <code>&lt;!--$modified:--&gt;</code>+xxxx </td>
+<td> <!--$modified:-->+xxxx </td>
+</tr><tr>
+<td> <code>&lt;!--$modified?--&gt;</code>+xxxx </td>
+<td> <!--$modified?-->+xxxx </td>
+</tr><tr>
+<td> <code>&lt;!-- changed $modified--&gt;</code>+xxxx </td>
+<td> <!--changed $modified-->+xxxx </td>
+</tr><tr>
+<td> <code>&lt;!-- changed $modified:--&gt;</code>+xxxx </td>
+<td> <!--changed $modified:-->+xxxx </td>
+</tr><tr valign="top">
+<td> <code>&lt;!--modified--&gt;</code>+xxxx
+<br> <code>&lt;!--modified?--&gt;</code>+xxxx  
+</td>
+<td> <!--modified-->+xxxx 
+<br> <!--modified?-->+xxxx 
+<br><em>and a warning message during formatting</em>
+</td>
+</tr><table>
