@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.17 2005-01-19 01:39:56 guidod Exp $
+# $Id: mksite.pl,v 1.18 2005-01-28 16:27:02 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -63,6 +63,7 @@ $o{variables}="files";
 $o{fileseparator}="?";
 $o{files}="";
 $o{main_file}="";
+$o{formatter}="$0";
 my $opt="";
 for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
     if ($opt) {
@@ -289,7 +290,14 @@ my @DC_VARS =
     ("contributor", "date", "source", "language", "coverage", "identifier",
      "rights", "relation", "creator", "subject", "description",
      "publisher", "DCMIType");
+my @_EQUIVS =
+    ("refresh", "expires", "content-type", "cache-control", 
+     "redirect", "charset", # mapped to refresh / content-type
+     "content-language", "content-script-type", "content-style-type");
 for my $P (@DC_VARS) { # dublin core embedded
+    push @MK_TAGS, "s|<$P>[^<>]*</$P>||g;";
+}
+for my $P (@_EQUIVS) {
     push @MK_TAGS, "s|<$P>[^<>]*</$P>||g;";
 }
 push @MK_TAGS, "s|<!--sect[$AZ$NN]-->||g;";
@@ -354,7 +362,7 @@ my $F; # current file during loop <<<<<<<<<
 my $i = 100;
 sub savelist {
     if (-d "DEBUG") {
-	my $X = "$F._$i"; $i++;
+	my $X = "$F._$i"; $i++; $X =~ s|/|:|g;
 	open X, ">DEBUG/$X" or die "could not open $X: $!";
 	print X "#! /usr/bin/perl -".$#_."$n";
 	print X join("$n", @{$_[0]}); close X;
@@ -474,95 +482,96 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     $updatevars = "no" if $commentvars  eq "no";   # duplicated from
     $expandvars = "no" if $commentvars  eq "no";   # option handling
     $simplevars = "no" if $commentvars  eq "no";   # tests below
-    my @OUT = ();
+    my @_INP = (); for (@{$INP}) { my $x=$_; $x =~ s/'/\\'/; push @_INP, $x; }
+    my @OUT = (); 
     if ($expandvars ne "no") {
-	for (@{$INP}) {
-    if (/^=....=formatter /) { next; };
-    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"};
-    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"};
-    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"};
-    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"};
+	for (@_INP) { 
+    if    (/^=....=formatter /) { next; } 
+    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
+    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
         } 
     }
     if ($expandvars ne "no") {
-	for (@{$INP}) {
-    if (/^=....=formatter /) { next; };
-    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
-    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
-    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
-    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
-    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
-    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
-    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
-    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
+	for (@_INP) {
+    if    (/^=....=formatter /) { next; } 
+    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
 	}
         for (split / /, $o{variables}) {
-	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_-->|\$1$SS\$Z|;"};
-	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_\\?-->|\$1$SS\$Z|;"};
+	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_-->|\$1$SS\$Z|;"}
+	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_\\?-->|\$1$SS\$Z|;"}
 	}
     }
     if ($simplevars ne "no" && $updatevars != "no") {
-	for (@$INP) {
-    if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
-    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
-    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
-    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"};
-    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"};
-    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
-    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
-    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"};
-    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"};
+	for (@_INP) { my $Q = "[$AX]*";
+    if    (/^=....=formatter /) { next; } 
+    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
+    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
+    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"}
+    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
+    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
+    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"}
 	}
     }
     if ($updatevars ne "no") {
-	for (@$INP) {
-    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"};
-    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"};
-    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"};
-    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"};
+	for (@_INP) {  my $Q = "[^<>]*";
+    if    (/^=....=formatter /) { next; }
+    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"}
+    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"}
 	}
     }
     if ($updatevars ne "no") {
-	for (@$INP) {
-    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-    if (/^=text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    if (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    if (/^=name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    if (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    if (/^=text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    if (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    if (/^=name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    if (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+	for (@_INP) {  my $Q = "[^<>]*";
+    if    (/^=....=formatter /) { next; }
+    elsif (/^=text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
 	}
     }
     if ($attribvars ne "no") {
-	for (@$INP) {
-    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-    if (/^=text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    if (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
+	for (@_INP) {  my $Q = "[^<>]*";
+    if    (/^=....=formatter /) { next; }
+    elsif (/^=text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
 	}
         for (split / /, $o{variables}) {
 	    {push @OUT,"\$Z='$o{$_}';s|<$V1\{$_:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
 	}
     }
     if ($simplevars ne "no") {
-	for (@$INP) {
-    if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
-    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
-    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
-    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"};
-    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"};
-    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
-    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
-    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"};
-    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"};
+	for (@_INP) {  my $Q = "[$AX]*";
+    if    (/^=....=formatter /) { next; }
+    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
+    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
+    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"}
+    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"}
+    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
+    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
+    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"}
+    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"}
 	}
     }
     # if value="2004" then generated sed might be "\\12004" which is bad
@@ -579,38 +588,42 @@ sub info2meta_sed     # generate <meta name..> text portion
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
     # http://www.metatab.de/meta_tags/DC_type.htm
+    my $V6=" *HTTP[.]([^ ]+) (.*)";
+    my $V7=" *DC[.]([^ ]+) (.*)";
     my $V8=" *([^ ]+) (.*)" ;
-    my $V9=" *DC[.]([^ ]+) (.*)";
     sub __TYPE_SCHEME { "name=\"DC.type\" content=\"$2\" scheme=\"$1\"" };
-    sub __TYPEDCMI { "name=\"$1\" content=\"$2\" scheme=\"DCMIType\"" };
+    sub __DCMI { "name=\"$1\" content=\"$2\" scheme=\"DCMIType\"" };
     sub __NAME { "name=\"$1\" content=\"$2\"" };
     sub __NAME_TZ { "name=\"$1\" content=\"$2 ".&timezone()."\"" };
+    sub __HTTP { "http-equiv=\"$1\" content=\"$2\"" };
     for (@$INP) {
 	if (/=....=today /) { next; }
-	if (/=meta=DC[.]DCMIType / && /=meta=$V9/ && $2) {
-	    push @OUT, "<meta ${\(__TYPE_SCHEME)} />"; }
-	if (/=meta=DC[.]type Collection$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Dataset$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Event$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Image$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Service$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Software$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Sound$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]type Text$/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__TYPEDCMI)} />"; }
-	if (/=meta=DC[.]date[.].*[+]/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__NAME)} />"; }
-	if (/=meta=DC[.]date[.].*[:]/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__NAME_TZ)} />"; }
-	if (/=meta=/ && /=meta=$V8/ && $2) {
-	    push @OUT, "<meta ${\(__NAME)} />"; }
+	if (/=meta=HTTP[.]/ && /=meta=$V6/) {
+	    push @OUT, " <meta ${\(__HTTP)} />" if $2; next; }
+	if (/=meta=DC[.]DCMIType / && /=meta=$V7/) {
+	    push @OUT, " <meta ${\(__TYPE_SCHEME)} />" if $2; next; }
+	if (/=meta=DC[.]type Collection$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Dataset$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Event$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Image$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Service$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Software$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Sound$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]type Text$/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
+	if (/=meta=DC[.]date[.].*[+]/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__NAME)} />" if $2; next; }
+	if (/=meta=DC[.]date[.].*[:]/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__NAME_TZ)} />" if $2; next; }
+	if (/=meta=/ && /=meta=$V8/) {
+	    push @OUT, " <meta ${\(__NAME)} />" if $2; next; }
     }
     return @OUT;
 }
@@ -638,12 +651,18 @@ sub info1grep # test for a <!--vars--> substition to be already present
 sub dx_init
 {
     @{$INFO{$F}} = ();
-    &dx_meta ("formatter", basename($0));
+    &dx_meta ("formatter", basename($o{formatter}));
 }
 
 sub dx_line
 {
     my ($U,$V,$W,$Z) = @_; chomp($U); chomp($V);
+    push @{$INFO{$F}}, $U.$V." ".trimm($W);
+}
+
+sub DX_line
+{
+    my ($U,$V,$W,$Z) = @_; chomp($U); chomp($V);  $W =~ s/<[^<>]*>//g;
     push @{$INFO{$F}}, $U.$V." ".trimm($W);
 }
 
@@ -674,21 +693,29 @@ sub DX_text   # add a <!--vars--> substition includings format variants
 sub dx_meta
 {
     my ($U,$V,$Z) = @_;
-    &dx_line ("=meta=",$U,$V);
+    &DX_line ("=meta=",$U,$V);
 }
 
 sub DX_meta  # add simple meta entry and its <!--vars--> subsitution
 {
     my ($U,$V,$Z) = @_;
-    &dx_line ("=meta=",$U,$V);
+    &DX_line ("=meta=",$U,$V);
     &DX_text ("$U", $V);
 }
 
 sub DC_meta   # add new DC.meta entry plus two <!--vars--> substitutions
 {
     my ($U,$V,$Z) = @_;
-    &dx_line ("=meta=","DC.$U",$V);
+    &DX_line ("=meta=","DC.$U",$V);
     &DX_text ("DC.$U", $V);
+    &DX_text ("$U", $V);
+}
+
+sub HTTP_meta   # add new HTTP.meta entry plus two <!--vars--> substitutions
+{
+    my ($U,$V,$Z) = @_;
+    &DX_line ("=meta=","HTTP.$U",$V);
+    &DX_text ("HTTP.$U", $V);
     &DX_text ("$U", $V);
 }
 
@@ -704,6 +731,7 @@ sub DC_VARS_Of # check DC vars as listed in $DC_VARS global/generate DC_meta
 	    $part = trimm($_); last;
 	}
 	$text=$part;  $text =~ s|^\w*:||; $text = trimm($text);
+	next if not $text;
 	# <mark:part> will be <meta name="mark.part"> 
 	if ($text ne $part) {
 	    my $N=$part; $N =~ s/:.*//;
@@ -712,6 +740,29 @@ sub DC_VARS_Of # check DC vars as listed in $DC_VARS global/generate DC_meta
 	    &DC_meta ("$M.issued", $text); # "<date>" -> "<date>issued:"
 	} else {
 	    &DC_meta ("$M", $text);
+	}
+    }
+}
+
+sub HTTP_VARS_Of  # check HTTP-EQUIVs as listed in $_EQUIV global then
+{                 # generate meta tags that are http-equiv= instead of name=
+    my ($FILENAME,$Z)= @_; 
+    $FILENAME=$SOURCEFILE if not $FILENAME;
+    for my $M (@_EQUIVS) {
+	# scan for a <markup> of this name                  FIXME
+	my ($part,$text);
+	for (source($FILENAME)) {
+	    /<$M>/ or next; s|.*<$M>||; s|</$M>.*||;
+	    $part = trimm($_); last;
+	}
+	$text=$part;  $text =~ s|^\w*:||; $text = trimm($text);
+	next if not $text;
+	if ($M eq "redirect") {
+	    &HTTP_meta ("refresh", "5; url=$text"); &DX_text ("$M", $text);
+	} elsif ($M eq "charset") {
+	    &HTTP_meta ("content-type", "text/html; charset=$text");
+	} else {
+	    &HTTP_meta ("$M", $text);
 	}
     }
 }
@@ -1602,7 +1653,7 @@ sub scan_sitefile # $F
 	DC_meta ("date.available", &timetoday());
 	DC_meta ("subject", "sitemap");
 	DC_meta ("DCMIType", "Collection");
-	DC_VARS_Of ($SOURCEFILE) ;
+	DC_VARS_Of ($SOURCEFILE) ; HTTP_VARS_Of ($SOURCEFILE) ;
 	DC_modified ($SOURCEFILE) ; DC_date ($SOURCEFILE);
 	DC_section ($F);
 	DX_text ("date.formatted", &timetoday());
@@ -1626,7 +1677,7 @@ sub scan_htmlfile # "$F"
 	dx_init "$F";
 	dx_text ("today", &timetoday());
 	dx_text ("todays", &timetodays());
-	DC_VARS_Of ($SOURCEFILE);
+	DC_VARS_Of ($SOURCEFILE); HTTP_VARS_Of ($SOURCEFILE);
 	DC_title ($SOURCEFILE);
 	DC_isFormatOf ($SOURCEFILE);
 	DC_modified ($SOURCEFILE);

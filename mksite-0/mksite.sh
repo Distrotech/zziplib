@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.47 2005-01-21 02:58:35 guidod Exp $
+# $Id: mksite.sh,v 1.48 2005-01-28 16:27:02 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -78,6 +78,7 @@ opt_variables="files"
 opt_fileseparator="?"
 opt_files=""
 opt_main_file=""
+opt_formatter="$0"
 opt=""
 for arg in "$@"        # this variant should allow to embed spaces in $arg
 do if test ".$opt" != "." ; then
@@ -320,7 +321,8 @@ done
 DC_VARS="contributor date source language coverage identifier"
 DC_VARS="$DC_VARS rights relation creator subject description"
 DC_VARS="$DC_VARS publisher DCMIType"
-_EQUIVS="refresh expires content-type cache-control      redirect charset"
+_EQUIVS="refresh expires content-type cache-control"
+_EQUIVS="$_EQUIVS redirect charset" # mapped to refresh / content-type
 _EQUIVS="$_EQUIVS content-language content-script-type content-style-type"
 for P in $DC_VARS $_EQUIVS ; do # dublin core embedded
    echo "s|<$P>[^<>]*</$P>||g"              >> "$MK_TAGS"
@@ -582,12 +584,22 @@ info1grep () # test for a <!--vars--> substition to be already present
 dx_init()
 {
     mkpathdir "$tmp"
-    dx_meta formatter `basename $0` > "$tmp/$F.$INFO"
+    dx_meta formatter `basename $opt_formatter` > "$tmp/$F.$INFO"
+}
+
+dx_line ()
+{
+    echo "$1$2 "`trimm "$3"` >> "$tmp/$F.$INFO"
+}
+
+DX_line ()
+{
+    echo "$1$2 "`trimm "$3"` | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
 }
 
 dx_text ()
 {
-    echo "=text=$1 $2" >> "$tmp/$F.$INFO"
+    dx_line "=text=" "$1" "$2"
 }
 
 DX_text ()   # add a <!--vars--> substition includings format variants
@@ -610,27 +622,27 @@ DX_text ()   # add a <!--vars--> substition includings format variants
 
 dx_meta ()
 {
-    echo "=meta=$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
+    DX_line "=meta=" "$1" "$2"
 }
 
 DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
 {
-   echo "=meta=$1 $2"  | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
-   DX_text "$1" "$2"
+    DX_line "=meta=" "$1" "$2"
+    DX_text "$1" "$2"
 }
 
 DC_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
 {
-   echo "=meta=DC.$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
-   DX_text "DC.$1" "$2"
-   DX_text "$1" "$2"
+    DX_line "=meta=" "DC.$1" "$2"
+    DX_text "DC.$1" "$2"
+    DX_text "$1" "$2"
 }
 
-HTTP_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
+HTTP_meta ()   # add new HTTP.meta entry plus two <!--vars--> substitutions
 {
-   echo "=meta=HTTP.$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
-   DX_text "HTTP.$1" "$2"
-   DX_text "$1" "$2"
+    DX_line "=meta=" "HTTP.$1" "$2"
+    DX_text "HTTP.$1" "$2"
+    DX_text "$1" "$2"
 }
 
 DC_VARS_Of () # check DC vars as listed in $DC_VARS global and generate DC_meta
