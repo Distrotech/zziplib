@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.25 2004-04-22 15:52:55 guidod Exp $
+# $Id: mksite.sh,v 1.26 2004-04-22 20:45:22 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -814,6 +814,24 @@ make_printsitefile ()
    echo "</body></html>"    >> $OUTPUT
 }
 
+select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
+{
+   _selected_="$1" ; test ".$_selected_" = "." && _selected_="$F"
+   _section_=`sed_slash_key "$_selected_"`
+   echo "s/^<!--mksite:sect:\"$_section_\"-->//"        # sect3
+   echo "s/^<!--mksite:sect:[*]:\"$_section_\"-->//"    # children
+   _selected_=`site_get_parentpage "$_selected_"` 
+   _section_=`sed_slash_key "$_selected_"`
+   echo "s/^<!--mksite:sect:\"$_section_\"-->//"        # sect2
+   _selected_=`site_get_parentpage "$_selected_"` 
+   _section_=`sed_slash_key "$_selected_"`
+   echo "s/^<!--mksite:sect:\"$_section_\"-->//"        # sect1
+   echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     
+   echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" 
+}
+
+
+
 
 # ==========================================================================
 #  
@@ -962,17 +980,22 @@ for F in $FILELIST ; do case "$F" in
 http:*|*://*) ;; # skip
 ${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then
-   echo "=text=today `$DATE_NOW +%Y-%m-%d`"               > $F.$INFO
+   echo "=text=today `$DATE_NOW +%Y-%m-%d`"          > $F.$INFO
    echo "=meta=formatter `basename $0`"             >> $F.$INFO
-   DC_meta title sitemap
+   short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"`
+   short="$short *"
+   DC_meta title "$short"
    DC_meta date.available `$DATE_NOW +%Y-%m-%d`
    DC_meta subject sitemap
    DC_meta DCMIType Collection
    DC_VARS_Of $SOURCEFILE 
    DC_modified $SOURCEFILE ; DC_date $SOURCEFILE 
+   test ".$printerfriendly" != "." && \
+   DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
+   DX_text printerfriendly `moved_html_printerfile "$F"`
    test ".$USER" != "." && DC_publisher "$USER"
-   echo "'$SOURCEFILE': " sitemap
-   echo "=list=$F sitemap"          >> $MK.$INFO
+   echo "'$SOURCEFILE': $short (sitemap)"
+   echo "=list=$F $short"          >> $MK.$INFO
    echo "=date=$F `$DATE_NOW +%Y-%m-%d`" >> $MK.$INFO
    echo "=long=$F generated sitemap index" >> $MK.$INFO
 fi ;;
@@ -1033,7 +1056,7 @@ fi
 if test ".$printerfriendly" != "." ; then                          #  PRINT
 _ext_=`print_extension "$printerfriendly" | sed -e "s/&/\\\\&/"`   # VERSION
 PRINTSITEFILE=`echo "$SITEFILE" | sed -e "s/\\.[$AA]*\$/$_ext_&/"`
-echo "NOTE: going to create printer-friendly version $PRINTSITEFILE"
+echo "NOTE: going to create printer-friendly sitefile $PRINTSITEFILE"
 make_printsitefile "$PRINTSITEFILE"
 fi
 
@@ -1130,32 +1153,6 @@ if test -f "$SOURCEFILE" ; then
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
-   # .......................................................................
-   if test ".$printerfriendly" != "." ; then                      # PRINTER
-      make_printerfile_move ./$MK.move.tmp                        # FRIENDLY
-      P=`html_printerfile "$F"`
-      $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$HEAD
-      $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
-           ./$MK.meta.tmp >> ./$MK.mett.tmp
-      echo "/<head>/r $MK.mett.tmp"                >> ./$P.$HEAD
-      V=`sed_slash_key "$F"`
-      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect3
-      echo "s/^<!--mksite:sect:[*]:\"$V\"-->//"    >> ./$P.$HEAD   # children
-      SECTION=`site_get_parentpage "$F"` ;       V=`sed_slash_key "$SECTION"`
-      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect2
-      SECTION=`site_get_parentpage "$SECTION"` ; V=`sed_slash_key "$SECTION"`
-      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect1
-      echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     >> ./$P.$HEAD
-      echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" >> ./$P.$HEAD
-      _ext_=`print_extension "$printerfriendly"`
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$F.~moveprint~
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
-      $CAT                             ./$F.~move~ >> ./$P.$HEAD
-      $SED_LONGSCRIPT ./$P.$HEAD $PRINTSITEFILE               > $P # ~head~
-      $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE                 >> $P # ~body~
-      $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
-   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $P`
-   fi   
 else
    echo "'$SOURCEFILE': does not exist"
 fi ; else
@@ -1166,6 +1163,35 @@ fi ;;
 *) echo "?? -> '$F'"
    ;;
 esac
+   # .......................................................................
+if test ".$printerfriendly" != "." ; then                         # PRINTER
+  printsitefile="0"                                               # FRIENDLY
+  case "$F" in
+  ${SITEFILE}|${SITEFILE}l) make_move "$F"
+          printsitefile="*>" ;;
+  *.html) printsitefile="=>" ;;
+  esac
+  if test ".$printsitefile" != ".0" && test -f "$SOURCEFILE" ; then
+      make_printerfile_move ./$MK.move.tmp
+      P=`html_printerfile "$F"`
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$HEAD
+      $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
+           ./$MK.meta.tmp > ./$MK.mett.tmp
+      echo "/<head>/r $MK.mett.tmp"                >> ./$P.$HEAD
+      select_in_printsitefile "$F"                 >> ./$P.$HEAD
+      _ext_=`print_extension "$printerfriendly"`
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
+      $CAT                             ./$F.~move~ >> ./$P.$HEAD
+      $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P # ~head~
+      test ".$printsitefile" = ".=>" && \
+      $SED_LONGSCRIPT ./$F.$BODY                 $SOURCEFILE >> $P # ~body~
+      test ".$printsitefile" = ".*>" && \
+      $SED_LONGSCRIPT ./$P.$HEAD                  ./$F.$BODY >> $P # ~body~
+      $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "$printsitefile" `ls -s $P`
+   fi 
+fi
+# .............. debug ....................
    if test -d DEBUG && test -f "./$F" ; then
       cp ./$F.$INFO DEBUG/$F.info.TMP
       for P in tags vars meta page date list html sect info ; do
