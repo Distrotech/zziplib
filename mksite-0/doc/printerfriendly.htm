@@ -1,0 +1,115 @@
+<H3> Printer-Friendly Layout Version </H3>
+
+<P>
+  During recent developments I did create the magic option
+  <code>&lt;!--mksite:printerfriendly--&gt;</code> (or select
+  it on the commandline with <code>`mksite.sh -print`</code>).
+  When selected the mksite.sh will use the sect/subsect information
+  to create an alternative navigation 
+  <a href="site.print.htm">site.print.htm</a> file. This one places
+  page references horizontally and per section.
+</P>
+<P>
+  The <a href="site.print.htm">site.print.htm</a> is actually an
+  intermediate file used as the ~head~ for a cousin output file
+  of your ~body~ - usually with a ".print.html" extension instead
+  of the normal ".html" extension for formatted pages. The mksite.sh
+  script has some additional "sed" that makes it so only those 
+  simplified navigation bars are visible that correspond to the
+  current printer-friendly page.
+</P>
+<P>
+  The printer-friendly layout is all <b>automatic</b> and in parallel
+  and not so much to be printer-friendly in fact. Instead it is 
+  targetted at the <em>"visually impaired"</em> who may have a hard time 
+  to find the correct navigation controls when they are pushed all over
+  the screen and its horizontal and vertical edges. There is even a
+  special "bobby" movement to help spread awareness of the problem.
+  This website has been of course layouted additionally in "-print" style,
+  you can find a link low on the side bar and under the tiny "=" symbol
+  in the top left corner.
+</P>
+
+<pre>
+  &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--title?--&gt;&lt;/title&gt;
+
+  &lt;style&gt;
+   a:link          { text-decoration : none ; color : #000080 ; }
+   a:visited       { text-decoration : none ; color : #200060 ; }
+   body            { background-color : white ; }
+   .body           { background-color : white ; }
+   .navi           { background-color : #E0F0FF ; }
+   .navo           { background-color : #F8F8FF ; }
+   H3              { text-align : right ; }
+  &lt;/style&gt;
+  &lt;/head&gt;&lt;body&gt;
+  &lt;!--mksite:printerfriendly--&gt;
+  &lt;table cellspacing="0" cellpadding="4" width="100%" class="navi"&gt;&lt;tr&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="site.html"&gt;&lt;b&gt;&lt;!--$selected--&gt;&lt;/b&gt;&lt;/a&gt;&lt;/td&gt;
+
+  &lt;td class="navo" align="center"&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;&lt;/td&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;&lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt; &lt;td rowspan="2"&gt;
+  &lt;a href="&lt;!--$printerfriendly--&gt;" alt="printerfriendly / bobby version"&gt;
+  &lt;small&gt;&lt;small&gt;=&lt;/small&gt;&lt;/small&gt;&lt;/a&gt;
+  &lt;/td&gt;&lt;td             colspan="2"&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td class="body" colspan="2"&gt;&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr valign="top"&gt;&lt;td width="140"&gt;   &lt;!--mksite:multi--&gt;
+  &lt;center&gt;&lt;b&gt;Example&lt;/b&gt;&lt;/center&gt;
+  &lt;hr&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="intro.html"&gt;Introduction&lt;/a&gt;
+
+  &lt;br&gt;-&lt;a href="where.html"&gt;Related Work&lt;/a&gt;
+
+  &lt;hr&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="loremipsum.html"&gt;Lorem Ipsum&lt;/a&gt;
+
+  &lt;br&gt;-&lt;a href="nietzsche.html"&gt;Nietzsche&lt;/a&gt;
+
+      &lt;hr&gt;&lt;a href="impressum.html"&gt;Impressum&lt;/a&gt;
+  &lt;br&gt;&lt;a href="site.html"&gt;sitemap&lt;/a&gt;
+
+  &lt;/td&gt;&lt;td class="body" colspan="2"&gt;
+
+  &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;
+</pre>
+
+
+<table width="100%" cellspacing="0" cellpadding="0" border="1"><tr>
+<td align="center" width="16">-</td>
+<td align="center"><small><b>common title prefix - lorem ipsum</b></small></td>
+<td align="center" width="16">-</td>
+</tr></table>
+
+
+<table cellspacing="0" cellpadding="4" class="naviXXX"><tr>
+  <td class="navoXXX" align="center"><a href="site.html"><b>Lorem Ipsum</b></a></td>
+
+  <td class="navoXXX" align="center"><a href="index.html">Overview</a></td>
+  <td align="center"><a href="examples.html">Examples</a></td>
+  </tr><tr><td rowspan="2">
+  <a href="<!--$printerfriendly-->" alt="printerfriendly / bobby version">
+  <small><small>=</small></small></a>
+  </td><td             colspan="2"></td></tr>
+  <tr><td class="body" colspan="2"></td></tr>
+
+  <tr valign="top"><td width="140">
+      <center><b>Example</b></center>
+  <hr><a href="examples.html">Examples</a>
+  <br>-<b><a href="loremipsum.html">Lorem Ipsum</a></b>
+
+  <br>-<a href="nietzsche.html">Nietzsche</a>
+
+      <hr><a href="impressum.html">Impressum</a>
+  <br><a href="site.html">sitemap</a>
+  </td><td class="body" colspan="2">
+
+<p align="right"><b>Lorem Ipsum</b></p>
+<p class="P"><small>
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+</small></p>
+<p class="P"><small>
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+</small></p>

@@ -17,6 +17,11 @@ doc.html : doc/*.htm mksite.sh
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.html > $@
 
+print.html : doc/*.htm mksite.sh
+	cd doc && sh ../mksite.sh site.htm -print
+	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
+	    doc/index.print.html > $@
+
 index.html : test1.html test2.html doc.html
 	cp doc.html index.html
 

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.7 2004-04-20 07:58:35 guidod Exp $
+# $Id: mksite.sh,v 1.8 2004-04-20 16:03:00 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -179,11 +179,11 @@ sed_longscript ()
 
 sed_slash_key ()      # helper to escape chars special in /anchor/ regex
 {                     # currently escaping "/" "[" "]" "."
-    echo "$1" | $SED -e "s|[./[]|\\\\&|g" -e "s|\\]|\\\\&|g"
+    echo "$1" | $SED -e "s|[./[-]|\\\\&|g" -e "s|\\]|\\\\&|g"
 }
 sed_piped_key ()      # helper to escape chars special in s|anchor|| regex
 {                     # currently escaping "|" "[" "]" "."
-    echo "$1" | $SED -e "s/[.|[]/\\\\&/g" -e "s/\\]/\\\\&/g"
+    echo "$1" | $SED -e "s/[.|[-]/\\\\&/g" -e "s/\\]/\\\\&/g"
 }
 
 back_path ()          # helper to get the series of "../" for a given path
@@ -435,25 +435,44 @@ DC_title ()
    fi
 }    
 
+site_get_section () # return parent section page of given page
+{
+   _F_=`sed_slash_key "$1"`
+   $SED -e "/^=sect=$_F_ /!d" -e "s/^=sect=$_F_ //" -e q ./$MK.$INFO
+}
+
 DC_section () # not really a DC relation (shall we use isPartOf ?) 
 {             # each document should know its section father
-   Q="$1" # source file
-   FF=`sed_slash_key "$F"`
-   sectn=`$SED -e "/^=sect=$FF /!d" -e "s/^=sect=$FF //" -e q ./$MK.$INFO`
+   sectn=`site_get_section "$F"`
    if test ".$sectn" != "." ; then
       DC_meta relation.section "$sectn"
    fi
 }
 
+site_get_selected ()  # return section of given page
+{
+   _F_=`sed_slash_key "$1"`
+   $SED -e "/=use.=$_F_ /!d" -e "s/=use.=[^ ]* //" -e q ./$MK.$INFO
+}
+
 DC_selected () # not really a DC title (shall we use alternative ?)
 {
    # each document might want to highlight the currently selected item
-   Q="$1" # source file
-   FF=`sed_slash_key "$F"`
-   short=`$SED -e "/=use.=$FF /!d" -e "s/=use.=[^ ]* //" -e q ./$MK.$INFO`
+   short=`site_get_selected "$F"`
    if test ".$short" != "." ; then
       DC_meta title.selected "$short"
    fi
+}
+
+site_get_subsections () # return all section child pages of given page
+{
+   _F_=`sed_slash_key "$1"`
+   $SED -e "/^=sect=[^ ]* $_F_\$/!d" -e "s/^=sect=//" -e "s/ .*//" ./$MK.$INFO
+}
+
+site_get_rootsections () # return all sections from root of nav tree
+{
+   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" ./$MK.$INFO
 }
 
 make_move () # experimental - make a ~move~ file that can be applied
@@ -471,8 +490,11 @@ make_move () # experimental - make a ~move~ file that can be applied
     fi
 }
 
+
 siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
-{
+{                    # the resulting script will act on each item/line
+                     # containing <!--"filename"--> and expand any following
+                     # reference of <!--name--> or <!--date--> or <!--page-->
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.site.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$MK.$INFO"
   _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
@@ -528,6 +550,133 @@ make_listsitemap ()
    echo "</table>"          >> $OUTPUT
 }
 
+print_extension ()
+{
+    ARG="$1" ; test ".$ARG" = "." && ARG="$opt_print"
+    case "$ARG" in
+      -*|.*) echo "$ARG" ;;
+      *)     echo ".print" ;;
+    esac
+}
+    
+html_sourcefile () # generally just cut away the trailing "l" (ell)
+{                  # making "page.html" argument into "page.htm" return
+    if test ".$printerfriendly" = "."
+    then 
+    echo "$1" | sed -e "s/l\$//"
+    else 
+    _ext_=`print_extension "$printerfriendly"`
+    _ext_=`sed_slash_key "$_ext_"`
+    echo "$1" | sed -e "s/l\$//" -e "s/$_ext_\\([.][$AA]*\\)\$/\\1/"
+    fi
+}
+
+html_printerfile () # generate the printerfile for a given normal output
+{
+    _ext_=`print_extension "$printerfriendly" | sed -e "s/&/\\\\&/"`
+    echo "$1" | sed -e "s/\\([.][$AA]*\\)\$/$_ext_\\1/"
+}
+
+make_printerfile_move () # generate s/file.html/file.print.html/ for hrefs
+{                        # we do that only for the $FILELIST
+   OUTPUT="$1"   ; test ".$OUTPUT"   = "." && OUTPUT="$MK.move.tmp"
+   ALLPAGES="$2" ; test ".$ALLPAGES" = "." && ALLPAGES="$FILELIST"
+   $CATNULL > $OUTPUT
+   for p in $ALLPAGES ; do
+       a=`sed_slash_key "$p"`
+       b=`html_printerfile "$p" | sed -e "s:[&/]:\\\\&:"`
+       echo "s/<a href=\"$a\">/<a href=\"$b\">/" >> $OUTPUT
+   done
+}
+
+make_printsitefile ()
+{
+   OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="$SITEFILE.print.html"
+   INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
+   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--page-->"
+   _tabb_="<td>\\&nbsp\\;</td>" 
+   $SED -e "/<title>/p" -e "/<title>/d" \
+        -e "/<head>/p"   -e "/<head>/d" \
+        -e "/<\/head>/p"   -e "/<\/head>/d" \
+        -e "/<body>/p"   -e "/<body>/d" \
+        -e "d" $SITEFILE > $OUTPUT
+  
+   sep=" - "
+   site_get_rootsections > ./tmp.sect1.txt
+   test -d DEBUG && echo "# rootsections"       > DEBUG/printsitemap.txt
+   test -d DEBUG && cat ./tmp.sect1.txt        >> DEBUG/printsitemap.txt
+   $CATNULL >./tmp.sects.txt
+   for r in `cat ./tmp.sect1.txt` ; do
+   echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>| " >> $OUTPUT
+   for s in `cat ./tmp.sect1.txt` ; do 
+   rr=`sed_slash_key "$r"`  
+   echo "<!--mksite:sect:\"$r\"--><a href=\"$s\"><!--\"$s\"--><!--name--></a>$sep" \
+        | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+         -e "/<a href=\"$rr\"/s/<a href/[&/" \
+         -e "/<a href=\"$rr\"/s/<\\/a>/&]/" \
+         -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
+   done
+   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect1:Z-->" >> $OUTPUT
+
+   site_get_subsections "$r" > ./tmp.sect2.txt
+   test -d DEBUG && echo "# subsections $r"    >> DEBUG/printsitemap.txt
+   test -d DEBUG && cat ./tmp.sect2.txt        >> DEBUG/printsitemap.txt
+   for s in `cat ./tmp.sect2.txt` ; do test "$r" = "$s" && continue
+   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>|| " >> $OUTPUT
+   for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
+   ss=`sed_slash_key "$s"`  
+   echo "<!--mksite:sect:\"$s\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
+        | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+         -e "/<a href=\"$ss\"/s/<a href/[&/" \
+         -e "/<a href=\"$ss\"/s/<\\/a>/&]/" \
+         -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
+   done # "$t"
+   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:Z-->" >> $OUTPUT
+
+
+   site_get_subsections "$s" > ./tmp.sect3.txt
+   test -d DEBUG && echo "# subsubsections $s" >> DEBUG/printsitemap.txt
+   test -d DEBUG && cat ./tmp.sect3.txt        >> DEBUG/printsitemap.txt
+   for t in `cat ./tmp.sect3.txt` ; do test "$s" = "$t" && continue
+   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>||| " >> $OUTPUT
+   for u in `cat ./tmp.sect3.txt` ; do test "$s" = "$u" && continue
+   tt=`sed_slash_key "$t"` 
+   echo "<!--mksite:sect:\"$t\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
+        | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+         -e "/<a href=\"$tt\"/s/<a href/[&/" \
+         -e "/<a href=\"$tt\"/s/<\\/a>/&]/" \
+         -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
+   done # "$u"
+   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:Z-->" >> $OUTPUT
+   done # "$t"
+
+   _have_children_="0"
+   for u in `cat ./tmp.sect3.txt` ; do test "$r" = "$t" && continue
+   test "$_have_children_" = "0" && _have_children_="1" && \
+   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>||| " >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$s\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
+        | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+         -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
+   done # "$u"
+   test "$_have_children_" = "1" && \
+   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:Z-->" >> $OUTPUT
+   done # "$s"
+
+   _have_children_="0"
+   for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
+   test "$_have_children_" = "0" && _have_children_="1" && \
+   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>|| " >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$r\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
+        | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+         -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
+   done # "$t"
+   test "$_have_children_" = "1" && \
+   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:Z-->" >> $OUTPUT
+   done # "$r"
+   echo "</body></html>"    >> $OUTPUT
+}
+
 
 # ==========================================================================
 #  
@@ -556,6 +705,7 @@ echo     "/^<$He>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
 echo     "/^<$Br>[*][*]*<a href=/s/^/<!--sect1-->/"    >> $MK.gets.tmp
 echo     "/^<$Br>[-|][-|]*<a href=/s/^/<!--sect2-->/"  >> $MK.gets.tmp
 echo     "/^<$Br>[/:][/:]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
+echo     "/^<$Es>[/:,[]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
 echo     "/^<$Br>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Bs>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Be>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
@@ -581,6 +731,57 @@ $SED -e "/=use.=/!d" \
      -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
 
 FILELIST=`$SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK.$INFO`
+
+
+# ==========================================================================
+#                                                             MAGIC VARS
+#                                                            IN $SITEFILE
+printerfriendly=""
+sectionlayout="list"
+sitemaplayout="list"
+simplevars="test"
+if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
+echo "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " \
+     "$SITEFILE" >&2
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multi-->"               $SITEFILE >$NULL ; then
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multilayout-->"         $SITEFILE >$NULL ; then
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multisectionlayout-->"  $SITEFILE >$NULL ; then
+sectionlayout="multi"
+fi
+if $GREP "<!--mksite:multisitemaplayout-->"  $SITEFILE >$NULL ; then
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:listlayout-->"          $SITEFILE >$NULL ; then
+sectionlayout="list"
+sitemaplayout="list"
+fi
+if $GREP "<!--mksite:listsectionlayout-->"   $SITEFILE >$NULL ; then
+sectionlayout="list"
+fi
+if $GREP "<!--mksite:listsitemaplayout-->"   $SITEFILE >$NULL ; then
+sitemaplayout="list"
+fi
+if $GREP "<!--mksite:no-simplevars-->"   $SITEFILE >$NULL ; then
+simplevars="no"
+fi
+if $GREP "<!--mksite:simplevars-->"   $SITEFILE >$NULL ; then
+simplevars="do"
+fi
+if $GREP "<!--mksite:printerfriendly-->"   $SITEFILE >$NULL ; then
+printerfriendly=" "
+fi
+if test ".$opt_print" != "." ; then
+printerfriendly="$opt_print"
+fi
 
 # ==========================================================================
 # originally this was a one-pass compiler but the more information
@@ -631,6 +832,8 @@ if test -f "$SOURCEFILE" ; then make_move
    DC_section "$F" ;  DC_selected "$F"
    test ".$USER" != "." && DC_publisher "$USER"
    DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
+   test ".$printerfriendly" != "." && \
+   DX_text printerfriendly `html_printerfile "$F"`
    sectn=`info_get_entry DC.relation.section`
    short=`info_get_entry DC.title.selected`
    echo "=list=$short" >> $F.$INFO    ; echo "=list=$F $short" >> $MK.$INFO
@@ -655,50 +858,16 @@ fi ;;
    ;;
 esac done
 
-#                                     -------------------------------------
-#                                     check for magic hints in the $SITEFILE
-sectionlayout="list"
-sitemaplayout="list"
-simplevars="test"
-if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
-echo "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " \
-     "$SITEFILE" >&2
-sectionlayout="multi"
-sitemaplayout="multi"
-fi
-if $GREP "<!--mksite:multi-->"               $SITEFILE >$NULL ; then
-sectionlayout="multi"
-sitemaplayout="multi"
-fi
-if $GREP "<!--mksite:multilayout-->"         $SITEFILE >$NULL ; then
-sectionlayout="multi"
-sitemaplayout="multi"
-fi
-if $GREP "<!--mksite:multisectionlayout-->"  $SITEFILE >$NULL ; then
-sectionlayout="multi"
-fi
-if $GREP "<!--mksite:multisitemaplayout-->"  $SITEFILE >$NULL ; then
-sitemaplayout="multi"
-fi
-if $GREP "<!--mksite:listlayout-->"          $SITEFILE >$NULL ; then
-sectionlayout="list"
-sitemaplayout="list"
-fi
-if $GREP "<!--mksite:listsectionlayout-->"   $SITEFILE >$NULL ; then
-sectionlayout="list"
-fi
-if $GREP "<!--mksite:listsitemaplayout-->"   $SITEFILE >$NULL ; then
-sitemaplayout="list"
-fi
-if $GREP "<!--mksite:no-simplevars-->"   $SITEFILE >$NULL ; then
-simplevars="no"
-fi
-if $GREP "<!--mksite:simplevars-->"   $SITEFILE >$NULL ; then
-simplevars="do"
-fi
-
 if test ".$simplevars" = ".do" ; then
 $CATNULL > $MK.olds.tmp
+fi
+
+# ==========================================================================
+if test ".$printerfriendly" != "." ; then                          #  PRINT
+_ext_=`print_extension "$printerfriendly" | sed -e "s/&/\\\\&/"`   # VERSION
+PRINTSITEFILE=`echo "$SITEFILE" | sed -e "s/\\.[$AA]*\$/$_ext_&/"`
+echo "NOTE: going to create printer-friendly version $PRINTSITEFILE"
+make_printsitefile "$PRINTSITEFILE"
 fi
 
 # ==========================================================================
@@ -792,6 +961,28 @@ if test -f "$SOURCEFILE" ; then
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
+   # .......................................................................
+   if test ".$printerfriendly" != "." ; then                      # PRINTER
+      make_printerfile_move ./$MK.move.tmp                        # FRIENDLY
+      P=`html_printerfile "$F"`
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$HEAD
+      $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
+           ./$MK.meta.tmp >> ./$MK.mett.tmp
+      echo "/<head>/r $MK.mett.tmp"                >> ./$P.$HEAD
+      V=`sed_slash_key "$F"`
+      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect3
+      echo "s/^<!--mksite:sect:[*]:\"$V\"-->//"    >> ./$P.$HEAD   # children
+      SECTION=`site_get_section "$F"` ;       V=`sed_slash_key "$SECTION"`
+      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect2
+      SECTION=`site_get_section "$SECTION"` ; V=`sed_slash_key "$SECTION"`
+      echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect1
+      echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     >> ./$P.$HEAD
+      echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" >> ./$P.$HEAD
+      $SED_LONGSCRIPT ./$P.$HEAD $PRINTSITEFILE               > $P # ~head~
+      $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE                 >> $P # ~body~
+      $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $P`
+   fi   
 else
    echo "'$SOURCEFILE': does not exist"
 fi ; else
@@ -815,15 +1006,16 @@ if test "$oldvars" = "0" ; then
 echo "HINT: you have no simplevars in your htm sources, so you may want to"
 echo "hint: set the magic <!--mksite:no-simplevars--> in your $SITEFILE"
 echo "hint: which makes execution _faster_ actually in the 2. pass"
-echo "info: simplevars expansion was the oldstyle way of variable expansion"
+echo "note: simplevars expansion was the oldstyle way of variable expansion"
 else
 echo "HINT: there were $oldvars simplevars found in your htm sources."
 echo "hint: This style of variable expansion will be disabled in the near"
 echo "hint: future. If you do not want change then add the $SITEFILE magic"
 echo "hint: <!--mksite:simplevars--> somewhere to suppress this warning"
-echo "info: simplevars expansion will be an explicit option in the future."
-echo "info: errornous simplevar detection can be suppressed with a magic"
-echo "info: hint of <!--mksite:no-simplevars--> in the $SITEFILE for now."
+echo "note: simplevars expansion will be an explicit option in the future."
+echo "note: errornous simplevar detection can be suppressed with a magic"
+echo "note: hint of <!--mksite:no-simplevars--> in the $SITEFILE for now."
 fi fi
+
 rm ./$MK.*.tmp
 exit 0
