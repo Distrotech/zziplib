@@ -1,53 +1,35 @@
 <H2> Website Look And Feel Generator </H2>
 
+<br>
 <DL>
-<DT> <a href="what.html">What...</a> </DT>
-<DD>
-   MKSITE.SH is static website generator tool. It is best for
-   small websites giving them a nice look and feel as per 
-   (a) costumized looks via css specials and (b) a nice feel 
-   through common navigation bar and (c) a sitemap index.
-</DD>
-<DT> <a href="why.html">Why...</a> </DT>
-<DD>
-   Most website generators are "sophisticated" tools in that
-   they are huge and need to be preinstalled - thereby making for
-   another dependency for a project just for its documentation.
-   The MKSITE.SH is a few kilobyte, it can be attached inline to 
-   any tarball, and only requires sh/grep/sed preinstalled.
-</DD>
-<DT> <a href="how.html">How...</a> </DT>
-<DD>
-   Each project needs a "sitefile" (default: site.htm) that
-   contains the common code like navigation bar and css block.
-   Each "href" of the navigation bar source code is detected, 
-   and for each "*.html" we check for a local "*.htm" file.
-   We build an "sed" script that converts the site-&gt;html
-   and htm-&gt;html, thereby implanting meta tags (title!).
-</DD>
-<DT> <a href="how2.html">And...</a> </DT>
-<DD>
-   That is enough for tiny projects with up to two dozen files.
-   The script however detects sect1/sect2/sect3 relations of
-   href'ed pages and allows optionally to build a multi-section 
-   navigation. Each html page only shows hrefs to cousin pages 
-   of the same section (plus section navigation items). This is
-   good for a 100 pages website. More than most projects have.
-</DD>
-<DT> <a href="passes.html">More...</a> </DT>
-<DD>
-   The script uses a two pass model, scanning href'ed htm pages
-   for meta information (title, description, date) first. Only
-   the second pass converts the files. From the first pass we
-   have global meta info cache - which allows us to generate a
-   "sitemap" overview file with sect1/sect2 relations of pages 
-   and the selfdescription info out of those pages.
-</DD>
-<DT> <a href="size.html">Things...</a> </DT>
-<DD>
-   This website has been built with MKSITE.SH itself, at the
-   time of writing a 29KB shell script requiring about one
-   second to convert each htm input file into its html view.
-   Isn't that convincing...
-</DD>
+<DT> Pro </DT>
+<DD><ul>
+<li> <b>It requires only sh/sed posix shell tools to build doc pages.</b></li>
+<li> It can build a common navigation bar and a sitemap for all webpages. </li>
+<li> The program is a single short script file freely copyable 
+     <small>&amp; modifiable</small>. </li>
+</ul><br></DD>
+<DT> Con </DT>
+<DD><ul>
+<li> All embedded meta-information must fit on a single line each. </li>
+<li> There is only little more functionality than variable substititions. </li>
+<li> The doc processing is slow - and even slower without gnu sed. </li>
+</ul><br></DD>
+<DT> Neutral </DT>
+<DD><ul>
+<li> A sitefile must be written - the sitemap is not truly autodetected. </li>
+<li> The speedier twin perl script provides the exact same functionality. </li>
+<li> Best for small webpages but gets too slow for hundreds of webpages. </li>
+<li> The fancy results stem from the sitefile logic - 
+     see our <a href="examples.html"> examples </a>. </li>
+</ul><br></DD>
+<DT> Plus </DT>
+<DD><ul>
+<li> Automatic "printerstyle" page generation helping text-mode browsers. </li>
+<li> That style helps also for web accessibility of challenged people. </li>
+<li> Ships with fancy tabbed style navigation as shown on these webpages.</li>
+<li> Shortpage special style to print source code on full screen width.</li>
+<li> It can adapt hrefs to navigate web content pages in subdirectories.</li>
+</ul><br></DD>
 </DL>
+
