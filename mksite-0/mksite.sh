@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.27 2004-04-23 15:18:20 guidod Exp $
+# $Id: mksite.sh,v 1.28 2004-04-23 16:43:17 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -737,13 +737,19 @@ make_printsitefile ()
         -e "/<body>/p"   -e "/<body>/d" \
         -e "/^.*<link [^<>]*rel=\"shortcut icon\"[^<>]*>.*\$/p" \
         -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
-  
+
    sep=" - " ; _left_=" [ " ; _right_=" ] "
+   _img_1="<img alt=\"|go text:\" width=\"1\" height=\"8\" border=\"0\" />"
+   _sect1="<a href=\"#.\" title=\"section\">$_img_1</a> ||$sep"
+   _img_2="<img alt=\"||topics:\" width=\"1\" height=\"8\" border=\"0\" />"
+   _sect2="<a href=\"#.\" title=\"topics\">$_img_2</a> ||$sep"
+   _img_3="<img alt=\"|||pages:\" width=\"1\" height=\"8\" border=\"0\" />"
+   _sect3="<a href=\"#.\" title=\"pages\">$_img_3</a> ||$sep"
    site_get_rootsections > ./$MK.sect1.tmp
    test -d DEBUG && echo "# rootsections"       > DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect1.tmp        >> DEBUG/printsitemap.txt
    for r in `cat ./$MK.sect1.tmp` ; do
-   echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>|$sep" >> $OUTPUT
+   echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>$_sect1" >> $OUTPUT
    for s in `cat ./$MK.sect1.tmp` ; do 
    rr=`sed_slash_key "$r"`  
    echo "<!--mksite:sect:\"$r\"--><a href=\"$s\"><!--\"$s\"--><!--name--></a>$sep" \
@@ -759,7 +765,7 @@ make_printsitefile ()
    test -d DEBUG && echo "# subsections $r"    >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect2.tmp        >> DEBUG/printsitemap.txt
    for s in `cat ./$MK.sect2.tmp` ; do test "$r" = "$s" && continue
-   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
+   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>$_sect2" >> $OUTPUT
    for t in `cat ./$MK.sect2.tmp` ; do test "$r" = "$t" && continue
    ss=`sed_slash_key "$s"`  
    echo "<!--mksite:sect:\"$s\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
@@ -776,7 +782,7 @@ make_printsitefile ()
    test -d DEBUG && echo "# subsubsections $s" >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect3.tmp        >> DEBUG/printsitemap.txt
    for t in `cat ./$MK.sect3.tmp` ; do test "$s" = "$t" && continue
-   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
+   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>$_sect3" >> $OUTPUT
    for u in `cat ./$MK.sect3.tmp` ; do test "$s" = "$u" && continue
    tt=`sed_slash_key "$t"` 
    echo "<!--mksite:sect:\"$t\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
@@ -791,7 +797,7 @@ make_printsitefile ()
    _have_children_="0"
    for u in `cat ./$MK.sect3.tmp` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
-   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>$_sect3" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$s\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
@@ -803,7 +809,7 @@ make_printsitefile ()
    _have_children_="0"
    for t in `cat ./$MK.sect2.tmp` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
-   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>$_sect2" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$r\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
@@ -811,7 +817,8 @@ make_printsitefile ()
    test "$_have_children_" = "1" && \
    echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:Z-->" >> $OUTPUT
    done # "$r"
-   echo "</body></html>"    >> $OUTPUT
+   echo "<a name=\".\"></a>" >> $OUTPUT
+   echo "</body></html>"     >> $OUTPUT
 }
 
 select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
@@ -1199,6 +1206,7 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
       $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
            ./$MK.meta.tmp > ./$MK.mett.tmp
       echo "/<head>/r $MK.mett.tmp"                >> ./$P.$HEAD
+      echo "/<\\/body>/d"                          >> ./$P.$HEAD
       select_in_printsitefile "$F"                 >> ./$P.$HEAD
       _ext_=`print_extension "$printerfriendly"`
       $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
