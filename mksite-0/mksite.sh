@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.22 2004-04-22 15:07:37 guidod Exp $
+# $Id: mksite.sh,v 1.23 2004-04-22 15:24:40 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -991,7 +991,6 @@ if test -f "$SOURCEFILE" ; then make_move "$F"
    echo "=text=today `$DATE_NOW +%Y-%m-%d`"  > $F.$INFO
    echo "=text=todays `$DATE_NOW +%Y-%m%d`" >> $F.$INFO
    echo "=meta=formatter `basename $0`"     >> $F.$INFO
-   echo "" >$F # let's go...
    DC_VARS_Of "$SOURCEFILE" 
    DC_title "$SOURCEFILE"
    DC_isFormatOf "$SOURCEFILE" 
