@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.28 2004-04-23 16:43:17 guidod Exp $
+# $Id: mksite.sh,v 1.29 2004-04-23 17:04:42 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -1196,8 +1196,8 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
   printsitefile="0"                                               # FRIENDLY
   case "$F" in
   ${SITEFILE}|${SITEFILE}l) make_move "$F"
-          printsitefile="*>" ;;
-  *.html) printsitefile="=>" ;;
+          printsitefile="*>" ; BODY_TXT="./$F.$BODY" ; BODY_SED="./$P.$HEAD";;
+  *.html) printsitefile="=>" ; BODY_TXT="$SOURCEFILE"; BODY_SED="./$F.$BODY";;
   esac
   if test ".$printsitefile" != ".0" && test -f "$SOURCEFILE" ; then
       make_printerfile_move ./$MK.move.tmp
@@ -1205,17 +1205,18 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$HEAD
       $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
            ./$MK.meta.tmp > ./$MK.mett.tmp
-      echo "/<head>/r $MK.mett.tmp"                >> ./$P.$HEAD
-      echo "/<\\/body>/d"                          >> ./$P.$HEAD
-      select_in_printsitefile "$F"                 >> ./$P.$HEAD
+      echo "/<head>/r $MK.mett.tmp"                    >> ./$P.$HEAD
+      echo "/<\\/body>/d"                              >> ./$P.$HEAD
+      select_in_printsitefile "$F"                     >> ./$P.$HEAD
       _ext_=`print_extension "$printerfriendly"`
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
-      $CAT                             ./$F.~move~ >> ./$P.$HEAD
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$HEAD
+      $CAT                             ./$F.~move~     >> ./$P.$HEAD
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$BODY
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$BODY
+      $CAT                             ./$F.~move~     >> ./$P.$BODY
+      $CAT                                $BODY_SED    >> ./$P.$BODY
       $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P # ~head~
-      test ".$printsitefile" = ".=>" && \
-      $SED_LONGSCRIPT ./$F.$BODY                 $SOURCEFILE >> $P # ~body~
-      test ".$printsitefile" = ".*>" && \
-      $SED_LONGSCRIPT ./$P.$HEAD                  ./$F.$BODY >> $P # ~body~
+      $SED_LONGSCRIPT ./$P.$BODY                   $BODY_TXT >> $P # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "$printsitefile" `ls -s $P`
    fi 

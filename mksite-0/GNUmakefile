@@ -32,6 +32,9 @@ index.html : doc.html test1.html test2.html
 site.html : *.htm mksite.sh
 	sh mksite.sh site.htm
 
+ff :
+	cd doc && sh ../mksite.sh features.htm
+
 clean : 
 	- rm *.html */*.html */*.tmp
 
