@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.11 2004-04-20 20:08:30 guidod Exp $
+# $Id: mksite.sh,v 1.12 2004-04-20 20:56:00 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -156,6 +156,8 @@ done
    echo "s|<!--sect[$AZ$NN]-->||g"          >>$MK.tags.tmp
    echo "s|<!--[$AX]*[?]-->||g"             >>$MK.tags.tmp
    echo "s|<!--\\\$[$AX]*[?]:-->||g"        >>$MK.tags.tmp
+   echo "s|<!--\\\$[$AX]*:[?=]-->||g"        >>$MK.tags.tmp
+   echo "s|\\(<[^<>]*\\)\\\${[$AX]*:[?=]\\([^<{}>]*\\)}\\([^<>]*>\\)|\\1\\2\\3|g"        >>$MK.tags.tmp
 
 
 TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
@@ -195,19 +197,19 @@ info2test ()          # cut out all old-style <!--vars--> usages
 {
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.test.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
-  V2=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:-->"
+  V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
+  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:=-->"
    echo "s/^/ /" > $OUT
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s%=text=$V3%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=Text=/s%=Text=$V3%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V3%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
-  -e "/=Name=/s%=Name=$V3%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
-  -e "/=text=/s%=text=$V2%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=Text=/s%=Text=$V2%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V2%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
-  -e "/=Name=/s%=Name=$V2%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=text=/s%=text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=Text=/s%=Text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V9%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=Name=/s%=Name=$V9%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=text=/s%=text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=Text=/s%=Text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   echo "/^WARNING:/!d" >> $OUT
 }
@@ -216,39 +218,61 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
 {
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.vars.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
-  V2=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-  _dollar_="\\\\([^<>]*\\\\)\\\\\\\$"
+  V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
+  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  V1="\\\\([^<>]*\\\\)\\\\\\\$"
+  V2="\\\\([^{<>}]*\\\\)"
+  V3="\\\\([^<>]*\\\\)"
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V3,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V3,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V3,s|<!--$_dollar_\\1[?]-->|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V3,s|<!--$_dollar_\\1[?]-->|\\\\1 (\\2) |," \
-  -e "/=text=/s,=text=$V2,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V2,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V2,s|<!--$_dollar_\\1[?]-->|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V2,s|<!--$_dollar_\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V8,s|<!--$V1\\1-->|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V3,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V3,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V3,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V3,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
-  -e "/=text=/s,=text=$V2,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V2,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V2,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V2,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V8,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=Text=/s,=Text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=name=/s,=name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=Name=/s,=Name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=text=/s,=text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=Text=/s,=Text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=Name=/s,=Name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   test ".$simplevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
-  -e "/=Text=/s,=Text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
-  -e "/=name=/s,=name=$V3,s|<!--\\1[?]-->[$AX]*| - \\2|," \
-  -e "/=Name=/s,=Name=$V3,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
-  -e "/=text=/s,=text=$V2,s|<!--\\1-->[$AX]*|\\2|," \
-  -e "/=Text=/s,=Text=$V2,s|<!--\\1-->[$AX]*|\\2|," \
-  -e "/=name=/s,=name=$V2,s|<!--\\1[?]-->[$AX]*| - \\2|," \
-  -e "/=Name=/s,=Name=$V2,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
+  -e "/=text=/s,=text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--\\1[?]-->[$AX]*| - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
+  -e "/=text=/s,=text=$V8,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--\\1[?]-->[$AX]*| - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
 }
 
@@ -257,25 +281,25 @@ info2meta ()         # generate <meta name..> text portion
   # http://www.metatab.de/meta_tags/DC_type.htm
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.meta.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
-  V2=" *\\([^ ][^ ]*\\) \\(.*\\)" ; SCHEME="scheme=\"\\1\""
-  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  V8=" *\\([^ ][^ ]*\\) \\(.*\\)" ; SCHEME="scheme=\"\\1\""
+  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
   INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
   INFO_META_TYPEDCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
   INFO_META_NAME="name=\"\\1\" content=\"\\2\""
   INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `$DATE_NOW +%z`\"" 
   $SED -e "/=....=today /d" \
-  -e "/=meta=DC[.]DCMIType /s,=meta=$V3,<meta $INFO_META_TYPE_SCHEME />," \
-  -e "/=meta=DC[.]type Collection$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Dataset$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Event$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Image$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Service$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Software$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Sound$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Text$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V2,<meta $INFO_META_NAME />," \
-  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V2,<meta $INFO_META_NAME_TZ />," \
-  -e "/=meta=/s,=meta=$V2,<meta $INFO_META_NAME />," \
+  -e "/=meta=DC[.]DCMIType /s,=meta=$V9,<meta $INFO_META_TYPE_SCHEME />," \
+  -e "/=meta=DC[.]type Collection$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Dataset$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Event$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Image$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Service$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Software$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Sound$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Text$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V8,<meta $INFO_META_NAME />," \
+  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V8,<meta $INFO_META_NAME_TZ />," \
+  -e "/=meta=/s,=meta=$V8,<meta $INFO_META_NAME />," \
   -e "/<meta name=\"[^\"]*\" content=\"\" /d" \
   -e "/^=/d" $INP > $OUT
 }
@@ -824,9 +848,9 @@ fi ;;
 *.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then :
 if test -f "$SOURCEFILE" ; then make_move
-   echo "=text=today `$DATE_NOW +%Y-%m-%d`"               > $F.$INFO
-   echo "=text=todaytarbz2 `$DATE_NOW +%Y-%m%d`.tar.bz2" >> $F.$INFO
-   echo "=meta=formatter `basename $0`"             >> $F.$INFO
+   echo "=text=today `$DATE_NOW +%Y-%m-%d`"  > $F.$INFO
+   echo "=text=todays `$DATE_NOW +%Y-%m%d`" >> $F.$INFO
+   echo "=meta=formatter `basename $0`"     >> $F.$INFO
    echo "" >$F # let's go...
    DC_VARS_Of "$SOURCEFILE" 
    DC_title "$SOURCEFILE"
