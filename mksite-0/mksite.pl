@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.7 2004-10-11 02:05:01 guidod Exp $
+# $Id: mksite.pl,v 1.8 2004-10-11 02:52:42 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -406,8 +406,8 @@ sub sed_piped_key  # helper to escape chars special in s|anchor|| regex
 
 sub back_path      # helper to get the series of "../" for a given path
 {
-    my ($R,$Z) = @_; if ($R !~ /\\/) { return ""; }
-    $R =~ s|/[^/]*\$|/|; $R =~ s|[^/]*/|../|g;
+    my ($R,$Z) = @_; if ($R !~ /\//) { return ""; }
+    $R =~ s|/[^/]*$|/|; $R =~ s|[^/]*/|../|g;
     return $R;
 }
 
@@ -964,8 +964,9 @@ sub fast_href  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
     if (not $S) {
 	return $T;
     } else {
-	my $t=`echo "$T" | \
-         $SED -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" `;
+	my $t=$T;
+	$t =~ s/^ *$//; $t =~ s/^\/.*//; 
+	$t =~ s/^[.][.].*//; $t =~ s/^\w*:.*//;
 	if (not $t) { # don't move any in the pattern above
 	    return $T;
 	} else {
@@ -984,7 +985,7 @@ sub make_fast # experimental - make a FAST file that can be applied
 	# echo "backpath '$F' = none needed"
 	return @OUT;
     } else {
-	# echo "backpath '$F' -> '$S'"
+	#  print "backpath '$F' -> '$S'";
 	my @hrefs = ();
 	for (source($SITEFILE)) {
 	    /href=\"[^\"]*\"/ or next;
@@ -1000,8 +1001,10 @@ sub make_fast # experimental - make a FAST file that can be applied
 	}
 	my $ref = "";
 	for (sort(@hrefs)) {
+	    next if /\$/; # some href="${...}" is problematic
 	    next if $ref eq $_; # uniq
-	    $ref = $_; push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|";
+	    $ref = $_; push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
+	    $ref = $_; print "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;\n";
 	}
 	return @OUT;
     }
