@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.16 2004-04-21 11:46:12 guidod Exp $
+# $Id: mksite.sh,v 1.17 2004-04-21 11:59:21 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -716,7 +716,8 @@ make_printsitefile ()
         -e "/<body>/p"   -e "/<body>/d" \
         -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
   
-   sep=" - "
+   sep=" - " 
+   _left_=" [ " ; _right_=" ] " # left=" [\\&nbsp\\;" ; right="\\&nbsp\\;] "
    site_get_rootsections > ./$MK.sect1.tmp
    test -d DEBUG && echo "# rootsections"       > DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect1.tmp        >> DEBUG/printsitemap.txt
@@ -726,8 +727,8 @@ make_printsitefile ()
    rr=`sed_slash_key "$r"`  
    echo "<!--mksite:sect:\"$r\"--><a href=\"$s\"><!--\"$s\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
-         -e "/<a href=\"$rr\"/s/<a href/[&/" \
-         -e "/<a href=\"$rr\"/s/<\\/a>/&]/" \
+         -e "/<a href=\"$rr\"/s/<a href/$_left_&/" \
+         -e "/<a href=\"$rr\"/s/<\\/a>/&$_right_/" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
    done
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect1:Z-->" >> $OUTPUT
@@ -742,8 +743,8 @@ make_printsitefile ()
    ss=`sed_slash_key "$s"`  
    echo "<!--mksite:sect:\"$s\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
-         -e "/<a href=\"$ss\"/s/<a href/[&/" \
-         -e "/<a href=\"$ss\"/s/<\\/a>/&]/" \
+         -e "/<a href=\"$ss\"/s/<a href/$_left_&/" \
+         -e "/<a href=\"$ss\"/s/<\\/a>/&$_right_/" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
    done # "$t"
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:Z-->" >> $OUTPUT
@@ -759,8 +760,8 @@ make_printsitefile ()
    tt=`sed_slash_key "$t"` 
    echo "<!--mksite:sect:\"$t\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
-         -e "/<a href=\"$tt\"/s/<a href/[&/" \
-         -e "/<a href=\"$tt\"/s/<\\/a>/&]/" \
+         -e "/<a href=\"$tt\"/s/<a href/$_left_&/" \
+         -e "/<a href=\"$tt\"/s/<\\/a>/&$_right_/" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
    done # "$u"
    echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:Z-->" >> $OUTPUT
@@ -1101,9 +1102,9 @@ if test -f "$SOURCEFILE" ; then
       V=`sed_slash_key "$F"`
       echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect3
       echo "s/^<!--mksite:sect:[*]:\"$V\"-->//"    >> ./$P.$HEAD   # children
-      SECTION=`site_get_section "$F"` ;       V=`sed_slash_key "$SECTION"`
+      SECTION=`site_get_parentpage "$F"` ;       V=`sed_slash_key "$SECTION"`
       echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect2
-      SECTION=`site_get_section "$SECTION"` ; V=`sed_slash_key "$SECTION"`
+      SECTION=`site_get_parentpage "$SECTION"` ; V=`sed_slash_key "$SECTION"`
       echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect1
       echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     >> ./$P.$HEAD
       echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" >> ./$P.$HEAD
