@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.13 2004-04-20 22:41:11 guidod Exp $
+# $Id: mksite.sh,v 1.14 2004-04-21 09:41:04 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -187,10 +187,17 @@ sed_piped_key ()      # helper to escape chars special in s|anchor|| regex
 {                     # currently escaping "|" "[" "]" "."
     echo "$1" | $SED -e "s/[.|[-]/\\\\&/g" -e "s/\\]/\\\\&/g"
 }
+SLASH_VALUE="s:[&/]:\\\\&:g"
+PIPED_VALUE="s:[&/]:\\\\&:g"
 
 back_path ()          # helper to get the series of "../" for a given path
 {
-    echo "$F" | $SED -e "/\\//!d" -e "s|/[^/]*\$|/|" -e "s|[^/]*/|../|g"
+    echo "$1" | $SED -e "/\\//!d" -e "s|/[^/]*\$|/|" -e "s|[^/]*/|../|g"
+}
+
+dir_name ()
+{
+    echo "$1" | $SED -e "s:/[^/][^/]*\$::"
 }
 
 info2test ()          # cut out all old-style <!--vars--> usages
@@ -541,17 +548,33 @@ info2body_append ()      # append alternative handling script to $BODY
     fi
 }
 
+moved_href ()  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
+{   # prints path to $FILETOREFERENCE href-clickable in $FROMCURRENTFILE
+    # if no subdirectoy then output is the same as input $FILETOREFERENCE
+    R="$2" ; test ".$R" = "." && R="$F"
+    S=`back_path "$R"`
+    if test ".$S" = "." 
+    then echo "$1"
+    else _1_=`echo "$1" | \
+         $SED -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" `
+         if test ".$_1_" = "." # don't move any in the pattern above
+         then echo "$1" 
+         else echo "$S$1"
+    fi fi
+}
+
 make_move () # experimental - make a ~move~ file that can be applied
 {            # to htm sourcefiles in a subdirectory of the sitefile.
+#   R="$1" ; test ".$R" = "." && R="$F"
     S=`back_path "$F"` 
     if test ".$S" = "" ; then
        # echo "backpath '$F' = none needed"
        $CATNULL > $F.~move~
     else
        # echo "backpath '$F' -> '$S'"
-      $SED -e "/href=\"[^\"]*\"/!d" -e "s/.*href=\"//" -e "s/\".*//" \
-         -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" \
-       $SITEFILE $X | sort | uniq \
+       $SED -e "/href=\"[^\"]*\"/!d" -e "s/.*href=\"//" -e "s/\".*//" \
+            -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" \
+       $SITEFILE $SOURCEFILE | sort | uniq \
        | $SED -e "s,.*,s|href=\"&\"|href=\"$S&\"|," > $F.~move~
     fi
 }
@@ -637,6 +660,10 @@ html_sourcefile () # generally just cut away the trailing "l" (ell)
     fi
 }
 
+moved_html_printerfile () {
+    x=`html_printerfile "$1"` ; moved_href "$x" $2
+}
+
 html_printerfile () # generate the printerfile for a given normal output
 {
     _ext_=`print_extension "$printerfriendly" | sed -e "s/&/\\\\&/"`
@@ -650,8 +677,11 @@ make_printerfile_move () # generate s/file.html/file.print.html/ for hrefs
    $CATNULL > $OUTPUT
    for p in $ALLPAGES ; do
        a=`sed_slash_key "$p"`
-       b=`html_printerfile "$p" | sed -e "s:[&/]:\\\\&:"`
-       echo "s/<a href=\"$a\">/<a href=\"$b\">/" >> $OUTPUT
+       b=`html_printerfile "$p"`
+       if test "$b" != "$p" ; then
+         b=`html_printerfile "$p" | sed -e "s:&:\\\\&:g" -e "s:/:\\\\\\/:g"`
+         echo "s/<a href=\"$a\">/<a href=\"$b\">/" >> $OUTPUT
+       fi
    done
 }
 
@@ -880,7 +910,7 @@ fi ;;
 #    ;;
 *.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`                  # SCAN :
 if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
-if test -f "$SOURCEFILE" ; then make_move
+if test -f "$SOURCEFILE" ; then make_move "$F"
    echo "=text=today `$DATE_NOW +%Y-%m-%d`"  > $F.$INFO
    echo "=text=todays `$DATE_NOW +%Y-%m%d`" >> $F.$INFO
    echo "=meta=formatter `basename $0`"     >> $F.$INFO
@@ -893,7 +923,7 @@ if test -f "$SOURCEFILE" ; then make_move
    test ".$USER" != "." && DC_publisher "$USER"
    DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
    test ".$printerfriendly" != "." && \
-   DX_text printerfriendly `html_printerfile "$F"`
+   DX_text printerfriendly `moved_html_printerfile "$F"`
    sectn=`info_get_entry DC.relation.section`
    short=`info_get_entry DC.title.selected`
    echo "=list=$short" >> $F.$INFO    ; echo "=list=$F $short" >> $MK.$INFO
@@ -1040,6 +1070,9 @@ if test -f "$SOURCEFILE" ; then
       echo "s/^<!--mksite:sect:\"$V\"-->//"        >> ./$P.$HEAD   # sect1
       echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     >> ./$P.$HEAD
       echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" >> ./$P.$HEAD
+      _ext_=`print_extension "$printerfriendly"`
+#     $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
+      $CAT                             ./$F.~move~ >> ./$P.$HEAD
       $SED_LONGSCRIPT ./$P.$HEAD $PRINTSITEFILE               > $P # ~head~
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE                 >> $P # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
@@ -1063,7 +1096,8 @@ esac
       done
    fi
 done
-if test ".$simplevars" = ".warn" ; then oldvars=`cat ./$MK.olds.tmp | wc -l`
+if test ".$simplevars" = ".warn" ; then 
+oldvars=`cat ./$MK.olds.tmp | wc -l | $SED -e "s/ *//g"`
 if test "$oldvars" = "0" ; then
 echo "HINT: you have no simplevars in your htm sources, so you may want to"
 echo "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE"
