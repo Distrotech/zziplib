@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.14 2004-10-16 23:46:33 guidod Exp $
+# $Id: mksite.pl,v 1.15 2004-10-17 19:29:11 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -53,24 +53,6 @@ my $AX="$AA.+-";                                  # script more readable
 # LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 # export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                                # treat A-Z to include a-z
-
-# we use internal hashes to store mappings - kind of relational tables
-my @MK_TAGS= (); # "./$MK.tags.tmp"
-my @MK_VARS= (); # "./$MK.vars.tmp"
-my @MK_META= (); # "./$MK.meta.tmp"
-my @MK_METT= (); # "./$MK.mett.tmp"
-my @MK_TEST= (); # "./$MK.test.tmp"
-my @MK_FAST= (); # "./$MK.fast.tmp"
-my @MK_GETS= (); # "./$MK.gets.tmp"
-my @MK_PUTS= (); # "./$MK.puts.tmp"
-my @MK_OLDS= (); # "./$MK.olds.tmp"
-my @MK_SITE= (); # "./$MK.site.tmp"
-my @MK_SECT1= (); # "./$MK.sect1.tmp"
-my @MK_SECT2= (); # "./$MK.sect2.tmp"
-my @MK_SECT3= (); # "./$MK.sect3.tmp"
-my @MK_INFO= (); # "./$MK~~"
-my %INFO= {}; # used for $F.$PARTs
-my %FAST= {};
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -133,13 +115,13 @@ if ($o{help}) {
     print "$0 [sitefile]\n";
     print "  default sitefile = $_\n";
     print "options:\n"
-	. " --file-list = show list of target files as ectracted from $_\n"
-	. " --srcdir xx = if source files are not where mksite is executed\n";
+	. " --filelist : show list of target files as ectracted from $_\n"
+	. " --src xx : if source files are not where mksite is executed\n";
     exit;
     print " internal:\n"
-	."--fileseparator x = for building the internal filelist (default '?')"
-	."--files xx = for list of additional files to be processed"
-	."--main-file xx = for the main sitefile to take file list from";
+	."--fileseparator=x : for building the internal filelist (default '?')"
+	."--files xx : for list of additional files to be processed"
+	."--main-file xx : for the main sitefile to take file list from";
 }
 	
 if (not $SITEFILE) {
@@ -148,6 +130,24 @@ if (not $SITEFILE) {
 } else {
     print STDERR "NOTE: sitefile: ",`ls -s $SITEFILE`,"\n";
 }
+
+# we use internal hashes to store mappings - kind of relational tables
+my @MK_TAGS= (); # "./$MK.tags.tmp"
+my @MK_VARS= (); # "./$MK.vars.tmp"
+my @MK_META= (); # "./$MK.meta.tmp"
+my @MK_METT= (); # "./$MK.mett.tmp"
+my @MK_TEST= (); # "./$MK.test.tmp"
+my @MK_FAST= (); # "./$MK.fast.tmp"
+my @MK_GETS= (); # "./$MK.gets.tmp"
+my @MK_PUTS= (); # "./$MK.puts.tmp"
+my @MK_OLDS= (); # "./$MK.olds.tmp"
+my @MK_SITE= (); # "./$MK.site.tmp"
+my @MK_SECT1= (); # "./$MK.sect1.tmp"
+my @MK_SECT2= (); # "./$MK.sect2.tmp"
+my @MK_SECT3= (); # "./$MK.sect3.tmp"
+my @MK_INFO= (); # "./$MK~~"
+my %INFO= {}; # used for $F.$PARTs
+my %FAST= {};
 
 # ========================================================================
 # ========================================================================
@@ -1150,8 +1150,8 @@ sub html_sourcefile  # generally just cut away the trailing "l" (ell)
     my $_SRCFILE_=$U; $_SRCFILE_ =~ s/l$//;
     if (-f $_SRCFILE_) { 
 	return $_SRCFILE_;
-    } elsif (-f "$o{srcdir}/$_SRCFILE_") {
-	return "$o{srcdir}/$_SRCFILE_";
+    } elsif (-f "$o{src_dir}/$_SRCFILE_") {
+	return "$o{src_dir}/$_SRCFILE_";
     } else {
 	return ".//$_SRCFILE_";
     }
@@ -1584,7 +1584,8 @@ sub scan_sitefile # $F
     if ($SOURCEFILE ne $F) {
 	dx_init "$F";
 	dx_text ("today", &timetoday());
-	my $short=$F; $short =~ "s:.*/::"; $short =~ "s:[.].*::";
+	my $short=$F; 
+	$short =~ "s:.*/::"; $short =~ "s:[.].*::"; # basename for all exts
 	$short .=" *";
 	DC_meta ("title", "$short");
 	DC_meta ("date.available", &timetoday());
@@ -1724,29 +1725,29 @@ sub make_sitefile # "$F"
        @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
 ##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
    }
-   my @HEAD = (); my @BODY = (); my $FOOT = "";
-   push @HEAD, @MK_PUTS;
-   push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
-   push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
-   push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS; 
-   push @HEAD, "/<\\/body>/ and next;";                #cut lastline
+   my @F_HEAD = (); my @F_FOOT = "";
+   push @F_HEAD, @MK_PUTS;
+   push @F_HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
+   push @F_HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
+   push @F_HEAD, @MK_VARS; push @F_HEAD, @MK_TAGS; 
+   push @F_HEAD, "/<\\/body>/ and next;";                #cut lastline
    if ( $sitemaplayout eq "multi") {
-       push @BODY,  &make_multisitemap();        # here we use ~body~ as
+       push @F_FOOT,  &make_multisitemap();        # here we use ~foot~ to
    } else {
-       push @BODY,  &make_listsitemap();         # a plain text file
+       push @F_FOOT,  &make_listsitemap();         # hold the main text
    }
 
    my $html = ""; # 
-   $html .= &eval_MK_FILE($SITEFILE, @HEAD);
-   $html .= join("\n", @BODY);
+   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD);
+   $html .= join("\n", @F_FOOT);
    for (source($SITEFILE)) {
        /<\/body>/ or next;
        $html .= &eval_MK_LIST($_, @MK_VARS);
    }
   open F, ">$F"; print F $html; close F;
   print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"\n";
-   savesource("$F.~head~", \@HEAD);
-   savesource("$F.~body~", \@BODY);
+   savesource("$F.~head~", \@F_HEAD);
+   savesource("$F.~foot~", \@F_FOOT);
 } else {
     print "'$SOURCEFILE': does not exist";
 } }
@@ -1763,29 +1764,29 @@ sub make_htmlfile # "$F"
         @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
 ##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
     }
-    my @HEAD = (); my @BODY = (); my $FOOT = "";
-    push @HEAD, @MK_PUTS;
+    my @F_HEAD = (); my @F_BODY = (); my $F_FOOT = "";
+    push @F_HEAD, @MK_PUTS;
     if ( $sectionlayout eq "multi") {
-	push @HEAD, &head_sed_multisection ($F, &info_get_entry_section());
+	push @F_HEAD, &head_sed_multisection ($F, &info_get_entry_section());
     } else {
-	push @HEAD, &head_sed_listsection ($F, &info_get_entry_section());
+	push @F_HEAD, &head_sed_listsection ($F, &info_get_entry_section());
     }
-    push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS;         #tag and vars
-    push @HEAD, "/<\\/body>/ and next;";                #cut lastline
-    push @HEAD, "/<head>/ and $sed_add join(\"\\n\",\@MK_META);"; #add metatags
-    push @BODY, "/<title>/ and next;";                  #not that line
-    push @BODY, @MK_VARS; push @BODY, @MK_TAGS;         #tag and vars
-    push @BODY, &bodymaker_for_sectioninfo();             #if sectioninfo
-    push @BODY, &info2body_sed();                         #cut early
-    push @HEAD, &info2head_sed();
-    push @HEAD, @{$FAST{$F}}; 
+    push @F_HEAD, @MK_VARS; push @F_HEAD, @MK_TAGS;         #tag and vars
+    push @F_HEAD, "/<\\/body>/ and next;";                #cut lastline
+    push @F_HEAD, "/<head>/ and $sed_add join(\"\\n\",\@MK_META);"; #add metatags
+    push @F_BODY, "/<title>/ and next;";                  #not that line
+    push @F_BODY, @MK_VARS; push @F_BODY, @MK_TAGS;         #tag and vars
+    push @F_BODY, &bodymaker_for_sectioninfo();             #if sectioninfo
+    push @F_BODY, &info2body_sed();                         #cut early
+    push @F_HEAD, &info2head_sed();
+    push @F_HEAD, @{$FAST{$F}}; 
     if ($emailfooter ne "no") {
-	$FOOT = &body_for_emailfooter();
+	$F_FOOT = &body_for_emailfooter();
     }
     my $html = "";
-    $html .= eval_MK_FILE($SITEFILE, @HEAD);
-    $html .= eval_MK_FILE($SOURCEFILE, @BODY);
-    $html .= $FOOT;
+    $html .= eval_MK_FILE($SITEFILE, @F_HEAD);
+    $html .= eval_MK_FILE($SOURCEFILE, @F_BODY);
+    $html .= $F_FOOT;
     for (source($SITEFILE)) {
 	/<\/body>/ or next;
 	$_ = &eval_MK_LIST($_, @MK_VARS);
@@ -1794,8 +1795,8 @@ sub make_htmlfile # "$F"
     savelist(\@{$INFO{$F}});
    open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"\n";
-    savesource("$F.~head~", \@HEAD);
-    savesource("$F.~body~", \@BODY);
+    savesource("$F.~head~", \@F_HEAD);
+    savesource("$F.~body~", \@F_BODY);
  } else {
      print "'$SOURCEFILE': does not exist";
  }} else {
@@ -1807,49 +1808,43 @@ my $PRINTSITEFILE;
 sub make_printerfriendly # "$F"
 {                                                                 # PRINTER
     my $printsitefile="0";                                        # FRIENDLY
-    my @FAST = (); my $BODY_TXT; my $BODY_SED;
+    my @F_FAST = (); my $BODY_TXT; my $BODY_SED;
     my $P=&html_printerfile ($F);
-    my @HEAD = (); my @BODY = ();
+    my @P_HEAD = (); my @P_BODY = ();
     if ("$F" =~ /^(${SITEFILE}|${SITEFILE}l)$/) {
-	@FAST = &make_fast ("$F");
-	$printsitefile=">=>" ; $BODY_TXT="$F.~body~" ; 
+	@F_FAST = &make_fast ("$F");
+	$printsitefile=">=>" ; $BODY_TXT="$F.~foot~" ; 
     } elsif ("$F" =~ /^(.*[.]html)$/) {
-	$printsitefile="=>" ; $BODY_TXT="$SOURCEFILE";
+	$printsitefile="=>" ;  $BODY_TXT="$SOURCEFILE";
     }
     if ($printsitefile ne "0" and -f $SOURCEFILE) {
       @MK_FAST = &make_printerfile_fast (\@FILELIST);
-      push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS; push @HEAD, @MK_FAST;
+      push @P_HEAD, @MK_VARS; push @P_HEAD, @MK_TAGS; push @P_HEAD, @MK_FAST;
       @MK_METT = map { my $x = $_; $x =~
       /DC.relation.isFormatOf/ and $x =~ s|content=\"[^\"]*\"|content=\"$F\"| ;
 	  $x } @MK_META;
-      push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_METT);";
-      push @HEAD, "/<\\/body>/ and next;";
-      push @HEAD, &select_in_printsitefile ("$F");
+      push @P_HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_METT);";
+      push @P_HEAD, "/<\\/body>/ and next;";
+      push @P_HEAD, &select_in_printsitefile ("$F");
       my $_ext_=&print_extension($printerfriendly);
-      push @HEAD, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g ; $x } @FAST;
+      push @P_HEAD, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
 #     my $line_=&sed_slash_key($printsitefile_img_2);
-      push @HEAD, "/\\|\\|topics:/"
+      push @P_HEAD, "/\\|\\|topics:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
-      push @HEAD, "/\\|\\|\\|pages:/"
+      push @P_HEAD, "/\\|\\|\\|pages:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
-      push @HEAD, @FAST;
-#      push @HEAD, "/<body>/ and $sed_add '<!-- done -->'; # HEAD";
-      push @BODY, @MK_VARS; push @BODY, @MK_TAGS; push @BODY, @MK_FAST;
-      push @BODY, map { my $x = $_; $x =~ s/[.]html\"|/$_ext_$&/g; $x } @FAST;
-      push @BODY, @FAST;
+      push @P_HEAD, @F_FAST;
+      push @P_BODY, @MK_VARS; push @P_BODY, @MK_TAGS; push @P_BODY, @MK_FAST;
+      push @P_BODY, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
+      push @P_BODY, @F_FAST;
       my $html = "";
-      $html .= eval_MK_FILE($PRINTSITEFILE, @HEAD);
-#      print "(1) $SITEFILE = ", length($html), "   $F._$i\n";
-#      savelist(\@HEAD);
-      $html .= eval_MK_FILE($BODY_TXT, @BODY);
-#      print "(2) $BODY_TXT = ", length($html), "  $F._$i\n";
-#      savelist(\@BODY);
+      $html .= eval_MK_FILE($PRINTSITEFILE, @P_HEAD);
+      $html .= eval_MK_FILE($BODY_TXT, @P_BODY);
       for (source($PRINTSITEFILE)) {
 	  /<\/body>/ or next;
 	  $_ = &eval_MK_LIST($_, @MK_VARS);
 	  $html .= $_;
       }
-#      print "(3) > $P = ", length($html), "\n";
       open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
       print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"\n";
   }
@@ -1869,7 +1864,7 @@ $F=$SITEFILE;
 savelist(\@MK_INFO);
 
 @FILELIST=&echo_site_filelist();
-if ($o{file_list} or $o{list} eq "file" or $o{list} eq "files") {
+if ($o{filelist} or $o{list} eq "file" or $o{list} eq "files") {
     for (@FILELIST) { print $_,"\n";  } exit;
 }
 

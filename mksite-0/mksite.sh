@@ -20,7 +20,13 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.43 2004-10-16 23:46:33 guidod Exp $
+# $Id: mksite.sh,v 1.44 2004-10-17 19:29:12 guidod Exp $
+
+# Zsh is not Bourne compatible without the following: (seen in autobook)
+if test -n "$ZSH_VERSION"; then
+  emulate sh
+  NULLCMD=:
+fi
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -65,23 +71,6 @@ fi
 LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                              # treat A-Z to include a-z
-
-# we use external files to store mappings - kind of relational tables
-MK_TAGS="./$MK.tags.tmp"
-MK_VARS="./$MK.vars.tmp"
-MK_META="./$MK.meta.tmp"
-MK_METT="./$MK.mett.tmp"
-MK_TEST="./$MK.test.tmp"
-MK_FAST="./$MK.fast.tmp"
-MK_GETS="./$MK.gets.tmp"
-MK_PUTS="./$MK.puts.tmp"
-MK_OLDS="./$MK.olds.tmp"
-MK_SITE="./$MK.site.tmp"
-MK_SECT1="./$MK.sect1.tmp"
-MK_SECT2="./$MK.sect2.tmp"
-MK_SECT3="./$MK.sect3.tmp"
-MK_STYLE="./$MK.style.tmp"
-MK_INFO="./$MK.$INFO"
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -143,13 +132,14 @@ if test ".$opt_help" != "." ; then
     echo "$0 [sitefile]";
     echo "  default sitefile = $F";
     echo "options:";
-    echo " --file-list = show list of target files as ectracted from $F"
-    echo " --srcdir xx = if source files are not where mksite is executed"
+    echo " --filelist : show list of target files as ectracted from $F"
+    echo " --src-dir xx : if source files are not where mksite is executed"
+    echo " --tmp-dir xx : use temp instead of local directory"
     exit;
     echo " internal:"
-    echo "--fileseparator x = for building the internal filelist (default '?')"
-    echo "--files xx = for list of additional files to be processed"
-    echo "--main-file xx = for the main sitefile to take file list from"
+    echo "--fileseparator=x : for building the internal filelist (default '?')"
+    echo "--files xx : for list of additional files to be processed"
+    echo "--main-file xx : for the main sitefile to take file list from"
 fi
 
 if test ".$SITEFILE" = "." ; then
@@ -158,6 +148,29 @@ if test ".$SITEFILE" = "." ; then
 else
    echo "NOTE: sitefile: `ls -s $SITEFILE`"
 fi
+
+if "${SHELL-/bin/sh}" -c 'foo () { exit 0; }; foo' 2>$NULL ; then : ; else
+echo "!! sorry, this shell '$SHELL' does not support shell functions"; exit 1
+fi
+
+tmp="." ; if test ".$opt_tmp_dir" != "." ; then tmp="$opt_tmp_dir" ; fi
+
+# we use external files to store mappings - kind of relational tables
+MK_TAGS="$tmp/$MK.tags.tmp"
+MK_VARS="$tmp/$MK.vars.tmp"
+MK_META="$tmp/$MK.meta.tmp"
+MK_METT="$tmp/$MK.mett.tmp"
+MK_TEST="$tmp/$MK.test.tmp"
+MK_FAST="$tmp/$MK.fast.tmp"
+MK_GETS="$tmp/$MK.gets.tmp"
+MK_PUTS="$tmp/$MK.puts.tmp"
+MK_OLDS="$tmp/$MK.olds.tmp"
+MK_SITE="$tmp/$MK.site.tmp"
+MK_SECT1="$tmp/$MK.sect1.tmp"
+MK_SECT2="$tmp/$MK.sect2.tmp"
+MK_SECT3="$tmp/$MK.sect3.tmp"
+MK_STYLE="$tmp/$MK.style.tmp"
+MK_INFO="$tmp/$MK.$INFO"
 
 # ========================================================================
 # ========================================================================
@@ -257,23 +270,44 @@ if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
 # init a few global variables
 #                                                                  0. INIT
 
+mkpathdir () {
+    if test -n "$1"  && test ! -d "$1" ; then
+       echo "!! mkdir '$1'" ; mkdir "$1"
+       test ! -d "$1" || mkdir -p "$1"
+    fi
+}
+
+mkpathfile () {
+    dirname=`echo "$1" | $SED -e "s:/[^/][^/]*\$::"`
+    if test ".$1" != ".$dirname" && test ".$dirname" != "." ;
+    then mkpathdir "$dirname"; fi
+}
+
+mknewfile () {
+    mkpathfile "$1"
+    $CATNULL > "$1" 
+}
+
+tmp_dir_was_created="no"
+if test ! -d "$tmp" ; then mkpathdir "$tmp" ; tmp_dir_was_created="yes" ; fi
+
 # $MK_TAGS - originally, we would use a lambda execution on each 
 # uppercased html tag to replace <P> with <p class="P">. Here we just
 # walk over all the known html tags and make an sed script that does
 # the very same conversion. There would be a chance to convert a single
 # tag via "h;y;x" or something we do want to convert all the tags on
 # a single line of course.
-$CATNULL > $MK_TAGS
+mknewfile "$MK_TAGS"
 for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
          B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
          CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE
 do M=`echo $P | $SED -e "y/$UPPER/$LOWER/"`
-  echo "s|<$P>|<$M class=\"$P\">|g"         >>$MK_TAGS
-  echo "s|<$P |<$M class=\"$P\" |g"         >>$MK_TAGS
-  echo "s|</$P>|</$M>|g"                    >>$MK_TAGS
+  echo "s|<$P>|<$M class=\"$P\">|g"         >> "$MK_TAGS"
+  echo "s|<$P |<$M class=\"$P\" |g"         >> "$MK_TAGS"
+  echo "s|</$P>|</$M>|g"                    >> "$MK_TAGS"
 done
-  echo "s|<>|\\&nbsp\\;|g"                  >>$MK_TAGS
-  echo "s|<->|<WBR />\\;|g"                 >>$MK_TAGS
+  echo "s|<>|\\&nbsp\\;|g"                  >> "$MK_TAGS"
+  echo "s|<->|<WBR />\\;|g"                 >> "$MK_TAGS"
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -282,12 +316,12 @@ DC_VARS="contributor date source language coverage identifier"
 DC_VARS="$DC_VARS rights relation creator subject description"
 DC_VARS="$DC_VARS publisher DCMIType"
 for P in $DC_VARS ; do # dublin core embedded
-   echo "s|<$P>[^<>]*</$P>||g"              >>$MK_TAGS
+   echo "s|<$P>[^<>]*</$P>||g"              >> "$MK_TAGS"
 done
-   echo "s|<!--sect[$AZ$NN]-->||g"          >>$MK_TAGS
-   echo "s|<!--[$AX]*[?]-->||g"             >>$MK_TAGS
-   echo "s|<!--\\\$[$AX]*[?]:-->||g"        >>$MK_TAGS
-   echo "s|<!--\\\$[$AX]*:[?=]-->||g"        >>$MK_TAGS
+   echo "s|<!--sect[$AZ$NN]-->||g"          >> "$MK_TAGS"
+   echo "s|<!--[$AX]*[?]-->||g"             >> "$MK_TAGS"
+   echo "s|<!--\\\$[$AX]*[?]:-->||g"        >> "$MK_TAGS"
+   echo "s|<!--\\\$[$AX]*:[?=]-->||g"       >> "$MK_TAGS"
    echo "s|\\(<[^<>]*\\)\\\${[$AX]*:[?=]\\([^<{}>]*\\)}\\([^<>]*>\\)|\\1\\2\\3|g"        >>$MK_TAGS
 
 
@@ -355,7 +389,7 @@ dir_name ()
 
 info2test_sed ()          # cut out all old-style <!--vars--> usages
 {
-  INP="$1" ; test ".$INP" = "." && INP="./$F.$INFO"
+  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
    q="\\\$"
@@ -389,7 +423,7 @@ info2test_sed ()          # cut out all old-style <!--vars--> usages
 
 info2vars_sed ()          # generate <!--$vars--> substition sed addon script
 {
-  INP="$1" ; test ".$INP" = "." && INP="./$F.$INFO"
+  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
   N8=" *\\([^ ][^ ]*\\) \\([$NN].*\\)"
@@ -480,7 +514,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
 info2meta_sed ()         # generate <meta name..> text portion
 {
   # http://www.metatab.de/meta_tags/DC_type.htm
-  INP="$1" ; test ".$INP" = "." && INP="./$F.$INFO"
+  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
   INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
@@ -507,26 +541,27 @@ info2meta_sed ()         # generate <meta name..> text portion
 info_get_entry () # get the first <!--vars--> value known so far
 {
   TXT="$1" ; test ".$TXT" = "." && TXT="sect"
-  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
   $SED -e "/=text=$TXT /!d" -e "s/=text=$TXT //" -e "q" $INP # $++
 }
 
 info1grep () # test for a <!--vars--> substition to be already present
 {
   TXT="$1" ; test ".$TXT" = "." && TXT="sect"
-  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
   $GREP "^=text=$TXT " $INP >$NULL
   return $?
 }
 
 dx_init()
 {
-    dx_meta formatter `basename $0` > $F.$INFO
+    mkpathdir "$tmp"
+    dx_meta formatter `basename $0` > "$tmp/$F.$INFO"
 }
 
 dx_text ()
 {
-    echo "=text=$1 $2" >> $F.$INFO
+    echo "=text=$1 $2" >> "$tmp/$F.$INFO"
 }
 
 DX_text ()   # add a <!--vars--> substition includings format variants
@@ -535,13 +570,13 @@ DX_text ()   # add a <!--vars--> substition includings format variants
   if test ".$N" != "." ; then
     if test ".$T" != "." ; then
       text=`echo "$T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      echo       "=text=$N $T"                       >> $F.$INFO
-      echo       "=name=$N $text"                    >> $F.$INFO
+      echo       "=text=$N $T"                       >> "$tmp/$F.$INFO"
+      echo       "=name=$N $text"                    >> "$tmp/$F.$INFO"
       varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
       if test ".$N" != ".$varname" ; then 
       text=`echo "$varname $T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      echo       "=Text=$varname $T"                 >> $F.$INFO
-      echo       "=Name=$varname $text"              >> $F.$INFO
+      echo       "=Text=$varname $T"                 >> "$tmp/$F.$INFO"
+      echo       "=Name=$varname $text"              >> "$tmp/$F.$INFO"
       fi
     fi
   fi
@@ -549,18 +584,18 @@ DX_text ()   # add a <!--vars--> substition includings format variants
 
 dx_meta ()
 {
-    echo "=meta=$1 $2" >> $F.$INFO
+    echo "=meta=$1 $2" >> "$tmp/$F.$INFO"
 }
 
 DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
 {
-   echo "=meta=$1 $2"  >> $F.$INFO
+   echo "=meta=$1 $2"  >> "$tmp/$F.$INFO"
    DX_text "$1" "$2"
 }
 
 DC_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
 {
-   echo "=meta=DC.$1 $2"  >> $F.$INFO
+   echo "=meta=DC.$1 $2"  >> "$tmp/$F.$INFO"
    DX_text "DC.$1" "$2"
    DX_text "$1" "$2"
 }
@@ -601,8 +636,7 @@ DC_publisher ()        # make sure there is this DC.publisher meta tag
 DC_modified ()         # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
    Q="$1" # target file
-   if info1grep DC.date.modified 
-   then :
+   if info1grep DC.date.modified ; then :
    else
       _42_chars="........................................."
       cut_42_55="s/^$_42_chars\\(.............\\).*/\\1/" # i.e.`cut -b 42-55`
@@ -669,8 +703,7 @@ DC_title ()
    # choose a title for the document, either an explicit title-tag
    # or one of the section headers in the document or fallback to filename
    Q="$1" # target file
-   if info1grep DC.title 
-   then :
+   if info1grep DC.title ; then :
    else
       for M in TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6 ; do
         text=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $Q`
@@ -696,7 +729,7 @@ DC_title ()
 site_get_section () # return parent section page of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=sect=$_F_ /!d" -e "s/^=sect=$_F_ //" -e q ./$MK_INFO # $++
+   $SED -e "/^=sect=$_F_ /!d" -e "s/^=sect=$_F_ //" -e q "$MK_INFO" # $++
 }
 
 DC_section () # not really a DC relation (shall we use isPartOf ?) 
@@ -715,7 +748,7 @@ info_get_entry_section()
 site_get_selected ()  # return section of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/=use.=$_F_ /!d" -e "s/=use.=[^ ]* //" -e q ./$MK_INFO # $++
+   $SED -e "/=use.=$_F_ /!d" -e "s/=use.=[^ ]* //" -e q "$MK_INFO" # $++
 }
 
 DC_selected () # not really a DC title (shall we use alternative ?)
@@ -734,27 +767,27 @@ info_get_entry_selected ()
 
 site_get_rootsections () # return all sections from root of nav tree
 {
-   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" ./$MK_INFO # $++
+   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" "$MK_INFO" # $++
 }
 
 site_get_sectionpages () # return all children pages in the given section
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=sect=[^ ]* $_F_\$/!d" -e "s/^=sect=//" -e "s/ .*//" ./$MK_INFO
-   # $++
+   $SED -e "/^=sect=[^ ]* $_F_\$/!d" -e "s/^=sect=//" \
+        -e "s/ .*//" "$MK_INFO" # $++
 }
 
 site_get_subpages () # return all page children of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=node=[^ ]* $_F_\$/!d" -e "s/^=node=//" -e "s/ .*//" ./$MK_INFO
+   $SED -e "/^=node=[^ ]* $_F_\$/!d" -e "s/^=node=//" -e "s/ .*//" "$MK_INFO"
    # $++
 }
 
 site_get_parentpage () # return parent page for given page (".." for sections)
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=node=$_F_ /!d" -e "s/^=node=[^ ]* //" -e "q" ./$MK_INFO  # $++
+   $SED -e "/^=node=$_F_ /!d" -e "s/^=node=[^ ]* //" -e "q" "$MK_INFO"  # $++
 }
 
 DX_alternative ()        # detect wether page asks for alternative style
@@ -834,34 +867,34 @@ make_fast () # experimental - make a FAST file that can be applied
 
 site_map_list_title() # $file $text
 {
-    echo "=list=$1 $2" >> ./$MK_INFO
+    echo "=list=$1 $2" >> "$MK_INFO"
 }
 info_map_list_title() # $file $text
 {
-    echo "=list=$2" >> $1.$INFO
+    echo "=list=$2" >> "$tmp/$1.$INFO"
 }
 site_map_long_title() # $file $text
 {
-    echo "=long=$1 $2" >> ./$MK_INFO
+    echo "=long=$1 $2" >> "$MK_INFO"
 }
 info_map_long_title() # $file $text
 {
-    echo "=long=$2" >> $1.$INFO
+    echo "=long=$2" >> "$tmp/$1.$INFO"
 }
 site_map_list_date() # $file $text
 {
-    echo "=date=$1 $2" >> ./$MK_INFO
+    echo "=date=$1 $2" >> "$MK_INFO"
 }
 info_map_list_date() # $file $text
 {
-    echo "=date=$2" >> $1.$INFO
+    echo "=date=$2" >> "$tmp/$1.$INFO"
 }
 
 siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
 {                    # the resulting script will act on each item/line
                      # containing <!--"filename"--> and expand any following
                      # reference of <!--name--> or <!--date--> or <!--long-->
-  INP="$1" ; test ".$INP" = "." && INP="./$MK_INFO"
+  INP="$1" ; test ".$INP" = "." && INP="$MK_INFO"
   _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
   _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
   _long_="s|<!--\"\\1\"-->.*<!--long-->|\\&<long>\\2</long>|"
@@ -874,15 +907,15 @@ siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
 
 make_multisitemap ()
 {  # each category gets its own column along with the usual entries
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="./$MK_INFO"
-   siteinfo2sitemap > ./$MK_SITE # have <name><long><date> addon-sed
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
   _form_="<!--\"\\2\"--><!--use\\1--><!--long--><!--end\\1-->"
   _form_="$_form_<br><!--name--><!--date-->"
   _tiny_="small><small><small" ; _tinyX_="small></small></small "
   _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
   echo "<table width=\"100%\"><tr><td> " # $++
   $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
-       -f ./$MK_SITE -e "/<name/!d" \
+       -f "$MK_SITE" -e "/<name/!d" \
        -e "s|<!--use1-->|</td><td valign=\"top\"><b>|" \
        -e "s|<!--end1-->|</b>|"  \
        -e "s|<!--use2-->|<br>|"  \
@@ -896,13 +929,13 @@ make_multisitemap ()
 
 make_listsitemap ()
 {   # traditional - the body contains a list with date and title extras
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="./$MK_INFO"
-   siteinfo2sitemap > ./$MK_SITE # have <name><long><date> addon-sed
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
    _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
    echo "<table cellspacing=\"0\" cellpadding=\"0\">" # $++
    $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
-        -f ./$MK_SITE -e "/<name/!d" \
+        -f "$MK_SITE" -e "/<name/!d" \
         -e "s|<!--use1-->|<tr><td>*</td>|" \
         -e "s|<!--use2-->|<tr><td>-</td>|" \
         -e  "/<!--use3-->/s|<name [^<>]*>|&- |" \
@@ -927,7 +960,8 @@ html_sourcefile ()  # generally just cut away the trailing "l" (ell)
 {                   # making "page.html" argument into "page.htm" return
     _SRCFILE_=`echo "$1" | $SED -e "s/l\\$//"`
     if test -f "$_SRCFILE_" ; then echo "$_SRCFILE_" # $++
-    elif test -f "$opt_srcdir/$_SRCFILE_" ; then echo "$opt_srcdir/$_SRCFILE_"
+    elif test -f "$opt_src_dir/$_SRCFILE_" 
+    then echo "$opt_src_dir/$_SRCFILE_" # $++
     else echo ".//$_SRCFILE_" # $++
     fi
 }
@@ -978,13 +1012,13 @@ echo_printsitefile_style ()
 
 make_printsitefile_head() # $sitefile
 {
-   echo_printsitefile_style > ./$MK_STYLE
+   echo_printsitefile_style > "$MK_STYLE"
    $SED -e "/<title>/p" -e "/<title>/d" \
         -e "/<head>/p"   -e "/<head>/d" \
         -e "/<\/head>/p"   -e "/<\/head>/d" \
         -e "/<body>/p"   -e "/<body>/d" \
         -e "/^.*<link [^<>]*rel=\"shortcut icon\"[^<>]*>.*\$/p" \
-        -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK_STYLE" # $+++
+        -e "d" $SITEFILE | $SED -e "/<head>/r $MK_STYLE" # $+++
 }
 
 
@@ -1012,7 +1046,7 @@ make_current_entry () # $sect $file      ## requires $MK_SITE
   RR=`sed_slash_key "$R"`  
   sep=" - " ; _left_=" [ " ; _right_=" ] "
   echo_current_line "$R" "<a href=\"$S\"><!--\"$S\"--><!--name--></a>$sep" \
-       | $SED -f ./$MK_SITE -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+       | $SED -f "$MK_SITE" -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
         -e "/<a href=\"$RR\"/s/<a href/$_left_&/" \
         -e "/<a href=\"$RR\"/s/<\\/a>/&$_right_/" \
         -e "s/<!--\"[^\"]*\"--><!--name-->//" # $+++
@@ -1028,15 +1062,15 @@ make_subpage_entry ()
   RR=`sed_slash_key "$R"`  
   sep=" - " ;
   echo_subpage_line "$S" "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep" \
-       | $SED -f ./$MK_SITE -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+       | $SED -f "$MK_SITE" -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
         -e "s/<!--\"[^\"]*\"--><!--name-->//" # $+++
 }
 
 make_printsitefile ()
 {
    # building the printsitefile looks big but its really a loop over sects
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="./$MK_INFO"
-   siteinfo2sitemap > ./$MK_SITE # have <name><long><date> addon-sed
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
    _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
    make_printsitefile_head $SITEFILE # $++
@@ -1045,35 +1079,35 @@ make_printsitefile ()
    _sect1="<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep"
    _sect2="<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep"
    _sect3="<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep"
-   site_get_rootsections > ./$MK_SECT1
-   for r in `cat ./$MK_SECT1` ; do
+   site_get_rootsections > "$MK_SECT1"
+   for r in `cat "$MK_SECT1"` ; do
    echo_current_line "$r" "<!--mksite:sect1:A--><br>$_sect1" # $++
-   for s in `cat ./$MK_SECT1` ; do 
+   for s in `cat "$MK_SECT1"` ; do 
        make_current_entry "$r" "$s" # $++
    done
    echo_current_line "$r" "<!--mksite:sect1:Z-->" # $++
 
-#  site_get_sectionpages "$r" > ./$MK_SECT2
-   site_get_subpages "$r"     > ./$MK_SECT2
-   for s in `cat ./$MK_SECT2` ; do test "$r" = "$s" && continue
+#  site_get_sectionpages "$r" > "$MK_SECT2"
+   site_get_subpages "$r"     > "$MK_SECT2"
+   for s in `cat "$MK_SECT2"` ; do test "$r" = "$s" && continue
        echo_current_line  "$s" "<!--mksite:sect2:A--><br>$_sect2" # $++
-   for t in `cat ./$MK_SECT2` ; do test "$r" = "$t" && continue
+   for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
        make_current_entry "$s" "$t" # $++
    done # "$t"
        echo_current_line  "$s" "<!--mksite:sect2:Z-->" # $++
 
-#  site_get_sectionpages "$s" > ./$MK_SECT3
-   site_get_subpages "$s"     > ./$MK_SECT3
-   for t in `cat ./$MK_SECT3` ; do test "$s" = "$t" && continue
+#  site_get_sectionpages "$s" > "$MK_SECT3"
+   site_get_subpages "$s"     > "$MK_SECT3"
+   for t in `cat "$MK_SECT3"` ; do test "$s" = "$t" && continue
        echo_current_line  "$t" "<!--mksite:sect3:A--><br>$_sect3" # $++
-   for u in `cat ./$MK_SECT3` ; do test "$s" = "$u" && continue
+   for u in `cat "$MK_SECT3"` ; do test "$s" = "$u" && continue
        make_current_entry "$t" "$u" # $++
    done # "$u"
        echo_current_line  "$t" "<!--mksite:sect3:Z-->" # $++
    done # "$t"
 
    _have_children_="0"
-   for u in `cat ./$MK_SECT3` ; do test "$u" = "$s" && continue
+   for u in `cat "$MK_SECT3"` ; do test "$u" = "$s" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
         echo_subpage_line  "$s" "<!--mksite:sect3:A--><br>$_sect3" # $++
         make_subpage_entry "$s" "$u" # $++
@@ -1083,7 +1117,7 @@ make_printsitefile ()
    done # "$s"
 
    _have_children_="0"
-   for t in `cat ./$MK_SECT2` ; do test "$r" = "$t" && continue
+   for t in `cat "$MK_SECT2"` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
         echo_subpage_line  "$r" "<!--mksite:sect2:A--><br>$_sect2" # $++
         make_subpage_entry "$r" "$t" # $++
@@ -1204,20 +1238,20 @@ make_sitemap_init()
     b2="[-|[]"
     b3="[\\/:]"
     q3="[\\/:,[]"
-    echo_HR_PP    "<hr>"            "$h1"    "<!--sect1-->"      > $MK_GETS
-    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "<!--sect1-->"     >> $MK_GETS
-    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "<!--sect1-->"     >> $MK_GETS
-    echo_HR_PP    "<br>"            "$b1$b1" "<!--sect1-->"     >> $MK_GETS
-    echo_HR_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> $MK_GETS
-    echo_HR_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> $MK_GETS
-    echo_br_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> $MK_GETS
-    echo_br_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> $MK_GETS
-    echo_br_EM_PP "<br>" "<small>"  "$q3"    "<!--sect3-->"     >> $MK_GETS
-    echo_br_EM_PP "<br>" "<em>"     "$q3"    "<!--sect3-->"     >> $MK_GETS
-    echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> $MK_GETS
-    echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> $MK_GETS
-    echo_sp_PP                      "$q3"    "<!--sect3-->"     >> $MK_GETS
-    $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" ./$MK_GETS > $MK_PUTS
+    echo_HR_PP    "<hr>"            "$h1"    "<!--sect1-->"      > "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "<!--sect1-->"     >> "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "<!--sect1-->"     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b1$b1" "<!--sect1-->"     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<small>"  "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<em>"     "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    echo_sp_PP                      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
+    $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
@@ -1242,13 +1276,13 @@ make_sitemap_sect()
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
-	-e G -e "s:\\n: :" ./$MK_INFO >> $MK_INFO
+	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use1=/d" \
 	-e "/=use3=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
-	-e G -e "s:\\n: :" ./$MK_INFO >> $MK_INFO
+	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
 }
 
 make_sitemap_page()
@@ -1259,21 +1293,21 @@ make_sitemap_page()
 	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use1=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=page=\\1/" \
-	-e G -e "s:\\n: :" ./$MK_INFO >> $MK_INFO
+	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     $SED -e "/=use.=/!d" \
 	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
 	-e "/=use1=/d" \
 	-e "/=use2=/d" \
 	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
-	-e G -e "s:\\n: :" ./$MK_INFO >> $MK_INFO
+	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
     # and for the root sections we register ".." as the parenting group
     $SED -e "/=use1=/!d" \
-	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1 ../"  ./$MK_INFO >> $MK_INFO
+	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1 ../"  "$MK_INFO" >> "$MK_INFO"
 }
 echo_site_filelist()
 {
-    $SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK_INFO
+    $SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" "$MK_INFO"
 }
 
 # ==========================================================================
@@ -1289,7 +1323,7 @@ scan_sitefile () # $F
  if test "$SOURCEFILE" != "$F" ; then
    dx_init "$F"
    dx_text today "`timetoday`"
-   short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"`
+   short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"` # basename for all exts
    short="$short *"
    DC_meta title "$short"
    DC_meta date.available "`timetoday`"
@@ -1313,7 +1347,7 @@ scan_htmlfile() # "$F"
 {
  SOURCEFILE=`html_sourcefile "$F"`                                    # SCAN :
  if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
- if test -f "$SOURCEFILE" ; then make_fast "$F" > $F.$FAST
+ if test -f "$SOURCEFILE" ; then make_fast "$F" > "$tmp/$F.$FAST"
    dx_init "$F"
    dx_text today "`timetoday`"
    dx_text todays "`timetodays`"
@@ -1387,7 +1421,7 @@ head_sed_multisection() # $filename $section
    for section in $SECTION $headsection $tailsection ; do
    $SED -e "/^=sect=[^ ]* $section/!d" \
         -e "s, .*,\"\\\\)|<!--sectX-->\\\\1|,"  \
-        -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," ./$MK_INFO  # $++
+        -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," "$MK_INFO"  # $++
    done
    echo "s|^$SECTN[^ ]*\\(<a href=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
    echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          # $++
@@ -1406,21 +1440,23 @@ make_sitefile () # "$F"
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
    if test ".$simplevars" = ".warn" ; then
    info2test_sed > $MK_TEST           # check <!--title--> vars old-style
-   $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
-   $CAT ./$MK_PUTS                                > $F.$HEAD
-   head_sed_sitemap "$F" "`info_get_entry_section`"  >> $F.$HEAD
-   echo "/<head>/r $MK_META"                     >> $F.$HEAD
-   $CAT ./$MK_VARS ./$MK_TAGS                >> $F.$HEAD
-   echo "/<\\/body>/d"                               >> $F.$HEAD
+   $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi
+   F_HEAD="$tmp/$F.$HEAD" ; F_FOOT="$tmp/$F.$FOOT"
+   $CAT "$MK_PUTS"                                    > "$F_HEAD"
+   head_sed_sitemap "$F" "`info_get_entry_section`"  >> "$F_HEAD"
+   echo "/<head>/r $MK_META"                         >> "$F_HEAD"
+   $CAT "$MK_VARS" "$MK_TAGS"                        >> "$F_HEAD"
+   echo "/<\\/body>/d"                               >> "$F_HEAD"
    case "$sitemaplayout" in
-   multi) make_multisitemap > $F.$BODY ;;       # here we use ~body~ as
-   *)     make_listsitemap  > $F.$BODY ;;       # a plain text file
+   multi) make_multisitemap > "$F_FOOT" ;;       # here we use ~foot~ to
+   *)     make_listsitemap  > "$F_FOOT" ;;       # hold the main text
    esac
 
-   $SED_LONGSCRIPT $F.$HEAD                  $SITEFILE  > $F   # ~head~
-   $CAT            $F.$BODY                            >> $F   # ~body~
-   $SED -e "/<\\/body>/!d" -f ./$MK_VARS $SITEFILE >> $F   #</body>
-   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F` "(sitemap)"
+   mkpathfile "$F"
+   $SED_LONGSCRIPT "$F_HEAD"               "$SITEFILE"  > $F   # ~head~
+   $CAT            "$F_FOOT"                           >> $F   # ~body~
+   $SED -e "/<\\/body>/!d" -f "$MK_VARS"   "$SITEFILE" >> $F   #</body>
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` ">->" `ls -s $F` "(sitemap)"
  else
    echo "'$SOURCEFILE': does not exist"
  fi fi
@@ -1435,28 +1471,30 @@ make_htmlfile() # "$F"
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
    if test ".$simplevars" = ".warn" ; then
    info2test_sed > $MK_TEST           # check <!--title--> vars old-style
-   $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
-      $CAT ./$MK_PUTS                        > $F.$HEAD 
+   $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi
+   F_HEAD="$tmp/$F.$HEAD" ; F_BODY="$tmp/$F.$BODY" ; F_FOOT="$tmp/$F.$FOOT"
+   $CAT "$MK_PUTS"                        > "$F_HEAD"
    case "$sectionlayout" in
-   multi) head_sed_multisection "$F" "`info_get_entry_section`"  >> $F.$HEAD ;;
-       *) head_sed_listsection  "$F" "`info_get_entry_section`"  >> $F.$HEAD ;;
+   multi) head_sed_multisection "$F" "`info_get_entry_section`" >> "$F_HEAD" ;;
+       *) head_sed_listsection  "$F" "`info_get_entry_section`" >> "$F_HEAD" ;;
    esac
-      $CAT ./$MK_VARS ./$MK_TAGS            >> $F.$HEAD #tag and vars
-      echo "/<\\/body>/d"                   >> $F.$HEAD #cut lastline
-      echo "/<head>/r $MK_META"             >> $F.$HEAD #add metatags
-      echo "/<title>/d"                      > $F.$BODY #not that line
-      $CAT ./$MK_VARS ./$MK_TAGS            >> $F.$BODY #tag and vars
-      bodymaker_for_sectioninfo             >> $F.$BODY #if sectioninfo
-      info2body_sed                         >> $F.$BODY #cut early
-      info2head_sed                         >> $F.$HEAD
-      $CAT ./$F.$FAST                       >> $F.$HEAD
+      $CAT "$MK_VARS" "$MK_TAGS"            >> "$F_HEAD" #tag and vars
+      echo "/<\\/body>/d"                   >> "$F_HEAD" #cut lastline
+      echo "/<head>/r $MK_META"             >> "$F_HEAD" #add metatags
+      echo "/<title>/d"                      > "$F_BODY" #not that line
+      $CAT "$MK_VARS" "$MK_TAGS"            >> "$F_BODY" #tag and vars
+      bodymaker_for_sectioninfo             >> "$F_BODY" #if sectioninfo
+      info2body_sed                         >> "$F_BODY" #cut early
+      info2head_sed                         >> "$F_HEAD"
+      $CAT "$tmp/$F.$FAST"                  >> "$F_HEAD"
       test ".$emailfooter" != ".no" && \
-      body_for_emailfooter                   > $F.$FOOT
+      body_for_emailfooter                   > "$F_FOOT"
 
-      $SED_LONGSCRIPT ./$F.$HEAD $SITEFILE               > $F # ~head~
-      $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
-      test -f ./$F.$FOOT && $CAT ./$F.$FOOT             >> $F # ~foot~
-      $SED -e "/<\\/body>/!d" -f $MK_VARS $SITEFILE >> $F #</body>
+      mkpathfile "$F"
+      $SED_LONGSCRIPT "$F_HEAD" $SITEFILE                > $F # ~head~
+      $SED_LONGSCRIPT "$F_BODY" $SOURCEFILE             >> $F # ~body~
+      test -f "$F_FOOT" && $CAT "$F_FOOT"               >> $F # ~foot~
+      $SED -e "/<\\/body>/!d" -f "$MK_VARS" "$SITEFILE" >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
  else
    echo "'$SOURCEFILE': does not exist"
@@ -1469,31 +1507,34 @@ make_printerfriendly () # "$F"
 {                                                                 # PRINTER
   printsitefile="0"                                               # FRIENDLY
   P=`html_printerfile "$F"`
+  F_FAST="$tmp/$F.$FAST"
+  P_HEAD="$tmp/$P.$HEAD"
+  P_BODY="$tmp/$P.$BODY"
   case "$F" in
-  ${SITEFILE}|${SITEFILE}l) make_fast "$F" > $F.$FAST
-          printsitefile="*>" ; BODY_TXT="./$F.$BODY" ; BODY_SED="./$P.$HEAD";;
-  *.html) printsitefile="=>" ; BODY_TXT="$SOURCEFILE"; BODY_SED="./$F.$BODY";;
+  ${SITEFILE}|${SITEFILE}l) make_fast "$F" > "$F_FAST"
+          printsitefile=">=>" ; BODY_TXT="$tmp/$F.$FOOT"  ;;
+  *.html) printsitefile="=>" ;  BODY_TXT="$SOURCEFILE" ;;
   esac
   if test ".$printsitefile" != ".0" && test -f "$SOURCEFILE" ; then
       make_printerfile_fast "$FILELIST" > ./$MK_FAST
-      $CAT ./$MK_VARS ./$MK_TAGS ./$MK_FAST > ./$P.$HEAD
+      $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST" > "$P_HEAD"
       $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
-           ./$MK_META > ./$MK_METT
-      echo "/<head>/r $MK_METT"                        >> ./$P.$HEAD # meta
-      echo "/<\\/body>/d"                              >> ./$P.$HEAD
-      select_in_printsitefile "$F"                     >> ./$P.$HEAD
+           "$MK_META" > "$MK_METT"
+      echo "/<head>/r $MK_METT"                       >> "$P_HEAD" # meta
+      echo "/<\\/body>/d"                             >> "$P_HEAD"
+      select_in_printsitefile "$F"                    >> "$P_HEAD"
       _ext_=`print_extension "$printerfriendly"`                     # head-
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.$FAST      >> ./$P.$HEAD # hrefs
+      $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_HEAD" # hrefs
       line_=`sed_slash_key "$printsitefile_img_2"`                   # back-
-      echo "/$line_/s| href=\"[#][.]\"| href=\"$F\"|"  >> ./$P.$HEAD # link.
-      $CAT                             ./$F.$FAST      >> ./$P.$HEAD # subdir
-      $CAT ./$MK_VARS ./$MK_TAGS ./$MK_FAST             > ./$P.$BODY
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.$FAST      >> ./$P.$BODY # body-
-      $CAT                             ./$F.$FAST      >> ./$P.$BODY # hrefs
-#     $CAT                                $BODY_SED    >> ./$P.$BODY # ORIG
+      echo "/$line_/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD" # link.
+      $CAT                             "$F_FAST"      >> "$P_HEAD" # subdir
+      $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST"            > "$P_BODY"
+      $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_BODY" # body-
+      $CAT                             "$F_FAST"      >> "$P_BODY" # hrefs
 
-      $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P # ~head~
-      $SED_LONGSCRIPT ./$P.$BODY                   $BODY_TXT >> $P # ~body~
+      mkpathfile "$P"
+      $SED_LONGSCRIPT "$P_HEAD"              $PRINTSITEFILE  > $P # ~head~
+      $SED_LONGSCRIPT "$P_BODY"                   $BODY_TXT >> $P # ~body~
       $SED -e "/<\\/body>/!d" -f $MK_VARS $PRINTSITEFILE >> $P #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "$printsitefile" `ls -s $P`
    fi 
@@ -1512,7 +1553,7 @@ make_sitemap_sect
 make_sitemap_page
 
 FILELIST=`echo_site_filelist`
-if test ".$opt_file_list" != "." || test ".$opt_list" = ".file"; then
+if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
    for F in $FILELIST; do echo $F ; done ; exit
 fi
 if test ".$FILELIST" = "."; then
@@ -1550,7 +1591,7 @@ if test ".$printerfriendly" != "." ; then           # .......... PRINT VERSION
 fi
 
 if test ".$simplevars" = ". " ; then
-$CATNULL > $MK_OLDS
+mknewfile $MK_OLDS
 fi
 
 for F in $FILELIST ; do case "$F" in                        #### 2. PASS
@@ -1578,16 +1619,16 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
 fi
 # .............. debug ....................
    if test -d DEBUG && test -f "./$F" ; then
-      cp ./$F.$INFO DEBUG/$F.info.TMP
+      cp "$tmp/$F.$INFO" DEBUG/$F.info.TMP
       for P in tags vars meta page date list html sect info ; do
-      test -f ./$MK.$P.tmp && cp ./$MK.$P.tmp DEBUG/$F.$P.tmp
-      test -f ./$MK.$P.TMP && cp ./$MK.$P.TMP DEBUG/$F.$P.TMP
+      test -f $tmp/$MK.$P.tmp && cp $tmp/$MK.$P.tmp DEBUG/$F.$P.tmp
+      test -f $tmp/$MK.$P.TMP && cp $tmp/$MK.$P.TMP DEBUG/$F.$P.TMP
       done
    fi
 done
 
 if test ".$simplevars" = ".warn" ; then 
-oldvars=`cat ./$MK_OLDS | wc -l | $SED -e "s/ *//g"`
+oldvars=`cat "$MK_OLDS" | wc -l | $SED -e "s/ *//g"`
 if test "$oldvars" = "0" ; then
 echo "HINT: you have no simplevars in your htm sources, so you may want to"
 echo "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE"
@@ -1603,5 +1644,6 @@ echo "note: errornous simplevar detection can be suppressed with a magic"
 echo "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now."
 fi fi
 
-rm ./$MK.*.tmp
+rm $tmp/$MK.*.tmp
+if test ".$tmp_dir_was_created" != ".no" ; then rm $tmp/* ; rmdir $tmp ; fi
 exit 0
