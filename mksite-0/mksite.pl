@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.3 2004-10-10 19:08:25 guidod Exp $
+# $Id: mksite.pl,v 1.4 2004-10-10 23:45:09 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -395,12 +395,12 @@ my @FILELIST; # <<<<<<<
 
 sub sed_slash_key  # helper to escape chars special in /anchor/ regex
 {                     # currently escaping "/" "[" "]" "."
-    my $R = $_[0]; $R =~ s|[./[-]|\\$&|g; $R =~ s|\]|\\\\$&|g;
+    my $R = $_[0]; $R =~ s|[\"./[-]|\\$&|g; $R =~ s|\]|\\\\$&|g;
     return $R;
 }
 sub sed_piped_key  # helper to escape chars special in s|anchor|| regex
 {                     # currently escaping "|" "[" "]" "."
-    my $R = $_[0]; $R =~ s/[.|[-]/\\$&/g; $R =~ s/\]/\\\\$&/g;
+    my $R = $_[0]; $R =~ s/[\".|[-]/\\$&/g; $R =~ s/\]/\\\\$&/g;
     return $R;
 }
 
@@ -454,8 +454,8 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     my ($INP,$XXX) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
-    my $V8=" *([^ ][^ ]*) (.*)";
-    my $V9=" *DC[.]([^ ][^ ]*) (.*)";
+    my $V8=" *([^ ][^ ]*) ([^<>]*)";
+    my $V9=" *DC[.]([^ ][^ ]*) ([^<>]*)";
     my $N8=" *([^ ][^ ]*) ([$NN].*)";
     my $N9=" *DC[.]([^ ][^ ]*) ([$NN].*)";
     my $V0="([<]*)\\\$";
@@ -514,7 +514,7 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     if ($updatevars ne "no") {
 	for (@$INP) {
 	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-	if (/^=text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
+	if (/^=text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\\Q\$1$SS$2\\E|;");}
 	if (/^=Text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
 	if (/^=name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
 	if (/^=Name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
@@ -868,10 +868,10 @@ sub info_get_entry_selected
 sub site_get_rootsections # return all sections from root of nav tree
 {
     my @OUT;
-    for my $x (grep {/=use1=/} @MK_INFO) { 
-	$_ = $x;
-	s/=[u]se.=([^ ]*) .*/$1/; 
-	push @OUT, $_;
+    for (grep {/=use1=/} @MK_INFO) { 
+	my $x = $_;
+	$x =~ s/=[u]se.=([^ ]*) .*/$1/; 
+	push @OUT, $x;
     }
     return @OUT;
 }
@@ -880,10 +880,10 @@ sub site_get_sectionpages # return all children pages in the given section
 {
     my $_F_=&sed_slash_key(@_);
     my @OUT = ();
-    for my $x (grep {/^=sect=[^ ]* $_F_$/} @MK_INFO) {
-	$_ = $x;
-	s/^=sect=//; s/ .*//;
-	push @OUT, $_;
+    for (grep {/^=sect=[^ ]* $_F_$/} @MK_INFO) {
+	my $x = $_;
+	$x =~ s/^=sect=//; $x =~ s/ .*//;
+	push @OUT, $x;
     }
     return @OUT;
 }
@@ -892,10 +892,10 @@ sub site_get_subpages # return all page children of given page
 {
     my $_F_=&sed_slash_key(@_);
     my @OUT = ();
-    for my $x (grep {/^=node=[^ ]* $_F_$/} @MK_INFO) {
-	$_ = $x;
-	s/^=node=//; s/ .*//;
-	push @OUT, $_;
+    for (grep {/^=node=[^ ]* $_F_$/} @MK_INFO) {
+	my $x = $_;
+	$x =~ s/^=node=//; $x =~ s/ .*//;
+	push @OUT, $x;
     }
     return @OUT;
 }
@@ -903,11 +903,10 @@ sub site_get_subpages # return all page children of given page
 sub site_get_parentpage # ret parent page for given page (".." for sections)
 {
     my $_F_=&sed_slash_key(@_);
-    my @parents = ();
-    for my $x (grep {/^=node=$_F_ $/} @MK_INFO) {
-	$_ = $x;
-	s/^=node=[^ ]* //; s/ .*//;
-	return $_;
+    for (grep {/^=node=$_F_ /} @MK_INFO) {
+	my $x = $_;
+	$x =~ s/^=node=[^ ]* //;
+	return $x;
     } 
 }
 
@@ -1044,6 +1043,22 @@ sub info_map_list_date # $file $text
     push @{$INFO{$U}}, "=date=".trimm($V);
 }
 
+sub site_get_list_title
+{
+    my ($U,$V,$Z) = @_;
+    for (@MK_INFO) { if (m|^=list=$U (.*)|) { return $1; } } return "";
+}
+sub site_get_long_title
+{
+    my ($U,$V,$Z) = @_;
+    for (@MK_INFO) { if (m|^=long=$U (.*)|) { return $1; } } return "";
+}
+sub site_get_list_date
+{
+    my ($U,$V,$Z) = @_;
+    for (@MK_INFO) { if (m|^=date=$U (.*)|) { return $1; } } return "";
+}
+
 sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
 {                      # the resulting script will act on each item/line
                        # containing <!--"filename"--> and expand any following
@@ -1057,7 +1072,8 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
     my $_long_=
 	sub{"s|<!--\\\"$1\\\"-->.*<!--long-->|\$\&<long>$2</long>|"};
     
-    for my $info (@$INP) {
+    for (@$INP) {
+	my $info = $_;
 	$info =~ s:&:\\\\&:g;
 	$info =~ s:=list=([^ ]*) (.*):&$_list_:e;
 	$info =~ s:=date=([^ ]*) (.*):&$_date_:e;
@@ -1072,24 +1088,24 @@ sub make_multisitemap
 {  # each category gets its own column along with the usual entries
     my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_INFO if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
-    my @OUT = ();
+    my @OUT = (); 
     my $_form_= sub{"<!--\"$2\"--><!--use$1--><!--long--><!--end$1-->"
 			."<br><!--name--><!--date-->" };
     my $_tiny_="small><small><small" ; my $_tinyX_="small></small></small ";
     my $_tabb_="<br><$_tiny_> </$_tinyX_>" ; my $_bigg_="<big> </big>";
     push @OUT, "<table width=\"100%\"><tr><td> ";
-    for my $x (grep {/=[u]se.=/} @$INPUTS) {
-	$_ = $x;
-	s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	$_ = &eval_MK_LIST($_, @MK_SITE); /<name/ or next;
-	s|<!--use1-->|</td><td valign=\"top\"><b>|;
-	s|<!--end1-->|</b>|;
-	s|<!--use2-->|<br>|;
-	s|<!--use.-->|<br>|; s/<!--[^<>]*-->/ /g;
-	s|<long>||; s|</long>||;
-	s|<name |<$_tiny_><a |; s|</name>||;
-	s|<date>| |; s|</date>|</a><br></$_tinyX_>|;
-	push @OUT, $_;
+    for (grep {/=[u]se.=/} @$INPUTS) {
+	my $x = $_;
+	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
+	$x = &eval_MK_LIST($x, @MK_SITE); $x =~ /<name/ or next;
+	$x =~ s|<!--use1-->|</td><td valign=\"top\"><b>|;
+	$x =~ s|<!--end1-->|</b>|;
+	$x =~ s|<!--use2-->|<br>|;
+	$x =~ s|<!--use.-->|<br>|; $x =~ s/<!--[^<>]*-->/ /g;
+	$x =~ s|<long>||; $x =~ s|</long>||;
+	$x =~ s|<name |<$_tiny_><a |; $x =~ s|</name>||;
+	$x =~ s|<date>| |; $x =~ s|</date>|</a><br></$_tinyX_>|;
+	push @OUT, $x;
     }
     push @OUT, "</td><tr></table>";
     return @OUT;
@@ -1099,23 +1115,23 @@ sub make_listsitemap
 {   # traditional - the body contains a list with date and title extras
     my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_INFO if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
-    my @OUT = ();
+    my @OUT = (); 
     my $_form_=sub{
 	"<!--\"$2\"--><!--use$1--><!--name--><!--date--><!--long-->"};
     my $_tabb_="<td>\\&nbsp\\;</td>";
     push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">";
-    for my $x (grep {/=[u]se.=/} @$INPUTS) {
-	$_ = $x;
-	s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	$_ = &eval_MK_LIST($_, @MK_SITE); /<name/ or next;
-        s|<!--use1-->|<tr><td>*</td>|;
-        s|<!--use2-->|<tr><td>-</td>|;
-        /<!--use3-->/ and s|<name [^<>]*>|$&- |;
-        s|<!--use.-->|<tr><td> </td>|; s/<!--[^<>]*-->/ /g;
-        s|<name |<td><a |; s|</name>|</a></td>$_tabb_|;
-        s|<date>|<td><small>|; s|</date>|</small></td>$_tabb_|;
-        s|<long>|<td><em>|; s|</long>|</em></td></tr>|;
-        push @OUT, $_;
+    for (grep {/=[u]se.=/} @$INPUTS) {
+	my $x = $_; 
+	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
+	$x = &eval_MK_LIST($x, @MK_SITE); /<name/ or next;
+        $x =~ s|<!--use1-->|<tr><td>*</td>|;
+        $x =~ s|<!--use2-->|<tr><td>-</td>|;
+        $x =~ /<!--use3-->/ and $x =~ s|<name [^<>]*>|$&- |;
+        $x =~ s|<!--use.-->|<tr><td> </td>|; $x =~ s/<!--[^<>]*-->/ /g;
+        $x =~ s|<name |<td><a |; $x =~ s|</name>|</a></td>$_tabb_|;
+        $x =~ s|<date>|<td><small>|; $x =~ s|</date>|</small></td>$_tabb_|;
+        $x =~ s|<long>|<td><em>|; $x =~ s|</long>|</em></td></tr>|;
+        push @OUT, $x; 
     }
     push @OUT, "</table>";
     return @OUT;
@@ -1218,29 +1234,29 @@ sub make_printsitefile_head # $sitefile
 # navigation header with 1...3 lines matching the nesting level
 
 # these alt-texts will be only visible in with a text-mode browser:
-my $printsitefile_square="width=\\\"8\\\" height=\\\"8\\\" border=\\\"0\\\"";
-my $printsitefile_img_1="<img alt=\\\"|go text:\\\" $printsitefile_square />";
-my $printsitefile_img_2="<img alt=\\\"||topics:\\\" $printsitefile_square />";
-my $printsitefile_img_3="<img alt=\\\"|||pages:\\\" $printsitefile_square />";
+my $printsitefile_square="width=\"8\" height=\"8\" border=\"0\"";
+my $printsitefile_img_1="<img alt=\"|go text:\" $printsitefile_square />";
+my $printsitefile_img_2="<img alt=\"||topics:\" $printsitefile_square />";
+my $printsitefile_img_3="<img alt=\"|||pages:\" $printsitefile_square />";
 my $_SECT="mksite:sect:";
 
 sub echo_current_line # $sect $extra
 {
+    # add the prefix which is used by select_in_printsitefile to cut out things
     my ($N,$M,$Z) = @_;
     return "<!--$_SECT\"$N\"-->$M";
 }
 sub make_current_entry # $sect $file      ## requires $MK_SITE
 {
-    my ($R,$S,$Z) = @_;
+    my ($S,$R,$Z) = @_;
     my $RR=&sed_slash_key($R); 
     my $sep=" - " ; my $_left_=" [ " ; my $_right_=" ] ";
-    $_ = &echo_current_line 
-	("$R", "<a href=\"$S\"><!--\"$S\"--><!--name--></a>$sep");
-    $_ = &eval_MK_LIST($_, @MK_SITE);
-    s/<name[^<>]*>//; s/<\/name>//;
-    if (/<a href=\"$RR\"/) { s/<a href/$_left_$&/ }
-    if (/<a href=\"$RR\"/) { s/<\/a>/$&$_right_/ }
-    s/<!--\"[^\"]*\"--><!--name-->//;
+    my $name = site_get_list_title($R);
+    $_ = &echo_current_line ("$S", "<a href=\"$R\">$name</a>$sep");
+    if ($R eq $S) {
+	s/<a href/$_left_$&/;
+	s/<\/a>/$&$_right_/;
+    }
     return $_;
 }
 sub echo_subpage_line # $sect $extra
@@ -1254,11 +1270,8 @@ sub make_subpage_entry
     my ($S,$R,$Z) = @_;
     my $RR=&sed_slash_key($R);
     my $sep=" - " ;
-    $_ = &echo_subpage_line 
-	("$S", "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep");
-    $_ = &eval_MK_LIST($_, @MK_SITE);
-    s/<name[^<>]*>//; s/<\/name>//;
-    s/<!--\"[^\"]*\"--><!--name-->//;
+    my $name = site_get_list_title($R);
+    $_ = &echo_subpage_line ("$S", "<a href=\"$R\">$name</a>$sep");
     return $_;
 }
 
@@ -1267,76 +1280,77 @@ sub make_printsitefile
    # building the printsitefile looks big but its really a loop over sects
     my ($INPUTS,$Z) = @_; $INPUTS=\@MK_INFO if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
-    print "....................................... $F._$i\n";
     savelist(\@MK_SITE);
     my @OUT = &make_printsitefile_head ($SITEFILE);
 
     my $sep=" - " ;
-    my $_sect1="<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep";
-    my $_sect2="<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep";
-    my $_sect3="<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep";
-    @MK_SECT1 = &site_get_rootsections();
-    for my $r (@MK_SECT1) {
-	push @OUT, &echo_current_line ("$r", "<!--mksite:sect1:A--><br>$_sect1");
-    for my $s (@MK_SECT1) {
-	push @OUT, &make_current_entry ("$r", "$s");
-    }
-	push @OUT, &echo_current_line ("$r", "<!--mksite:sect1:Z-->");
+    my $_sect1=
+	"<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep";
+    my $_sect2=
+	"<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep";
+    my $_sect3=
+	"<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep";
 
-#   @MK_SECT2 = &site_get_sectionpages "$r";
+    my $_SECT1="mksite:sect1";
+    my $_SECT2="mksite:sect2";
+    my $_SECT3="mksite:sect3";
+
+    @MK_SECT1 = &site_get_rootsections();
+    # round one - for each root section print a current menu
+    for my $r (@MK_SECT1) {
+	push @OUT, &echo_current_line ("$r", "<!--$_SECT1:A--><br>$_sect1");
+	for my $s (@MK_SECT1) {
+	    push @OUT, &make_current_entry ("$r", "$s");
+	}
+	push @OUT, &echo_current_line ("$r", "<!--$_SECT1:Z-->");
+    }
+
+    # round two - for each subsection print a current and subpage menu
+    for my $r (@MK_SECT1) {
     @MK_SECT2 = &site_get_subpages ("$r");
     for my $s (@MK_SECT2) {
-	next if $r eq $s;
-	push @OUT, &echo_current_line ("$s", "<!--mksite:sect2:A--><br>$_sect2");
-    for my $t (@MK_SECT2) {
-	next if $r eq $t;
-	push @OUT, &make_current_entry ("$s", "$t");
-    } # "$t"
-	push @OUT, &echo_current_line  ("$s", "<!--mksite:sect2:Z-->");
+	push @OUT, &echo_current_line ("$s", "<!--$_SECT2:A--><br>$_sect2");
+	for my $t (@MK_SECT2) {
+	    push @OUT, &make_current_entry ("$s", "$t");
+	} # "$t"
+	push @OUT, &echo_current_line  ("$s", "<!--$_SECT2:Z-->");
+    } # "$s"
+	my $_have_children_="";
+	for my $t (@MK_SECT2) {
+	    if (not $_have_children_) {
+	push @OUT, &echo_subpage_line ("$r", "<!--$_SECT2:A--><br>$_sect2"); }
+	    $_have_children_ .= "1";
+	    push @OUT, &make_subpage_entry ("$r", "$t");
+	}
+	    if ($_have_children_) {
+	push @OUT, &echo_subpage_line ("$r", "<!--$_SECT2:Z-->"); }
+    } # "$r"
 
-#   @MK_SECT3 = &site_get_sectionpages "$s";
+    # round three - for each subsubsection print a current and subpage menu
+    for my $r (@MK_SECT1) {
+    @MK_SECT2 = &site_get_subpages ("$r");
+    for my $s (@MK_SECT2) {
     @MK_SECT3 = &site_get_subpages ("$s");
     for my $t (@MK_SECT3) {
-	next if $s eq $t;
-	push @OUT, &echo_current_line ("$t", "<!--mksite:sect3:A--><br>$_sect3");
-    for my $u (@MK_SECT3) {
-	next if $s eq $u;
-	push @OUT, &make_current_entry ("$t", "$u");
-    } # "$u"
-	push @OUT, &echo_current_line  ("$t", "<!--mksite:sect3:Z-->");
+	push @OUT, &echo_current_line ("$t", "<!--$_SECT3:A--><br>$_sect3");
+	for my $u (@MK_SECT3) {
+	    push @OUT, &make_current_entry ("$t", "$u");
+	} # "$t"
+	push @OUT, &echo_current_line  ("$t", "<!--$_SECT3:Z-->");
     } # "$t"
-
-    my $_have_children_="0";
-    for my $u (@MK_SECT3) {
-	next if $u eq $s;
-    if ($_have_children_ = "0") { 
-	$_have_children_="1";
-        push @OUT, &echo_subpage_line ("$s", "<!--mksite:sect3:A--><br>$_sect3");
-    }
-	push @OUT, &make_subpage_entry ("$s", "$u");
-    } # "$u"
-    if ($_have_children_ = "1") { 
-        push @OUT, &echo_subpage_line  ("$s", "<!--mksite:sect3:Z-->");
-    }
+	my $_have_children_="";
+	for my $u (@MK_SECT3) {
+	    if (not $_have_children_) {
+	push @OUT, &echo_subpage_line ("$s", "<!--$_SECT3:A--><br>$_sect3"); }
+	    $_have_children_ .= "1";
+	    push @OUT, &make_subpage_entry ("$s", "$u");
+	}
+	    if ($_have_children_) {
+	push @OUT, &echo_subpage_line ("$s", "<!--$_SECT3:Z-->"); }
     } # "$s"
-
-    my $_have_children_="0";
-    for my $t (@MK_SECT2) {
-	next if $r eq $t;
-    if ($_have_children_ = "0") { 
-	$_have_children_="1";
-        push @OUT, &echo_subpage_line ("$r", "<!--mksite:sect2:A--><br>$_sect2");
-    }
-	push @OUT, &make_subpage_entry ("$r", "$t");
-    } # "$t"
-    if ($_have_children_ = "1") { 
-        push @OUT, &echo_subpage_line  ("$r", "<!--mksite:sect2:Z-->");
-    }
     } # "$r"
     push @OUT, "<a name=\".\"></a>";
     push @OUT, "</body></html>";
-    print "----------------------> $F._$i";
-    savelist(\@OUT);
     return @OUT;
 }
 
@@ -1346,11 +1360,11 @@ sub select_in_printsitefile # arg = "page" : return to stdout >> $P.$HEAD
     my ($N,$Z) = @_;
     my $_selected_="$N" ; $_selected_="$F" if not $_selected_;
     my $_section_=&sed_slash_key($_selected_);
-    print "section===$_section_\n";
     my @OUT = ();
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect3
     push @OUT, "s/^<!--$_SECT\[*\]:\\\"$_section_\\\"-->//;";    # children
     $_selected_=&site_get_parentpage($_selected_);
+    if ($F =~ /testscript/) { print "($F)parent=$_selected_\n"; }
     $_section_=&sed_slash_key($_selected_);
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect2
     $_selected_=&site_get_parentpage($_selected_);
@@ -1545,9 +1559,9 @@ sub make_sitemap_page
 	push @MK_INFO, "$x $sect";
     }
     # and for the root sections we register ".." as the parenting group
-    for my $x (grep {/=[u]se1=/} @MK_INFO) {
-	$_ = $x; s/=[u]se.=([^ ]*) .*/=node=$1 ../;
-	push @MK_INFO, trimm($_);
+    for (grep {/=[u]se1=/} @MK_INFO) {
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1 ../;
+	push @MK_INFO, trimm($x);
     }
 }
 sub echo_site_filelist
@@ -1683,11 +1697,11 @@ sub head_sed_multisection # $filename $section
     # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
     # after that all the (still) numeric SECTNs are deactivated / killed.
     for my $section ($SECTION, $headsection, $tailsection) {
-	for my $x (grep {/^=sect=[^ ]* $section/} @MK_INFO) {
-	    $_ = $x;
-	    s, .*,\\\"\)|<!--sectX-->\$1|,;
-	    s,^=sect=,s|^$SECTS\(.*<a href=\\\",;
-	    push @OUT, $_;
+	for (grep {/^=sect=[^ ]* $section/} @MK_INFO) {
+	    my $x = $_;
+	    $x =~ s, .*,\\\"\)|<!--sectX-->\$1|,;
+	    $x =~ s,^=sect=,s|^$SECTS\(.*<a href=\\\",;
+	    push @OUT, $x;
 	}
     }
     push @OUT, "s|^$SECTN\[^ \]*(<a href=[^<>]*>).*|<!-- \$1 -->|;";
@@ -1700,7 +1714,7 @@ sub head_sed_multisection # $filename $section
 
 sub make_sitefile # "$F"
 {
-    $SOURCEFILE=&html_sourcefile($F);
+    $SOURCEFILE=&html_sourcefile($F); 
  if ($SOURCEFILE ne $F) { 
  if (-f $SOURCEFILE) {
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
@@ -1712,9 +1726,9 @@ sub make_sitefile # "$F"
    }
    my @HEAD = (); my @BODY = (); my $FOOT = "";
    push @HEAD, @MK_PUTS;
-   push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section);
+   push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
    push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
-   push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS;
+   push @HEAD, @MK_TAGS; push @HEAD, @MK_VARS;
    push @HEAD, "/<\\/body>/ and next;";                #cut lastline
    if ( $sitemaplayout eq "multi") {
        push @BODY,  &make_multisitemap();        # here we use ~body~ as
@@ -1722,13 +1736,12 @@ sub make_sitefile # "$F"
        push @BODY,  &make_listsitemap();         # a plain text file
    }
 
-   my $html = "";
+   my $html = ""; # 
    $html .= &eval_MK_FILE($SITEFILE, @HEAD);
-   $html .= join("\n", source($SOURCEFILE));
+   $html .= join("\n", @BODY);
    for (source($SITEFILE)) {
        /<\/body>/ or next;
-       $_ = &eval_MK_LIST($_, @MK_VARS);
-       $html .= $_;
+       $html .= &eval_MK_LIST($_, @MK_VARS);
    }
   open F, ">$F"; print F $html; close F;
   print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"\n";
@@ -1814,13 +1827,15 @@ sub make_printerfriendly # "$F"
       push @HEAD, &select_in_printsitefile ("$F");
       my $_ext_=&print_extension($printerfriendly);
       push @HEAD, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g ; $x } @FAST;
-      my $line_=&sed_slash_key($printsitefile_img_2);
-      print "back-print-href skipped\n";
-      push @HEAD, "/$line_/ and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
+#     my $line_=&sed_slash_key($printsitefile_img_2);
+      push @HEAD, "/\\|\\|topics:/"
+	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
+      push @HEAD, "/\\|\\|\\|pages:/"
+	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
       push @HEAD, @FAST;
       push @HEAD, "/<body>/ and $sed_add '<!-- done -->'; # HEAD";
       push @BODY, @MK_VARS; push @BODY, @MK_TAGS; push @BODY, @MK_FAST;
-#      push @BODY, map { s/[.]html\"|/$_ext_$&/g } @FAST;
+      push @BODY, map { my $x = $_; $x =~ s/[.]html\"|/$_ext_$&/g; $x } @FAST;
       push @BODY, @FAST;
       my $html = "";
       $html .= eval_MK_FILE($PRINTSITEFILE, @HEAD);
@@ -1891,6 +1906,11 @@ if ($printerfriendly) {                            # .......... PRINT VERSION
     savelist(\@TEXT);
     my @LINES = map { chomp; $_."\n" } @TEXT;
     savesource($PRINTSITEFILE, \@LINES);
+    if (1) {
+	if (open PRINTSITEFILE, ">$PRINTSITEFILE") {
+	    print PRINTSITEFILE join("", @LINES); close PRINTSITEFILE;
+	}
+    }
 }
 
 if ($simplevars eq " ") {
