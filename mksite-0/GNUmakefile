@@ -36,7 +36,7 @@ clean :
 
 DISTFILES = GNUmakefile README.TXT COPYING.ZLIB \
             mksite.txt mksite.sh mksite.gif \
-            doc/*.htm test*/*.htm
+            doc/*.htm test*/*.htm doc/*.gif
 SUBDIRS =
 PACKAGE = mksite
 
@@ -76,7 +76,7 @@ snapshot : distdir
 
 # -----------------------------------------------------------------------
 INSTALLDIRS =
-INSTALLFILES = doc/*.html doc/site.htm doc/site.print.htm \
+INSTALLFILES = doc/*.html doc/site.htm doc/site.print.htm doc/mksite-icon.gif \
                mksite.sh mksite.txt COPYING.ZLIB _dist/$(DISTNAME).tar.bz2
 
 datadir ?= /usr
