@@ -1,8 +1,23 @@
 all : index.html
 
-diffs = diff -U1
+SUBDIRS =
+PACKAGE = mksite
 
+TODAYSDATE := $(shell date +%Y.%m%d)
+TODAYSHOUR := $(shell date +%Y.%m%d.%H%M)
+VERSION=$(TODAYSDATE)
+SNAPSHOT=$(TODAYSHOUR)
+DISTNAME = $(PACKAGE)-$(VERSION)
+SNAPSHOTNAME = $(PACKAGE)-$(SNAPSHOT)
+SAVETO = _dist
+
+DISTFILES = GNUmakefile README.TXT COPYING.ZLIB $(PACKAGE).spec \
+            mksite.txt mksite.sh mksite.pl \
+            doc/*.htm doc/*.gif test*/*.htm 
+
+diffs = diff -U1
 known = -e "/formatter/d"
+
 test : test1x test2x
 test1x : test1x.html
 	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
@@ -44,14 +59,14 @@ test2x.html : test2/*.htm mksite.pl GNUmakefile
 
 test1 test2  site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
-	cd doc && sh ../mksite.sh site.htm
-	cd doc && sh ../mksite.sh features.htm
+	cd doc && sh ../mksite.sh site.htm        "-VERSION=$(VERSION)"
+	cd doc && sh ../mksite.sh features.htm    "-VERSION=$(VERSION)"
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.html > $@
 	sleep 5 # done $@
 
 print.html : doc/*.htm mksite.sh
-	cd doc && sh ../mksite.sh site.htm -print
+	cd doc && sh ../mksite.sh site.htm -print "-VERSION=$(VERSION)"
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.print.html > $@
 
@@ -68,20 +83,7 @@ ff :
 clean : 
 	- rm *.html */*.html */*.tmp
 
-DISTFILES = GNUmakefile README.TXT COPYING.ZLIB $(PACKAGE).spec \
-            mksite.txt mksite.sh mksite.pl \
-            doc/*.htm doc/*.gif test*/*.htm 
-SUBDIRS =
-PACKAGE = mksite
-
-TODAYSDATE := $(shell date +%Y.%m%d)
-TODAYSHOUR := $(shell date +%Y.%m%d.%H%M)
-DISTNAME = $(PACKAGE)-$(TODAYSDATE)
-SNAPSHOTNAME = $(PACKAGE)-$(TODAYSHOUR)
-SAVETO = _dist
-
-distdir = $(PACKAGE)-$(TODAYSDATE)
-
+distdir = $(PACKAGE)-$(VERSION)
 distdir :
 	test -d $(distdir) || mkdir $(distdir)
 	- $(MAKE) distdir-hook
@@ -115,7 +117,7 @@ distdir-hook : $(PACKAGE).spec
 $(PACKAGE).spec : $(distdir)
 	echo "Name: $(PACKAGE)" > $@
 	echo "Summary: $(SUMMARY)" >> $@
-	echo "Version: $(TODAYSDATE)" >> $@
+	echo "Version: $(VERSION)" >> $@
 	echo "Release: 1" >> $@
 	echo "License: ZLIB" >> $@
 	echo "Group: Productivity/Networking/Web" >> $@
@@ -194,7 +196,6 @@ WWWNAME= guidod
 WWWHOST= shell.sourceforge.net
 WWWPATH= /home/$(htmpath)
 TMPPATH=/tmp/$(PACKAGE)-$(VERSION)
-VERSION=$(TODAYSDATE)
 preload :
 	$(MAKE) install docdir=$(TMPPATH)
 upload : preload
