@@ -5,7 +5,7 @@ HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 test1.html : test1/*.htm mksite.sh
 	cd test1 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1/\\1|" \
-	    test2/index.html > $@
+	    test1/index.html > $@
 test2.html : test2/*.htm mksite.sh
 	cd test2 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \

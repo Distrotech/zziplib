@@ -20,15 +20,19 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.2 2004-04-19 07:04:01 guidod Exp $
+# $Id: mksite.sh,v 1.3 2004-04-19 13:12:13 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
 test ".$SITEFILE" = "." && test -f site.html && SITEFILE=site.html
-MK="-mksite"  # note the "-" at the start
+MK="-mksite"     # note the "-" at the start
 SED="sed"
-CAT="cat"     # "sed -e n" would be okay too
+CAT="cat"        # "sed -e n" would be okay too
 GREP="grep"
+DATE_NOW="date"  # should be available on all posix systems
+DATE_R="date -r" # gnu date has it / solaris date not
+STAT_R="stat"    # gnu linux
+LS_L="ls -l"     # linux uses one less char than solaris
 
 INFO="~~"     # extension for meta data files
 HEAD="~head~" # extension for head sed script
@@ -42,7 +46,7 @@ AZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ"              # use char-ranges in the
 NN="0123456789"                              # match expressions so that
 AA="_$NN$AZ$az"                              # we use their unrolled
 AX="$AA.+-"                                  # definition here
-if $SED -V 2>$NULL | grep "GNU sed" >$NULL ; then
+if $SED -V 2>$NULL | $GREP "GNU sed" >$NULL ; then
 az="a-z"                                     # but if we have GNU sed
 AZ="A-Z"                                     # then we assume there are
 NN="0-9"                                     # char-ranges available
@@ -88,7 +92,7 @@ do if test ".$opt" != "." ; then
             eval "export opt_$opt=' '"
          fi
          opt="" ;;
-      *) test ".$opt_main_file" == "." && opt_main_file="$arg"
+      *) test ".$opt_main_file" = "." && opt_main_file="$arg"
          test ".$opt_files" != "." && opt_files="$opt_files$opt_fileseparator"
          opt_files="$opt_files$arg"
          opt="" ;;
@@ -105,8 +109,11 @@ SITEFILE="$opt_site_file"
 if test ".$SITEFILE" = "." ; then
    echo "error: no SITEFILE found (default would be 'site.htm')"
    exit 1
+else
+   echo "sitefile: `ls -s $SITEFILE`"
 fi
 
+if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
 # ==========================================================================
 # init a few global variables
 #                                                                  0. INIT
@@ -144,6 +151,11 @@ done
 TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
 # ======================================================================
 #                                                                FUNCS
+sed_file ()
+{
+    # hpux sed has a limit of 100 entries per sed script !
+}
+
 sed_anchor ()      # helper to escape chars special in /anchor/ regex
 {
     echo "$1" | $SED -e "s|/|\\\\/|g" -e "s|\\[|\\\\[|g"
@@ -182,7 +194,7 @@ info2meta ()         # generate <meta name..> text portion
   INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
   INFO_META_TYPEDCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
   INFO_META_NAME="name=\"\\1\" content=\"\\2\""
-  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `date +%z`\"" 
+  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `$DATE_NOW +%z`\"" 
   $SED -e "/=....=today /d" \
   -e "/=meta=DC[.]DCMIType /s,=meta=$V3,<meta $INFO_META_TYPE_SCHEME />," \
   -e "/=meta=DC[.]type Collection$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
@@ -281,21 +293,27 @@ DC_publisher ()        # make sure there is this DC.publisher meta tag
 DC_modified ()         # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
    Q="$1" # target file
-   if ! info1grep DC.date.modified 
-   then meta='<meta name="DC.date.modified"'
-       modified=`stat $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
-       modified=`echo "$modified" | eval $SED -e "'s/:..[.][$NN]*//'" $TRIMM`
-       test ".$modified" = "." && modified=`date -f "$Q" +%Y-%m-%d 2>$NULL`
-       test ".$modified" = "." && modified=`ls -l "$Q" | cut -b 43-55`
-       DC_meta date.modified "$modified"
+   if info1grep DC.date.modified 
+   then :
+   else meta='<meta name="DC.date.modified"'
+      _42_chars="........................................."
+      cut_42_55="s/^$_42_chars\\(.............\\).*/\\1/" # i.e.`cut -b 42-55`
+      modified=`$STAT_R $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
+      modified=`echo "$modified" | eval $SED -e "'s/:..[.][$NN]*//'" $TRIMM`
+      test ".$modified" = "." && \
+      modified=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`   # GNU sed
+      test ".$modified" = "." && 
+      modified=`$LS_L "$Q" | $SED -e "$cut_42_55" -e "s/^ *//g" -e "q"`
+      DC_meta date.modified "$modified"
    fi
 }
 
 DC_date ()             # make sure there is this DC.date meta tag
 {                      # choose from one of the available DC.date.* specials
    Q="$1" # source file
-   if ! info1grep DC.date
-   then text=""
+   if info1grep DC.date 
+   then DX_text issue "dated `info_get_entry DC.date`"
+   else text=""
       for kind in available issued modified created ; do
         text=`info_get_entry DC.date.$kind` 
       # test ".$text" != "." && echo "$kind = date = $text ($Q)"
@@ -317,8 +335,6 @@ DC_date ()             # make sure there is this DC.date meta tag
       text=`echo "$text" | $SED -e "s/[$NN]*:.*//"`
       DC_meta date "$text"
       DX_text issue "$kind $text"
-   else
-      DX_text issue "dated `info_get_entry DC.date`"
    fi
 }
 
@@ -327,8 +343,9 @@ DC_title ()
    # choose a title for the document, either an explicit title-tag
    # or one of the section headers in the document or fallback to filename
    Q="$1" # target file
-   if ! info1grep DC.title
-   then
+   if info1grep DC.title 
+   then :
+   else
       for M in TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6 ; do
         term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
         text=`eval $SED $term $TRIMM -e q $Q`
@@ -489,7 +506,8 @@ $SED -f $MK.gets.tmp           -e "/<!--sect[$NN]-->/!d" \
      -e "s:$_sect_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
      $SITEFILE > $MK.$INFO
 # scan used pages and store relation =sect= pointing to section group
-$SED -e "/=use.=/!d" -e "/=use1=/{h;s:=use1=\\([^ ]*\\) .*:\\1:;x}" \
+$SED -e "/=use.=/!d" \
+     -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
      -e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
      -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
 
@@ -506,10 +524,10 @@ for F in $FILELIST ; do case "$F" in
 http:*|*://*) ;; # skip
 ${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then
-   echo "=text=today `date +%Y-%m-%d`"               > $F.$INFO
+   echo "=text=today `$DATE_NOW +%Y-%m-%d`"               > $F.$INFO
    echo "=meta=formatter `basename $0`"             >> $F.$INFO
    DC_meta title sitemap
-   DC_meta date.available `date +%Y-%m-%d`
+   DC_meta date.available `$DATE_NOW +%Y-%m-%d`
    DC_meta subject sitemap
    DC_meta DCMIType Collection
    DC_VARS_Of $SOURCEFILE 
@@ -517,7 +535,7 @@ if test "$SOURCEFILE" != "$F" ; then
    test ".$USER" != "." && DC_publisher "$USER"
    echo "'$SOURCEFILE': " sitemap
    echo "=list=$F sitemap"          >> $MK.$INFO
-   echo "=date=$F `date +%Y-%m-%d`" >> $MK.$INFO
+   echo "=date=$F `$DATE_NOW +%Y-%m-%d`" >> $MK.$INFO
    echo "=long=$F generated sitemap index" >> $MK.$INFO
 fi ;;
 ../*) 
@@ -533,8 +551,8 @@ fi ;;
 *.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then :
 if test -f "$SOURCEFILE" ; then make_move
-   echo "=text=today `date +%Y-%m-%d`"               > $F.$INFO
-   echo "=text=todaytarbz2 `date +%Y-%m%d`.tar.bz2" >> $F.$INFO
+   echo "=text=today `$DATE_NOW +%Y-%m-%d`"               > $F.$INFO
+   echo "=text=todaytarbz2 `$DATE_NOW +%Y-%m%d`.tar.bz2" >> $F.$INFO
    echo "=meta=formatter `basename $0`"             >> $F.$INFO
    echo "" >$F # let's go...
    DC_VARS_Of "$SOURCEFILE" 
@@ -543,7 +561,7 @@ if test -f "$SOURCEFILE" ; then make_move
    DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE" ; DC_date "$SITEFILE"
    DC_section "$F" ;  DC_selected "$F"
    test ".$USER" != "." && DC_publisher "$USER"
-   DX_text date.formatted `date +%Y-%m-%d`
+   DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
    sectn=`info_get_entry DC.relation.section`
    short=`info_get_entry DC.title.selected`
    echo "=list=$short" >> $F.$INFO    ; echo "=list=$F $short" >> $MK.$INFO
