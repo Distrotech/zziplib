@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.16 2004-11-27 09:02:38 guidod Exp $
+# $Id: mksite.pl,v 1.17 2005-01-19 01:39:56 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -50,6 +50,8 @@ my $NN="0-9";                                     # char-ranges available
 my $AA="_$NN$AZ$az";                              # that makes the resulting
 my $AX="$AA.+-";                                  # script more readable
 
+my $n = "\n";
+
 # LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 # export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                                # treat A-Z to include a-z
@@ -71,7 +73,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	if (/^-.*=.*$/) {
 	    $opt=$arg; $opt =~ s/-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg";
+		print STDERR "ERROR: invalid option $arg$n";
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = $arg;
@@ -81,7 +83,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	} elsif (/^-.*-.*$/) {
 	    $opt=$arg; $opt =~ s/-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg";
+		print STDERR "ERROR: invalid option $arg$n";
 		$opt="";
 	    } else {
 		    # keep the option for next round
@@ -89,7 +91,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	} elsif (/^-.*/) {
 	    $opt=$arg; $opt =~ s/^-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg";
+		print STDERR "ERROR: invalid option $arg$n";
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = ' ';
@@ -114,23 +116,23 @@ $SITEFILE=$o{site_file} if $o{site_file} and -f $o{site_file};
 
 if ($o{help}) {
     $_=$SITEFILE;
-    print "$0 [sitefile]\n";
-    print "  default sitefile = $_\n";
-    print "options:\n"
-	. " --filelist : show list of target files as ectracted from $_\n"
-	. " --src xx : if source files are not where mksite is executed\n";
+    print "$0 [sitefile]$n";
+    print "  default sitefile = $_$n";
+    print "options:$n"
+	. " --filelist : show list of target files as ectracted from $_$n"
+	. " --src xx : if source files are not where mksite is executed$n";
     exit;
-    print " internal:\n"
-	."--fileseparator=x : for building the internal filelist (default '?')"
-	."--files xx : for list of additional files to be processed"
-	."--main-file xx : for the main sitefile to take file list from";
+    print " internal:$n"
+	."--fileseparator=x : for building the internal filelist (def. '?')$n"
+	."--files xx : for list of additional files to be processed$n"
+	."--main-file xx : for the main sitefile to take file list from$n";
 }
 	
 if (not $SITEFILE) {
-    print STDERR "error: no SITEFILE found (default would be 'site.htm')";
+    print STDERR "error: no SITEFILE found (default would be 'site.htm')$n";
     exit 1;
 } else {
-    print STDERR "NOTE: sitefile: ",`ls -s $SITEFILE`,"\n";
+    print STDERR "NOTE: sitefile: ",`ls -s $SITEFILE`,"$n";
 }
 
 # we use internal hashes to store mappings - kind of relational tables
@@ -244,17 +246,17 @@ $updatevars="no" if $commentvars eq "no"; # duplicated into
 $expandvars="no" if $commentvars eq "no"; # info2vars_sed
 $simplevars="no" if $commentvars eq "no"; # function above
 
-print "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout"
+print "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout$n"
     if -d DEBUG;
-print "NOTE: '$simplevars'simplevars '$printerfriendly'printerfriendly"
+print "NOTE: '$simplevars'simplevars '$printerfriendly'printerfriendly$n"
     if -d DEBUG;
-print "NOTE: '$attribvars'attribvars '$updatevars'updatevars"
+print "NOTE: '$attribvars'attribvars '$updatevars'updatevars$n"
     if -d DEBUG;
-print "NOTE: '$expandvars'expandvars '$commentvars'commentvars "
+print "NOTE: '$expandvars'expandvars '$commentvars'commentvars $n"
     if -d DEBUG;
-print "NOTE: '$currenttab'currenttab '$sectiontab'sectiontab"
+print "NOTE: '$currenttab'currenttab '$sectiontab'sectiontab$n"
     if -d DEBUG;
-print "NOTE: '$headsection'headsection '$tailsection'tailsection"
+print "NOTE: '$headsection'headsection '$tailsection'tailsection$n"
     if -d DEBUG;
 
 
@@ -354,8 +356,8 @@ sub savelist {
     if (-d "DEBUG") {
 	my $X = "$F._$i"; $i++;
 	open X, ">DEBUG/$X" or die "could not open $X: $!";
-	print X "#! /usr/bin/perl -".$#_."\n";
-	print X join("\n", @{$_[0]}); close X;
+	print X "#! /usr/bin/perl -".$#_."$n";
+	print X join("$n", @{$_[0]}); close X;
     }
 }
 
@@ -364,8 +366,8 @@ sub eval_MK_LIST # $str @list
     my $result = $_[0]; shift @_;
     my $extra = "";
     my $script = "\$_ = \$result; my \$Z;";
-    $script .= join(";\n ", @_);
-    $script .= "\n;\$result = \$_;\n";
+    $script .= join(";$n ", @_);
+    $script .= "$n;\$result = \$_;$n";
     eval $script;
     return $result.$extra;
 }
@@ -373,19 +375,19 @@ sub eval_MK_LIST # $str @list
 sub eval_MK_FILE  {
     my $FILENAME = $_[0]; shift @_;
     my $result = "";
-    my $script = "my \$FILE; my \$extra = ''; my \$Z; \n";
-    $script.= "for (source('$FILENAME')) { \n";
-    $script.= join(";\n  ", @_);
-    $script.= "\n; \$result .= \$_; ";
-    $script.= "\n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
-    $script.= "\n} if(\$extra){\$result.=\$extra;}\n";
+    my $script = "my \$FILE; my \$extra = ''; my \$Z; $n";
+    $script.= "for (source('$FILENAME')) { $n";
+    $script.= join(";$n  ", @_);
+    $script.= "$n; \$result .= \$_; ";
+    $script.= "$n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
+    $script.= "$n} if(\$extra){\$result.=\$extra;}$n";
     savelist([$script,""]);
     eval $script;
     return $result;
 }
 my $sed_add = "\$extra .= "; # "/r ";
 
-sub foo { print "               '$F'\n"; }
+sub foo { print "               '$F'$n"; }
 sub ls_s {
     my $result = `ls -s @_`;
     chomp($result);
@@ -989,7 +991,7 @@ sub make_fast # experimental - make a FAST file that can be applied
 	# echo "backpath '$F' = none needed"
 	return @OUT;
     } else {
-	#  print "backpath '$F' -> '$S'";
+	#  print "backpath '$F' -> '$S'$n";
 	my @hrefs = ();
 	for (source($SITEFILE)) {
 	    /href=\"[^\"]*\"/ or next;
@@ -1208,11 +1210,11 @@ sub echo_printsitefile_style
 {
     my $_bold_="text-decoration : none ; font-weight : bold ; ";
     return "   <style>"
-	."\n     a:link    { $_bold_ color : #000060 ; }"
-	."\n     a:visited { $_bold_ color : #000040 ; }"
-	."\n     body      { background-color : white ; }"
-	."\n   </style>"
-	."\n";
+	."$n     a:link    { $_bold_ color : #000060 ; }"
+	."$n     a:visited { $_bold_ color : #000040 ; }"
+	."$n     body      { background-color : white ; }"
+	."$n   </style>"
+	."$n";
 }
 
 sub make_printsitefile_head # $sitefile
@@ -1370,7 +1372,7 @@ sub select_in_printsitefile # arg = "page" : return to stdout >> $P.$HEAD
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect3
     push @OUT, "s/^<!--$_SECT\[*\]:\\\"$_section_\\\"-->//;";    # children
     $_selected_=&site_get_parentpage($_selected_);
-    if ($F =~ /testscript/) { print "($F)parent=$_selected_\n"; }
+    if ($F =~ /testscript/) { print "($F)parent=$_selected_$n"; }
     $_section_=&sed_slash_key($_selected_);
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect2
     $_selected_=&site_get_parentpage($_selected_);
@@ -1388,10 +1390,10 @@ sub body_for_emailfooter
     my $_email_=$emailfooter; $_email_ =~ s|[?].*||;
     my $_dated_=&info_get_entry("updated");
     return "<hr><table border=\"0\" width=\"100%\"><tr><td>"
-	."\n"."<a href=\"mailto:$emailfooter\">$_email_</a>"
-	."\n"."</td><td align=\"right\">"
-	."\n"."$_dated_</td></tr></table>"
-	."\n";
+	."$n"."<a href=\"mailto:$emailfooter\">$_email_</a>"
+	."$n"."</td><td align=\"right\">"
+	."$n"."$_dated_</td></tr></table>"
+	."$n";
 }
 
 # ==========================================================================
@@ -1517,7 +1519,7 @@ sub make_sitemap_list
 {
     # scan sitefile for references pages - store as =use+= relation
     for (source($SITEFILE)) {
-#	print join("\n;",@MK_GETS);
+#	print join("$n;",@MK_GETS);
 	$_ = &eval_MK_LIST($_, @MK_GETS);
 	/^<!--sect[$NN]-->/ or next;
 	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
@@ -1607,7 +1609,7 @@ sub scan_sitefile # $F
 	if ($printerfriendly) {
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
-	print "'$SOURCEFILE': $short (sitemap)\n";
+	print "'$SOURCEFILE': $short (sitemap)$n";
 	site_map_list_title ($F, "$short");
 	site_map_long_title ($F, "generated sitemap index");
 	site_map_list_date  ($F, &timetoday());
@@ -1645,14 +1647,14 @@ sub scan_htmlfile # "$F"
 	my $issue=&info_get_entry("issue");
 	&site_map_list_date ($F, "$edate");
 	&info_map_list_date ($F, "$edate");
-	print "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')\n";
+	print "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')$n";
     }else {
-	print "'$SOURCEFILE': does not exist\n";
+	print "'$SOURCEFILE': does not exist$n";
 	site_map_list_title ($F, "$F");
 	site_map_long_title ($F, "$F (no source)");
     } 
     } else {
-	print "<$F> - skipped - ($SOURCEFILE)";
+	print "<$F> - skipped - ($SOURCEFILE)$n";
     }
 }
 
@@ -1748,17 +1750,17 @@ sub make_sitefile # "$F"
 
    my $html = ""; # 
    $html .= &eval_MK_FILE($SITEFILE, @F_HEAD);
-   $html .= join("\n", @F_FOOT);
+   $html .= join("$n", @F_FOOT);
    for (source($SITEFILE)) {
        /<\/body>/ or next;
        $html .= &eval_MK_LIST($_, @MK_VARS);
    }
   open F, ">$F"; print F $html; close F;
-  print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"\n";
+  print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"$n";
    savesource("$F.~head~", \@F_HEAD);
    savesource("$F.~foot~", \@F_FOOT);
 } else {
-    print "'$SOURCEFILE': does not exist";
+    print "'$SOURCEFILE': does not exist$n";
 } }
 }
 
@@ -1803,13 +1805,13 @@ sub make_htmlfile # "$F"
     }
     savelist(\@{$INFO{$F}});
    open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
-   print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"\n";
+   print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
     savesource("$F.~head~", \@F_HEAD);
     savesource("$F.~body~", \@F_BODY);
  } else {
-     print "'$SOURCEFILE': does not exist";
+     print "'$SOURCEFILE': does not exist$n";
  }} else {
-     print "<$F> - skipped";
+     print "<$F> - skipped$n";
  }
 }
 
@@ -1855,7 +1857,7 @@ sub make_printerfriendly # "$F"
 	  $html .= $_;
       }
       open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
-      print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"\n";
+      print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"$n";
   }
 }
 
@@ -1874,11 +1876,11 @@ savelist(\@MK_INFO);
 
 @FILELIST=&echo_site_filelist();
 if ($o{filelist} or $o{list} eq "file" or $o{list} eq "files") {
-    for (@FILELIST) { print $_,"\n";  } exit;
+    for (@FILELIST) { print $_,"$n";  } exit;
 }
 
 if ($#FILELIST < 0) {
-    print "nothing to do";
+    print "nothing to do$n";
 }
 
 
@@ -1889,7 +1891,7 @@ for (@FILELIST) {                                    #### 1. PASS
     } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
 	&scan_sitefile ("$F") ;;                      # ........... SCAN SITE
     } elsif (/^(\.\.\/.*)$/) { 
-	print "!! -> '$F' (skipping topdir build)";
+	print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 
 #    make_fast  # try for later subdir build
 #    echo "!! -> '$F' (skipping subdir build)"
@@ -1900,11 +1902,11 @@ for (@FILELIST) {                                    #### 1. PASS
     } elsif (/^(.*\.html)$/) {
 	&scan_htmlfile ("$F") ;;                      # ........... SCAN HTML
     } elsif (/^(.*\/)$/) {
-	print "'$F' : directory - skipped";
+	print "'$F' : directory - skipped$n";
 	&site_map_list_title ("$F", &sed_slash_key($F));
 	&site_map_long_title ("$F", "(directory)");
     } else {
-	print "?? -> '$F'";
+	print "?? -> '$F'$n";
     }
 }
 
@@ -1914,9 +1916,9 @@ if ($printerfriendly) {                            # .......... PRINT VERSION
     $F=$PRINTSITEFILE;
     my @TEXT = &make_printsitefile();
     print "NOTE: going to create printer-friendly sitefile '$PRINTSITEFILE'"
-	." $F._$i\n";
+	." $F._$i$n";
     savelist(\@TEXT);
-    my @LINES = map { chomp; $_."\n" } @TEXT;
+    my @LINES = map { chomp; $_."$n" } @TEXT;
     savesource($PRINTSITEFILE, \@LINES);
     if (1) {
 	if (open PRINTSITEFILE, ">$PRINTSITEFILE") {
@@ -1936,7 +1938,7 @@ for (@FILELIST) {                                          #### 2. PASS
   } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
       &make_sitefile ("$F") ;;                         # ........ SITE FILE
   } elsif (/^(\.\.\/.*)$/) {
-      print "!! -> '$F' (skipping topdir build)";
+      print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 
 #   echo "!! -> '$F' (skipping subdir build)"
 #   ;;
@@ -1946,9 +1948,9 @@ for (@FILELIST) {                                          #### 2. PASS
   } elsif (/^(.*\.html)$/) {
       &make_htmlfile ("$F") ;;               # .................. HTML FILES
   } elsif (/^(.*\/)$/) {
-      print "'$F' : directory - skipped";
+      print "'$F' : directory - skipped$n";
   } else {
-      print "?? -> '$F'";
+      print "?? -> '$F'$n";
   }
 
    # ............................................................ FAST FILES
@@ -1968,20 +1970,20 @@ if ($printerfriendly) {
 if ( $simplevars eq "warn") {
     my $oldvars = $#MK_OLDS; $oldvars ++;
     if (not $oldvars) {
-print "HINT: you have no simplevars in your htm sources, so you may want to\n";
-print "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE\n";
-print "hint: which makes execution _faster_ actually in the 2. pass\n";
-print "note: simplevars expansion was the oldstyle way of variable expansion\n";
+print "HINT: you have no simplevars in your htm sources, so you may want to$n";
+print "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE$n";
+print "hint: which makes execution _faster_ actually in the 2. pass$n";
+print "note: simplevars expansion was the oldstyle way of variable expansion$n";
 } else {
-print "HINT: there were $oldvars simplevars found in your htm sources.\n";
-print "hint: This style of variable expansion will be disabled in the near\n";
-print "hint: future. If you do not want change then add the $SITEFILE magic\n";
-print "hint: <!--mksite:simplevars--> somewhere to suppress this warning\n";
-print "note: simplevars expansion will be an explicit option in the future.\n";
-print "note: errornous simplevar detection can be suppressed with a magic\n";
-print "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now.\n";
+print "HINT: there were $oldvars simplevars found in your htm sources.$n";
+print "hint: This style of variable expansion will be disabled in the near$n";
+print "hint: future. If you do not want change then add the $SITEFILE magic$n";
+print "hint: <!--mksite:simplevars--> somewhere to suppress this warning$n";
+print "note: simplevars expansion will be an explicit option in the future.$n";
+print "note: errornous simplevar detection can be suppressed with a magic$n";
+print "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now.$n";
 } }
 
-print "(\$selected still buggy)";
+print "(\$selected still buggy)$n";
 ## rm ./$MK.*.tmp
 exit 0
