@@ -47,11 +47,12 @@
      without touching the original style of the target browser.
 </li>
 <li>
-    expand comment tags with a meta name to bear the meta
-    value, e.g. "&lt;!--title--&gt;" will become "current title".
+    expand <a href="variables.html">comment variable tags</a> with 
+    a meta name to bear the meta value, e.g. "&lt;!--$title--&gt;" 
+    will become "current title".
     There are some variants of that available as well and most
     importantly and word following will cleaned as well as it
-    is regared as the default value: "&lt;!--today--&gt;2004/04"
+    is regared as the default value: "&lt;!--$modified:--&gt;2004/04"
     might be turned into "2004-04-30".
 </li>
 <li>
@@ -61,6 +62,13 @@
     contains an entry "/<head>r.meta.tmp" to actually implant the
     meta tags in the correct place in the header.
 </li>
+<li>
+   And the <a href="printerfriendly.html">printerfriendly layout</a> 
+   option that creates an alternative view automatically that is
+   best suited to improve web accessibility for those being
+   visually impaired - while still keeping your default layout
+   made up to look nice. Note there is not even a need to write
+   a second sitefile as the printerfriendly one is derived automatically.
 </ul>
    Again, there is no magic here. And <b>you</b> can do it too.
 </P>
