@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.11 2004-10-12 03:03:11 guidod Exp $
+# $Id: mksite.pl,v 1.12 2004-10-14 20:22:56 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -35,31 +35,16 @@ $SITEFILE="site.htm"  if ".$SITEFILE" == "." and -f "site.htm";
 $SITEFILE="site.html" if ".$SITEFILE" == "." and -f "site.html";
 # my $MK="-mksite";     # note the "-" at the start
 my $SED="sed";
-my $CAT="cat";        # "sed -e n" would be okay too
-my $GREP="grep";
-my $DATE_NOW="date";  # should be available on all posix systems
-my $DATE_R="date -r"; # gnu date has it / solaris date not
-my $STAT_R="stat";    # gnu linux
-my $LS_L="ls -l";     # linux uses one less char than solaris
 
 my $INFO="~~";     # extension for meta data files
 my $HEAD="~head~"; # extension for head sed script
 my $BODY="~body~"; # extension for body sed script
 my $FOOT="~foot~"; # append to body text (non sed)
 
-my $NULL="/dev/null";                             # to divert stdout/stderr
-my $CATNULL="$CAT $NULL";                         # to create 0-byte files
 my $SED_LONGSCRIPT="$SED -f";
 
-my $LOWER="abcdefghijklmnopqrstuvwxyz";
-my $UPPER="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-my $az="$LOWER";                                  # some old sed tools can not
-my $AZ="$UPPER";                                  # use char-ranges in the 
-my $NN="0123456789";                              # match expressions so that
-my $AA="_$NN$AZ$az";                              # we use their unrolled
-my $AX="$AA.+-";                                  # definition here
-my $az="a-z";                                     # but if we have GNU sed
-my $AZ="A-Z";                                     # then we assume there are
+my $az="a-z";                                     # for perl 
+my $AZ="A-Z";                                     # we may assume there are
 my $NN="0-9";                                     # char-ranges available
 my $AA="_$NN$AZ$az";                              # that makes the resulting
 my $AX="$AA.+-";                                  # script more readable
@@ -257,7 +242,6 @@ print "NOTE: '$headsection'headsection '$tailsection'tailsection"
     if -d DEBUG;
 
 
-#!! if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
 # ==========================================================================
 # init a few global variables
 #                                                                  0. INIT
@@ -729,19 +713,8 @@ sub DC_modified     # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
     my ($Q,$Z) = @_; # target file
     if (not &info1grep ("DC.date.modified")) {
-	my $text=`$STAT_R $Q 2>$NULL | grep modify:`;
-	my $text =~ s|.*fy:||;
-
-	$text =~ s/:..[.][$NN]*//; $text = &trimm ($text);
-	if (not $text) {
-	    $text=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`;   # GNU sed
-	}
-	if (not $text) {
-	    $text=`$LS_L "$Q"`;
-	    my $_42_chars=".........................................";
-	    $text =~ s/^$_42_chars(.............).*/$1/; # cut -b 42-55
-	    $text =~ s/^ *//g;
-	}
+	my @stats = stat($Q);
+	my $text =  strftime("%Y-%m-%d", localtime($stats[9]));
 	&DC_meta ("date.modified", $text);
     }
 }
