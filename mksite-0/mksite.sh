@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.23 2004-04-22 15:24:40 guidod Exp $
+# $Id: mksite.sh,v 1.24 2004-04-22 15:48:40 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -658,7 +658,7 @@ make_listsitemap ()
    siteinfo2sitemap ./$MK.site.tmp # have <name><long><date> addon-sed
    _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
-   echo "<table width=\"80%\" cellspacing=\"0\" cellpadding=\"0\">" > $OUTPUT
+   echo "<table cellspacing=\"0\" cellpadding=\"0\">" > $OUTPUT
    $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
         -f ./$MK.site.tmp -e "/<name/!d" \
         -e "s|<!--use1-->|<tr><td>*</td>|" \
