@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.10 2004-04-20 20:02:11 guidod Exp $
+# $Id: mksite.sh,v 1.11 2004-04-20 20:08:30 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -609,13 +609,12 @@ make_printsitefile ()
         -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
   
    sep=" - "
-   site_get_rootsections > ./tmp.sect1.txt
+   site_get_rootsections > ./$MK.sect1.tmp
    test -d DEBUG && echo "# rootsections"       > DEBUG/printsitemap.txt
-   test -d DEBUG && cat ./tmp.sect1.txt        >> DEBUG/printsitemap.txt
-   $CATNULL >./tmp.sects.txt
-   for r in `cat ./tmp.sect1.txt` ; do
+   test -d DEBUG && cat ./$MK.sect1.tmp        >> DEBUG/printsitemap.txt
+   for r in `cat ./$MK.sect1.tmp` ; do
    echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>|$sep" >> $OUTPUT
-   for s in `cat ./tmp.sect1.txt` ; do 
+   for s in `cat ./$MK.sect1.tmp` ; do 
    rr=`sed_slash_key "$r"`  
    echo "<!--mksite:sect:\"$r\"--><a href=\"$s\"><!--\"$s\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
@@ -625,12 +624,12 @@ make_printsitefile ()
    done
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect1:Z-->" >> $OUTPUT
 
-   site_get_subsections "$r" > ./tmp.sect2.txt
+   site_get_subsections "$r" > ./$MK.sect2.tmp
    test -d DEBUG && echo "# subsections $r"    >> DEBUG/printsitemap.txt
-   test -d DEBUG && cat ./tmp.sect2.txt        >> DEBUG/printsitemap.txt
-   for s in `cat ./tmp.sect2.txt` ; do test "$r" = "$s" && continue
+   test -d DEBUG && cat ./$MK.sect2.tmp        >> DEBUG/printsitemap.txt
+   for s in `cat ./$MK.sect2.tmp` ; do test "$r" = "$s" && continue
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
-   for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
+   for t in `cat ./$MK.sect2.tmp` ; do test "$r" = "$t" && continue
    ss=`sed_slash_key "$s"`  
    echo "<!--mksite:sect:\"$s\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
@@ -641,12 +640,12 @@ make_printsitefile ()
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:Z-->" >> $OUTPUT
 
 
-   site_get_subsections "$s" > ./tmp.sect3.txt
+   site_get_subsections "$s" > ./$MK.sect3.tmp
    test -d DEBUG && echo "# subsubsections $s" >> DEBUG/printsitemap.txt
-   test -d DEBUG && cat ./tmp.sect3.txt        >> DEBUG/printsitemap.txt
-   for t in `cat ./tmp.sect3.txt` ; do test "$s" = "$t" && continue
+   test -d DEBUG && cat ./$MK.sect3.tmp        >> DEBUG/printsitemap.txt
+   for t in `cat ./$MK.sect3.tmp` ; do test "$s" = "$t" && continue
    echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
-   for u in `cat ./tmp.sect3.txt` ; do test "$s" = "$u" && continue
+   for u in `cat ./$MK.sect3.tmp` ; do test "$s" = "$u" && continue
    tt=`sed_slash_key "$t"` 
    echo "<!--mksite:sect:\"$t\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
@@ -658,7 +657,7 @@ make_printsitefile ()
    done # "$t"
 
    _have_children_="0"
-   for u in `cat ./tmp.sect3.txt` ; do test "$r" = "$t" && continue
+   for u in `cat ./$MK.sect3.tmp` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
    echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$s\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
@@ -670,7 +669,7 @@ make_printsitefile ()
    done # "$s"
 
    _have_children_="0"
-   for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
+   for t in `cat ./$MK.sect2.tmp` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
    echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$r\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
