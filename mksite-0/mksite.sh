@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.31 2004-04-24 11:37:56 guidod Exp $
+# $Id: mksite.sh,v 1.32 2004-04-24 12:09:16 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -206,6 +206,8 @@ info2test ()          # cut out all old-style <!--vars--> usages
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  V8X=" *\\([^ ][^ ]*\\) \\([^$NN].*\\)"
+  V9X=" *DC[.]\\([^ ][^ ]*\\) \\([^$NN].*\\)"
    q="\\\$"
    _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:=-->"
    _y_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:?-->"
@@ -241,7 +243,9 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-  V1="\\\\([-]*\\\\)\\\\\\\$"
+  N8=" *\\([^ ][^ ]*\\) \\([$NN].*\\)"
+  N9=" *DC[.]\\([^ ][^ ]*\\) \\([$NN].*\\)"
+  V0="\\\\([<]*\\\\)\\\\\\\$"
   V1="\\\\([^<>]*\\\\)\\\\\\\$"
   V2="\\\\([^{<>}]*\\\\)"
   V3="\\\\([^<>]*\\\\)"
@@ -250,30 +254,30 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   test ".$commentvars"  = ".no" && simplevars="no"   # tests below
   test ".$expandvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=name=/s,=name=$V9,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
-  -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V8,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
-  -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V0\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/=name=/s,=name=$V8,s|<!--$V0\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1[?]-->|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
   test ".$expandvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V9,s|<!--$V1\\1[?]-->|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1[?]-->|\\\\1 (\\2) |," \
-  -e "/=text=/s,=text=$V8,s|<!--$V1\\1-->|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1-->|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1-->|\\\\1 \\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1[?]-->|\\\\1 \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1[?]-->|\\\\1 \\2|," \
+  -e "/=text=/s,=text=$V8,s|<!--$V1\\1-->|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1-->|\\\\1 \\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1 \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1 \\2|," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
   test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1 \\2|," \
   -e "/=name=/s,=name=$V9,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
   -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
-  -e "/=text=/s,=text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=text=/s,=text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1 \\2|," \
   -e "/=name=/s,=name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
   -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
@@ -286,21 +290,32 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
-  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
-  -e "/=text=/s,=text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
-  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
+  -e "/=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=text=/s,=text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 \\2|," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  # if value="2004" then generated sed might be "\\12004" which is bad
+  # instead we generate an edited value of "\\1-2004" for number values
+  # but we still do not want to have any extra space for other values.
   test ".$attribvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$N9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=Text=/s,=Text=$N9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=name=/s,=name=$N9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=Name=/s,=Name=$N9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
   -e "/=text=/s,=text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=Text=/s,=Text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=name=/s,=name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=Name=/s,=Name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
+  -e "/=text=/s,=text=$N8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=Text=/s,=Text=$N8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=name=/s,=name=$N8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
+  -e "/=Name=/s,=Name=$N8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1-\\2\\\\3>|," \
   -e "/=text=/s,=text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=Text=/s,=Text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1\\2\\\\3>|," \
