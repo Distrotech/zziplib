@@ -1,0 +1,66 @@
+<H3> using two passes </H3>
+
+<P>
+  Lately I did convert the original MKSITE.SH script into an original
+  twopass model and this is the first version of the mksite idea that 
+  I want to publish to a wider audience. Previously the site.html was
+  put as the last "href" in the navigation bar - each file being
+  processed would also register some meta information to sitemap
+  input file that would be used to generate the site.html sitemap.
+</P>
+<P>
+  Now the meta information detection is seperated out to its own
+  pass which does not do anything on output. The per-file meta
+  information can be looked at in a file named "target.html.~~"
+  and the global meta information is found in "-mksite.~~". The
+  ".~~" was chosen since my `make clean` rule usually has an
+  entry `rm *~` so it would also clear out any remainings of the
+  MKSITE.SH runs. Furthermore, many gnu filetools do not list
+  any "backup" files which are recognized via a "*~" pattern.
+</P>
+<P>
+  When all meta information has been parsed then the second pass
+  can start off which will look at the same files again that were
+  also seen in the first pass. For each file we generate two
+  sed scripts - a file "target.html.~head~" and a file 
+  "target.html.~body~". The two scripts are then combined with
+  as simple a run as
+<pre>
+  sed -f target.html.~head~ mksite.htm &gt; target.html
+  sed -f target.html.~body~ target.htm &gt;&gt; target.html
+</pre>
+</P>
+<P>
+  Therefore the main intelligence lies in making of the sed
+  scripts. You can easily implant your own functionality in
+  that model, just invent something that can be expressed
+  in terms of an sed line with an anchor expression and
+  and edit definition. The functionality present can be a
+  guide to your stuff.
+</P>
+<P>
+  The functionality already present will include things like
+<ul>
+<li> convert any uppercase html tag (like &lt;P&gt;) into
+     lowercase and class tag (like &lt;p class="P"&gt;). That
+     allows to customize sister variants of common html marks
+     without touching the original style of the target browser.
+</li>
+<li>
+    expand comment tags with a meta name to bear the meta
+    value, e.g. "&lt;!--title--&gt;" will become "current title".
+    There are some variants of that available as well and most
+    importantly and word following will cleaned as well as it
+    is regared as the default value: "&lt;!--today--&gt;2004/04"
+    might be turned into "2004-04-30".
+</li>
+<li>
+    Some information as defined in the Dublin Core are generated
+    as true HEAD META tags. The ''&lt;meta name="DC.*"&gt;'' lines
+    are pregenerated in an extra file and the "~head~" sed script
+    contains an entry "/<head>r.meta.tmp" to actually implant the
+    meta tags in the correct place in the header.
+</li>
+</ul>
+   Again, there is no magic here. And <b>you</b> can do it too.
+</P>

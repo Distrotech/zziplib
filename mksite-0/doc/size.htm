@@ -1,0 +1,67 @@
+<H3> MKSITE is small </H3>
+
+<P>
+   My primary goal has been always to make MKSITE.SH small enough
+   so that it can be shipped along with any project of mine - and 
+   to also have all the standard functionality in it that I do not
+   need to maintain multiple versions of it. A single mksite.sh
+   file should be used for all of the projects I am using.
+</P>
+<P>
+   To that effect I like to have "magic hints" in the sitefile. 
+   Currently there is only one available at the moment, the
+   one enabled by "&lt;!--mksite:multi--&gt;". From that magic hint 
+   some added functionality will be chosen that you can clearly see
+   in the MKSITE.SH script - it is a simple "if grep mksite:multi" 
+   setting layout varialbes used in both the 1.pass and 2.pass 
+   being near the end of the file.
+</P>
+<P>
+   Currently the MKSITE.SH script is used in a dozen projects of
+   mine but I expect to see it used even more widely. That is
+   simply because I have been rewriting the MKSITE.SH script
+   lately after gaining experiences with the usage of the script
+   in those dozen projects. Now the script should be functional
+   enough for all of them and by its redesign better maintainable
+   and module.
+</P>
+<P>
+   To that effect, it should now be easy to build your own add-on
+   functionality and have it enabled by a magic hint. Whenever
+   something new comes along I can just add it to the MKSITE.SH
+   script. There is enough room still before the script will
+   become "bloated" - a 29 kilobyte at the time of writing is
+   still "tiny" for a website generator of the presented
+   functionallity.
+</P>
+<P>
+   There is a downside however with all that - the speed of the
+   website generation is somewhat slow since we are dependent
+   on a hundred calls to "sed" which may or may not be the
+   lightning-fast tool. My earlier website generators were written
+   in perl (or python) that have highly optimized routines to
+   modify strings and the meta data cache can be built with
+   special data structures in there that are highly optimized
+   as well.
+</P>
+<P>
+   From current experience the MKSITE conversion requires around
+   one second per file. Even for medium project websites this
+   amounts to just a minute or two. If you pass out the hundred
+   of number of pages however then you might want to consider
+   using a special website generator and make it a dependency
+   of your project. The MKSITE.SH is good here as well as it does
+   not force you into any special source format, you can easily
+   just pick up your htm files that you made up so far.
+</P>
+<P>
+   So after all, if you pass the 4 pages limit then pick up
+   MKSITE.SH and write a simple site.html. If you pass the
+   20 pages limit then enable "multi" in MKSITE.SH and add
+   4-16 categories. If you pass out the 8 categories at around 
+   a 100 pages for the website then consider a big iron tool.
+   If you pass out 300 pages then you should have already 
+   switched away for good - or broken down the project into
+   smaller components ready again for MKSITE.SH usage. Where the
+   latter might be a good idea for non-technical reasons too.
+</P>

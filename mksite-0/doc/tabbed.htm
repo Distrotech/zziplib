@@ -1,0 +1,103 @@
+<H3> Tabbed Vertical Navigation Bar </H3>
+
+<pre>
+  &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--title?--&gt;&lt;/title&gt;
+
+  &lt;style&gt;
+   a:link          { text-decoration : none ; color : #000080 ; }
+   a:visited       { text-decoration : none ; color : #200060 ; }
+   .navi           { background-color : #E0F0FF ; }
+   .navo           { background-color : #F8F8FF ; }
+   H3              { text-align : right ; }
+  &lt;/style&gt;
+  &lt;/head&gt;&lt;body&gt;
+
+  &lt;table cellspacing="0" cellpadding="4" width="100%" class="navi"&gt;&lt;tr&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="site.html"&gt;&lt;b&gt;&lt;!--selected--&gt;&lt;/b&gt;&lt;/a&gt;&lt;/td&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;&lt;/td&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;&lt;/td&gt;
+  &lt;/tr&gt;&lt;tr colspan="3"&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+
+  &lt;tr valign="top"&gt;&lt;td width="140"&gt;
+  &lt;hr&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="intro.html"&gt;Introduction&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="where.html"&gt;Related Work&lt;/a&gt;
+
+  &lt;hr&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="loremipsum.html"&gt;Lorem Ipsum&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="nietzsche.html"&gt;Nietzsche&lt;/a&gt;
+
+      &lt;hr&gt;&lt;a href="impressum.html"&gt;Impressum&lt;/a&gt;
+  &lt;br&gt;&lt;a href="site.html"&gt;sitemap&lt;/a&gt;
+  &lt;/td&gt;&lt;td bgcolor="white" colspan="2"&gt;
+
+  &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;
+</pre>
+
+<P> 
+  The tabbed vertical navigation bar style is very similar to the
+  earlier <a href="vertical.html">vertical navigation bar</a>
+  style. It adds two extra <code>&lt;tr&gt;</code>-rows where the
+  first is filled with the section href's. Since they are inside
+  a <code>&lt;td&gt;</code>-block they are not seen as defining
+  the sections and do not interfere with the sitemap.
+</P>
+<P>
+  However as a special the mksite.sh script will see the hrefs
+  inside the <code>&lt;td&gt;</code> and clear out any <code>"class="</code>
+  setting in it. That is the base for the tabbed style: the 
+  whole table was set with a darker background color as per
+  <code>"class=navi"</code> and the first row items were set differently
+  with a lighter color by choosing <code>"class=navo"</code>. 
+  Now when the "navo" style is wiped away for the current section
+  href then the <code>&lt;td&gt;</code> will be drawn in the color
+  of the table which is slightly darker.
+</P>
+<P>
+  As a special note you should watch for the final 
+<nobr>
+  <code>&lt;/td&gt;&lt;td bgcolor="white" colspan="2"&gt;</code>
+</nobr>
+  which is now required since the middle body area should be
+  drawn in white and not the dark background color of the table,
+  and also we need to have it fully available for the body text
+  thereby spanning the number of columns created by the 
+   tab-<code>&lt;td&gt;</code> definitions - here there are "2".
+</P>
+
+<table width="100%" cellspacing="0" cellpadding="0" border="1"><tr>
+<td align="center" width="16">-</td>
+<td align="center"<small><b>common title prefix - lorem ipsum</b></small></td>
+<td align="center" width="16">-</td>
+</tr></table>
+
+
+<table cellspacing="0" cellpadding="4" class="naviXXX"><tr>
+  <td class="navoXXX" align="center"><a href="site.html"><b>Lorem Ipsum</b></a></td>
+  <td class="navoXXX" align="center"><a href="index.html">Overview</a></td>
+  <td align="center"><a href="examples.html">Examples</a></td>
+  </tr><tr colspan="3"><td></td></tr>
+
+  <tr valign="top"><td width="140">
+  <hr><a href="index.html">Overview</a>
+  <br>-<a href="intro.html">Introduction</a>
+  <br>-<a href="where.html">Related Work</a>
+
+  <hr><a href="examples.html">Examples</a>
+  <br>-<b><a href="loremipsum.html">Lorem Ipsum</a></b>
+  <br>-<a href="nietzsche.html">Nietzsche</a>
+
+      <hr><a href="impressum.html">Impressum</a>
+  <br><a href="site.html">sitemap</a>
+  </td><td bgcolor="white" colspan="2">
+
+<p align="right"><b>Lorem Ipsum</b></p>
+<p class="P"><small>
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+</small></p>
+<p class="P"><small>
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+</small></p>
+
+
+  </td></tr></table>

@@ -1,0 +1,87 @@
+<H3> Vertical Navigation Bar </H3>
+
+<pre>
+  &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--title?--&gt;&lt;/title&gt;
+
+  &lt;style&gt;
+   a:link          { text-decoration : none ; color : #000080 ; }
+   a:visited       { text-decoration : none ; color : #200060 ; }
+   .navi           { background-color : #E0F0FF ; }
+   H3              { text-align : right ; }
+  &lt;/style&gt;
+  &lt;/head&gt;&lt;body&gt;
+
+  &lt;table cellspacing="0" cellpadding="4" width="100%"&gt;
+  &lt;tr valign="top"&gt;&lt;td width="140" class="navi" &gt;
+      &lt;center&gt;&lt;em&gt;&lt;!--selected--&gt;&lt;/em&gt;&lt;/center&gt;
+  &lt;hr&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="intro.html"&gt;Introduction&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="where.html"&gt;Related Work&lt;/a&gt;
+
+  &lt;hr&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="loremipsum.html"&gt;Lorem Ipsum&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="nietzsche.html"&gt;Nietzsche&lt;/a&gt;
+
+      &lt;hr&gt;&lt;a href="impressum.html"&gt;Impressum&lt;/a&gt;
+  &lt;br&gt;&lt;a href="site.html"&gt;sitemap&lt;/a&gt;
+  &lt;/td&gt;&lt;td&gt;
+
+  &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;
+</pre>
+
+<P> 
+  The vertical navigation bar consists of a 
+  <code>&lt;table width=100%&gt;</code> definition
+  with a left <code>&lt;td width="140"&gt;</code> column 
+  containing the navigation items. The background color
+  of that column is set to light-blue by means of a css
+  <code>class=navi</code>. 
+</P>
+<P> 
+  The title is set in the first line after which DC.meta information 
+  will be implanted. There is an explicit href to the sitemap that
+  is generated from the meta information from other files - so the
+  "site.htm" file is the sitefile containing the ~head~ source while
+  ~body~ is generated which gets written to the output "site.html".
+  This is different from other htm-&gt;html transformations.
+</P>
+<P>
+  As a technical note: the mksite.sh script will generate a ~head~
+  sed that cuts away the line containing "&lt;/body&gt;". Then ~head~
+  and ~body~ are executed and a final third execution is run that
+  will <em>only</em> append one line to the output html being
+  simply the one line containing "&lt;/body&gt;" in the sitefile.
+  Therefore it is possible to write a fairly complex outer 
+  decoration for the body page in the middle.
+</P>
+
+<table width="100%" cellspacing="0" cellpadding="0" border="1"><tr>
+<td align="center" width="16">-</td>
+<td align="center"<small><b>common title prefix - lorem ipsum</b></small></td>
+<td align="center" width="16">-</td>
+</tr></table>
+
+<table cellspacing="0" cellpadding="4" width="100%">
+  <tr valign="top"><td width="140" class="naviXXX" >
+              <center><em>Lorem Ipsum</em></center>
+  <hr><a href="index.html">Overview</a>
+  <br>-<a href="intro.html">Introduction</a>
+  <br>-<a href="where.html">Related Work</a>
+
+  <hr><a href="examples.html">Examples</a>
+  <br>-<b><a href="loremipsum.html">Lorem Ipsum</a></b>
+  <br>-<a href="nietzsche.html">Nietzsche</a>
+
+       <hr><a href="impressum.html">Impressum</a>
+  <br><a href="site.html">sitemap</a>
+  </td><td>
+<p align="right"><b>Lorem Ipsum</b></p>
+<p class="P"><small>
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+</small></p>
+<p class="P"><small>
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+</small></p>
+
+
+  </td></tr></table>

@@ -1,0 +1,53 @@
+<H3> What is MKSITE.SH </H3>
+
+<blockquote>
+   MKSITE.SH is static website generator tool. It is best for
+   small websites giving them a nice look and feel as per 
+   (a) costumized looks via css specials and (b) a nice feel 
+   through common navigation bar.
+</blockquote>
+
+<P>
+   The custom look idea sprang out of the observation that it is 
+   not good to implant color and font information to the text,
+   and not even set text-align inline. Instead one should
+   reference a css definition. Standard html does only define
+   two colors "foreground" and "background" but for navigation
+   we want atleast two more for "shaded foreground" and "shaded
+   background". So, we need to set those in one place and the
+   regenerate the look for all pages from it. 
+</P>
+<P>
+   Using an external css file makes for a dependency of the look
+   of your webpage, and in fact some browsers can not even show
+   a view if the css file unreachable. As would be for saved-as
+   html page or a project page group that was moved to subdirectory 
+   of another website area. So, in fact we want the css definition
+   inline to each html. A common "sitefile" allows for that.
+</P>
+<P>
+  Secondly, we want a navigation bar that references each page
+  in a category/subcategory manner. For that we can use a "sitefile"
+  as well containg all pages. This "sitefile" does even define the
+  navigation order of next/prev/up, so none of the input htm files
+  needs to remember that. The input htm files however contain the
+  true (long) title and description whereas the "sitefile" only
+  has a shorthand for navigation purpose.
+</P>
+<P>
+  When a website gets beyond a dozen pages we often see viewers to
+  get lost in the navigation no matter how simple we did try to 
+  make it. The reason is in the "shorthand"s used on the navigation
+  bar. That has made most experienced webdesigners to create an
+  index and/or sitemap file additionally that lists <em><b>all</b></em>
+  webpages along with their (long) description. As the counter effect
+  we use even more rigid shorthands on the navigation bar now which
+  makes for a lighter non-overloaded look of the navigation bar. So
+  that people don't overlook the "FAQ" item.
+</P>
+
+
+
+
+
+

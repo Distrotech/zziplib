@@ -1,0 +1,108 @@
+<H3> Multi Section Vertical Navigation Bar </H3>
+
+<pre>
+  &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--title?--&gt;&lt;/title&gt;
+
+  &lt;style&gt;
+   a:link          { text-decoration : none ; color : #000080 ; }
+   a:visited       { text-decoration : none ; color : #200060 ; }
+   .navi           { background-color : #E0F0FF ; }
+   .navo           { background-color : #F8F8FF ; }
+   H3              { text-align : right ; }
+  &lt;/style&gt;
+  &lt;/head&gt;&lt;body&gt;
+
+  &lt;table cellspacing="0" cellpadding="4" width="100%" class="navi"&gt;&lt;tr&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="site.html"&gt;&lt;b&gt;&lt;!--selected--&gt;&lt;/b&gt;&lt;/a&gt;&lt;/td&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;&lt;/td&gt;
+  &lt;td class="navo" align="center"&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;&lt;/td&gt;
+  &lt;/tr&gt;&lt;tr colspan="3"&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;
+
+  &lt;tr valign="top"&gt;&lt;td width="140"&gt;   &lt;!--mksite:multi--&gt;
+  &lt;hr&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="intro.html"&gt;Introduction&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="where.html"&gt;Related Work&lt;/a&gt;
+
+  &lt;hr&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="loremipsum.html"&gt;Lorem Ipsum&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="nietzsche.html"&gt;Nietzsche&lt;/a&gt;
+
+      &lt;hr&gt;&lt;a href="impressum.html"&gt;Impressum&lt;/a&gt;
+  &lt;br&gt;&lt;a href="site.html"&gt;sitemap&lt;/a&gt;
+  &lt;/td&gt;&lt;td bgcolor="white" colspan="2"&gt;
+
+  &lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;
+</pre>
+
+<P> 
+  The multi section vertical navigation bar style is very similar to the
+  earlier <a href="tabbed.html">tabbed navigation bar</a> style. It has
+  only one difference: the magic hint <b>&lt;!--mksite:multi--&gt;</b>.
+</P>
+<P>
+  In the earlier <a href="tabbed.html">tabbed navigation bar</a> 
+  example the tabs were rather optional since all the sections were
+  visible in the vertical bar as well. In the multi section view
+  however they are the main navigation items to choose another
+  section. Of course you are free to add quicklinks (indented
+  with whitespace) as an additinal navigation help but we do not
+  show that here.
+</P>
+<P>
+  What you should now look at is the fact that the left vertical
+  navigation bar has none of the hrefs that do not belong to the
+  current section - effectivly making only the pages of the
+  current section visible plus any additional hrefs that were
+  not seen by mksite.sh as being section hrefs. Btw, the actual 
+   implementation deletes the lines of the
+  section hrefs in the source file (or commented them out).
+  Since the &lt;hr&gt; tags were on the same line as their section
+  header name they are gone as well.
+</P>
+<P>
+  Of course for such a low number of pages as in this example
+  it turns out not be a good idea to go for multi section view.
+  There are just three page href items left here which makes the
+  user to click too often to get to the item she wishes for.
+  But it really flies when you have more than 20 pages which
+  will then add up in the left vertical navigation bar so much
+  they span as far down as being not anymore visible in a browser
+  view - not to speak of the human eye which can not easily
+  catch more than 7-10 items.
+</P>
+
+
+
+<table width="100%" cellspacing="0" cellpadding="0" border="1"><tr>
+<td align="center" width="16">-</td>
+<td align="center"<small><b>common title prefix - lorem ipsum</b></small></td>
+<td align="center" width="16">-</td>
+</tr></table>
+
+
+<table cellspacing="0" cellpadding="4" class="naviXXX"><tr>
+  <td class="navoXXX" align="center"><a href="site.html"><b>Lorem Ipsum</b></a></td>
+  <td class="navoXXX" align="center"><a href="index.html">Overview</a></td>
+  <td align="center"><a href="examples.html">Examples</a></td>
+  </tr><tr colspan="3"><td></td></tr>
+
+  <tr valign="top"><td width="140">
+
+  <hr><a href="examples.html">Examples</a>
+  <br>-<b><a href="loremipsum.html">Lorem Ipsum</a></b>
+  <br>-<a href="nietzsche.html">Nietzsche</a>
+
+      <hr><a href="impressum.html">Impressum</a>
+  <br><a href="site.html">sitemap</a>
+  </td><td bgcolor="white" colspan="2">
+
+<p align="right"><b>Lorem Ipsum</b></p>
+<p class="P"><small>
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+</small></p>
+<p class="P"><small>
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+</small></p>
+
+
+  </td></tr></table>

@@ -1,0 +1,82 @@
+<H3> ...and it works </H3>
+
+<P>
+  On the <a href="how.html">prior page</a> we were presenting a
+  simple sitemap file to show how to tell MKSITE.SH which of the
+  hrefs are entries that it shall process from "*.htm" source
+  into a "*.html" file with full navigation and meta tags. It
+  was not complete for the usual navigation bar going vertically
+  on the left side of a browser view - so here is a complete
+  example:
+</P>
+<pre>
+  &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--title?--&gt;&lt;/title&gt;
+  &lt;style&gt;
+   a:link          { text-decoration : none ; color : #000080 ; }
+   a:visited       { text-decoration : none ; color : #200060 ; }
+   .navi           { background-color : #E0E0FF ; }
+  &lt;/style&gt;
+  &lt;/head&gt;&lt;body&gt;
+  &lt;table class="navi" cellspacing="0" cellpadding="4" width="100%"&gt;
+  &lt;tr valign="top"&gt;&lt;td width="140"&gt;
+  &lt;hr&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="intro.html"&gt;Introduction&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="where.html"&gt;Downloads&lt;/a&gt;
+  &lt;hr&gt;&lt;a href="doc.html"&gt;Documentation&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="man.html"&gt;Manual Page&lt;/a&gt;
+  &lt;br&gt;-&lt;a href="ref.html"&gt;Cross References&lt;/a&gt;
+       &lt;hr&gt;&lt;a href="impressum.html"&gt;Impressum&lt;/a&gt; &lt;hr&gt;
+  &lt;br&gt;&lt;a href="site.html"&gt;sitemap&lt;/a&gt; &lt;hr&gt;
+  &lt;/td&gt;&lt;td&gt;
+  &lt;/body&gt;&lt;/html&gt;
+</pre>
+<P>
+  The MKSITE.SH will see six files to be potentionally to be converted
+  where the HR[] denotes the sect1 categories - and whereas the BR[-] lines
+  with an additional designator char point to the sect2 subcategorized
+  pages. The last "impressum" line is not seen as its line does start
+  off with additional whitespace.
+</P>
+<P>
+  The sect1/sect2 relation is not important for a simple sitefile like
+  shown above, here just treat all hrefs as navigation pointers as such. The
+  sect1/sect2 relation will get important when you enable the multi-view
+  which is simply done by putting a &lt;!--mksite:multi--&gt; hint somewhere
+  in the sitefile (on its own line). Suddenly you will get two different
+  navigation bar looks where one will only show entries under "Overview"
+  and the other only entries under "Documentation". Both generated
+  navigation bar types will contain the "Impressum" link.
+</P>
+<P>
+  If you enable the &lt;!--mksite:multi--&gt; view then the site.html sitemap
+  file will also change into a multi-column layout. That allows to
+  present a hundred files in a compact notation along with their long
+  title as has been parsed out from those *.htm source files. It is
+  also an easy way for a developer to get an overview whether all pages
+  are present that she did want to show to the user - and to know the
+  subject lines as would be listed by <a href="http://google.com">google</a>.
+</P>
+<P>
+  Note that you can customize the sect1/sect2 relations easily - simply
+  edit the mksite.sh that you ship with your project. Look for series
+  of "echo"s to ".gets.tmp" somewhere around the middle of the script.
+  The "sect1/sect2/sect3" relations are very explicit there and later
+  steps will be always using those annotations.
+</P>
+<P>
+  And if you are keen on the tab-like multi-column layout of this
+  webpage then be informed that this is simply a longer sitefile
+  that usual - there are no functional differences for that in the
+  MKSITE.SH script. It is just that MKSITE.SH will look for lines
+  containing a "href" to one of its generated pages. If it does find
+  such then it will put B'bold marks around the current page and
+  kill a "class=" hint from a TD'mark containing the section name of
+  the current page.
+</P>
+<P>
+  In other words, there is no <b>magic</b> in here. The MKSITE.SH is very
+  short and I did try to make it easy to read - so you can easily
+  derive your own version to ship along with your project sources.
+  It would be nice if you'd inform me of your changes so that I can
+  profit of your ideas just as you did from mine.
+</P>

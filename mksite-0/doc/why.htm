@@ -1,0 +1,60 @@
+<H3> Why does MKSITE.SH exist </H3>
+
+<P>
+ I have experiences with a lot of doc generator tools. Most of the
+ sophisticated generator tools need to pre-installed in a system in
+ order to let your project get documentation. Package do not like
+ that atleast, and its only acceptable for them if it is a very
+ common package also used in a lot of other projects. The counter
+ effect is that they are not very flexible, you can not easily add
+ your own stuff, and mostly those third party packages have yet
+ other dependencies that you can not tell to those who want to 
+ install your package from source.
+</P>
+
+<P>
+ In the end I came to the conclusion to not like to have a third party
+ dependency for simple html documentation. In most cases that is just
+ acceptable. In order to allow for a pleasant web site layout, I did
+ start to separate a navigation bar as an html snippet and the real
+ documentation files each in separate pages, and using simple sed
+ scripts to combine these into the final pages (per makefile rule)
+ Be assured that it did turn out to be sufficient for all the plain 
+ documentation of a project.
+</P>
+<P>
+ The only problem had been that it is only good for rather small
+ documentation sites that can be limited to a static navigation
+ bar. Each direct item is listed in the nav bar, and most other parts
+ won't get a nav bar at all as the resulting navigation is not easy 
+ and does not have a professional look with feedback and nav buttons 
+ to click as next and back and up.
+</P>
+<P>
+ Furthermore and over time some of my "small" website had grown
+ out of the dozen pages so that the navigation bar grew longer and
+ longer to a point that the eye got lost. For some of the projects
+ I got email question that were clearly answered in the online FAQ
+ or atleast webpage documentation specifically taylored to the
+ topic. So there was more and more a pressure to sectionize the
+ website into categories which should stand out prominently for
+ any use coming across.
+</P>
+<P>
+ That can be done with simple sed script as well but it did turn
+ out to be another file to maintain properly, and obviously sed
+ syntax is error prone in this respect. So the correct way is to
+ generate the "sed" script from the navigation bar itself. With
+ all the information available, it was also possible to generate
+ a sitemap automatically - and that's where the project got its
+ name from.
+</P>
+<P>
+ So after all the mksite.sh project is a simple static website
+ generator that can handle 100+ pages and group them into
+ categories using meta information to do somewhat more than
+ just a <nobr><tt>`cat site.htm page.htm &gt; page.html`</tt></nobr>
+ where it did all start from. And it only requires a bourne
+ shell and grep/sed which comes with any posix'ish operating
+ sytem in the world.
+</P>

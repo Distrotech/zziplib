@@ -26,7 +26,7 @@ site.html : *.htm mksite.sh
 clean : 
 	- rm *.html */*.html */*.tmp
 
-DISTFILES = GNUmakefile README COPYING.ZLIB \
+DISTFILES = GNUmakefile README.TXT COPYING.ZLIB \
             mksite.txt mksite.sh mksite.gif \
             doc/*.htm test*/*.htm
 SUBDIRS =

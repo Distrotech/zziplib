@@ -1,0 +1,24 @@
+<H2> Developer Information </H2>
+
+<P>
+  The sitefile (usually named <a href="site.htm">"site.htm"</a>) 
+  is very simple being itself just a true html file - you can use
+  a normal html browser to have a look and you should see the
+  full decoration where only the "body area" is left empty.
+</P>
+
+<P>
+  The actual shell scripts works in two passes generating cache
+  files containing the meta information about each file. That
+  file is used to create sed scripts that will be doing the
+  actual transformation on the ~head~ file (site.htm) and the
+  ~body~ file (the input *.htm).
+</P>
+
+<P>
+  While the results might look astonishingly as if made by a
+  big iron "sophisticated" tool it turns out that the actual
+  shell script "mksite.sh" is still very small - almost tiny
+  compared to other source files. It is easy to ship along
+  with your projects, perhaps in a slightly modified variant.
+</P>

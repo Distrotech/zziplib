@@ -1,0 +1,707 @@
+#! /bin/sh
+# this is the sh/sed variant of the mksite script. It is largely
+# derived from snippets that I was using to finish doc pages for 
+# website publishing. For the mksite project the functionaliy has
+# been expanded of course. Still this one does only use simple unix
+# commands like sed, date, and test. And it still works. :-)=)
+#                                               http://zziplib.sf.net/mksite/
+#   THE MKSITE.SH (ZLIB/LIBPNG) LICENSE
+#       Copyright (c) 2004 Guido Draheim <guidod@gmx.de>
+#   This software is provided 'as-is', without any express or implied warranty
+#       In no event will the authors be held liable for any damages arising
+#       from the use of this software.
+#   Permission is granted to anyone to use this software for any purpose, 
+#       including commercial applications, and to alter it and redistribute it 
+#       freely, subject to the following restrictions:
+#    1. The origin of this software must not be misrepresented; you must not
+#       claim that you wrote the original software. If you use this software 
+#       in a product, an acknowledgment in the product documentation would be 
+#       appreciated but is not required.
+#    2. Altered source versions must be plainly marked as such, and must not
+#       be misrepresented as being the original software.
+#    3. This notice may not be removed or altered from any source distribution.
+
+# initialize some defaults
+test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
+test ".$SITEFILE" = "." && test -f site.html && SITEFILE=site.html
+MK="-mksite"  # note the "-" at the start
+SED="sed"
+CAT="cat"     # "sed -e n" would be okay too
+GREP="grep"
+
+INFO="~~"     # extension for meta data files
+HEAD="~head~" # extension for head sed script
+BODY="~body~" # extension for body sed script
+
+NULL="/dev/null"                             # to divert stdout/stderr
+CATNULL="$CAT $NULL"                         # to create 0-byte files
+
+az="abcdefghijklmnopqrstuvwxyz"              # some old sed tools can not
+AZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ"              # use char-ranges in the 
+NN="0123456789"                              # match expressions so that
+AA="_$NN$AZ$az"                              # we use their unrolled
+AX="$AA.+-"                                  # definition here
+if $SED -V 2>$NULL | grep "GNU sed" >$NULL ; then
+az="a-z"                                     # but if we have GNU sed
+AZ="A-Z"                                     # then we assume there are
+NN="0-9"                                     # char-ranges available
+AA="_$NN$AZ$az"                              # that makes the resulting
+AX="$AA.+-"                                  # script more readable
+fi
+
+# ==========================================================================
+# reading options from the command line                            GETOPT
+opt_fileseparator="?"
+opt_files=""
+opt_main_file=""
+opt=""
+for arg in "$@"        # this variant should allow to embed spaces in $arg
+do if test ".$opt" != "." ; then
+      eval "export opt_$opt='$arg'"
+      opt=""
+   else
+      case "$arg" in
+      -*=*) 
+         opt=`echo "$arg" | $SED -e "s/-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
+         if test ".$opt" = "." ; then
+            echo "ERROR: invalid option $arg" >&2
+         else
+            arg=`echo "$arg" | $SED -e "s/^[^=]*=//"`
+            eval "export opt_$opt='$arg'"
+         fi
+         opt="" ;;
+      -*-*)   
+         opt=`echo "$arg" | $SED -e "s/-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
+         if test ".$opt" = "." ; then
+            echo "ERROR: invalid option $arg" >&2
+            opt=""
+         else :
+            # keep the option for next round
+         fi ;;
+      -*)  
+         opt=`echo "$arg" | $SED -e "s/^-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
+         if test ".$opt" = "." ; then
+            echo "ERROR: invalid option $arg" >&2
+         else
+            arg=`echo "$arg" | $SED -e "s/^[^=]*=//"`
+            eval "export opt_$opt=' '"
+         fi
+         opt="" ;;
+      *) test ".$opt_main_file" == "." && opt_main_file="$arg"
+         test ".$opt_files" != "." && opt_files="$opt_files$opt_fileseparator"
+         opt_files="$opt_files$arg"
+         opt="" ;;
+      esac
+   fi
+done
+### env | grep ^opt
+
+test ".$opt_main_file" != "." && test -f "$opt_main_file" && \
+SITEFILE="$opt_main_file"
+test ".$opt_site_file" != "." && test -f "$opt_site_file" && \
+SITEFILE="$opt_site_file"
+
+if test ".$SITEFILE" = "." ; then
+   echo "error: no SITEFILE found (default would be 'site.htm')"
+   exit 1
+fi
+
+# ==========================================================================
+# init a few global variables
+#                                                                  0. INIT
+
+# $MK.tags.tmp - originally, we would use a lambda execution on each 
+# uppercased html tag to replace <P> with <p class="P">. Here we just
+# walk over all the known html tags and make an sed script that does
+# the very same conversion. There would be a chance to convert a single
+# tag via "h;y;x" or something we do want to convert all the tags on
+# a single line of course.
+$CATNULL > $MK.tags.tmp
+for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
+         B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
+         CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS
+do M=`echo $P | $SED -e "y|$AZ|$az|"`
+  echo "s|<$P>|<$M class=\"$P\">|g"         >>$MK.tags.tmp
+  echo "s|<$P |<$M class=\"$P\" |g"         >>$MK.tags.tmp
+  echo "s|</$P>|</$M>|g"                    >>$MK.tags.tmp
+done
+  echo "s|<>|\\&nbsp\\;|g"                  >>$MK.tags.tmp
+  echo "s|<->|<WBR />\\;|g"                 >>$MK.tags.tmp
+# also make sure that some non-html entries are cleaned away that
+# we are generally using to inject meta information. We want to see
+# that meta ino in the *.htm browser view during editing but they
+# shall not get present in the final html page for publishing.
+DC_VARS="contributor date source language coverage identifier rights"
+DC_VARS="$DC_VARS relation creator subject description publisher "
+for P in $DC_VARS ; do # dublin core embedded
+   echo "s|<$P>[^<>]*</$P>||g"              >>$MK.tags.tmp
+done
+   echo "s|<!--[$AX]*[?]-->||g"             >>$MK.tags.tmp
+   echo "s|<!--sect[$AZ$NN]-->||g"          >>$MK.tags.tmp
+
+
+TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
+# ======================================================================
+#                                                                FUNCS
+sed_anchor ()      # helper to escape chars special in /anchor/ regex
+{
+    echo "$1" | $SED -e "s|/|\\\\/|g" -e "s|\\[|\\\\[|g"
+}
+
+back_path ()          # helper to get the series of "../" for a given path
+{
+    echo "$F" | $SED -e "/\\//!d" -e "s|/[^/]*\$|/|" -e "s|[^/]*/|../|g"
+}
+
+info2vars ()          # generate <!--vars--> substition sed addon script
+{
+  OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.vars.tmp"
+  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  V2=" *\\([^ ][^ ]*\\) \\(.*\\)"
+  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=Text=/s,=Text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=name=/s,=name=$V3,s|<!--\\1[?]-->[$AX]*| - \\2|," \
+  -e "/=Name=/s,=Name=$V3,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
+  -e "/=text=/s,=text=$V2,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=Text=/s,=Text=$V2,s|<!--\\1-->[$AX]*|\\2|," \
+  -e "/=name=/s,=name=$V2,s|<!--\\1[?]-->[$AX]*| - \\2|," \
+  -e "/=Name=/s,=Name=$V2,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
+}
+
+info2meta ()         # generate <meta name..> text portion
+{
+  # http://www.metatab.de/meta_tags/DC_type.htm
+  OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.meta.tmp"
+  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  V2=" *\\([^ ][^ ]*\\) \\(.*\\)" ; SCHEME="scheme=\"\\1\""
+  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
+  INFO_META_TYPEDCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
+  INFO_META_NAME="name=\"\\1\" content=\"\\2\""
+  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `date +%z`\"" 
+  $SED -e "/=....=today /d" \
+  -e "/=meta=DC[.]DCMIType /s,=meta=$V3,<meta $INFO_META_TYPE_SCHEME />," \
+  -e "/=meta=DC[.]type Collection$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Dataset$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Event$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Image$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Service$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Software$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Sound$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]type Text$/s,=meta=$V2,<meta $INFO_META_TYPEDCMI />," \
+  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V2,<meta $INFO_META_NAME />," \
+  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V2,<meta $INFO_META_NAME_TZ />," \
+  -e "/=meta=/s,=meta=$V2,<meta $INFO_META_NAME />," \
+  -e "/<meta name=\"[^\"]*\" content=\"\" /d" \
+  -e "/^=/d" $INP > $OUT
+}
+
+info_get_entry () # get the first <!--vars--> value known so far
+{
+  TXT="$1" ; test ".$TXT" = "." && TXT="sect"
+  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  $SED -e "/=text=$TXT /!d" -e "s/=text=$TXT //" -e "q" $INP # to stdout
+}
+
+info1grep () # test for a <!--vars--> substition to be already present
+{
+  TXT="$1" ; test ".$TXT" = "." && TXT="sect"
+  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  $GREP "^=text=$TXT " $INP >$NULL
+  return $?
+}
+
+DX_text ()   # add a <!--vars--> substition includings format variants
+{
+   N="$1" ; T="$2"
+   if test ".$N" != "." ; then
+      if test ".$T" != "." ; then
+         text=`echo "$T" | $SED -e "y/$AZ/$az/"`
+         echo       "=text=$N $T"                       >> $F.$INFO
+         echo       "=name=$N $text"                    >> $F.$INFO
+         varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
+         if test ".$N" != ".$varname" ; then 
+         text=`echo "$varname $T" | $SED -e "y/$AZ/$az/"`
+         echo       "=Text=$varname $T"                 >> $F.$INFO
+         echo       "=Name=$varname $text"              >> $F.$INFO
+         fi
+      fi
+   fi
+}
+
+DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
+{
+   echo "=meta=$1 $2"  >> $F.$INFO
+   DX_text "$1" "$2"
+}
+
+DC_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
+{
+   echo "=meta=DC.$1 $2"  >> $F.$INFO
+   DX_text "DC.$1" "$2"
+   DX_text "$1" "$2"
+}
+
+DC_VARS_Of () # check DC vars as listed in $DC_VARS global and generate DC_meta
+{             # the results will be added to .meta.tmp and .vars.tmp later
+   FILENAME="$1" ; test ".$FILENAME" = "." && FILENAME="$SOURCEFILE"   
+   for M in $DC_VARS title ; do
+      # scan for a <markup> of this name
+      term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
+      part=`eval $SED $term $TRIMM -e q $FILENAME`
+      text=`echo "$part" | eval $SED -e "'s|^[$AA]*:||'" $TRIMM`
+      # <mark:part> will be <meta name="mark.part">
+      if test ".$text" != ".$part" ; then
+         N=`echo "$part" | $SED -e "s/:.*//"`
+         DC_meta "$M.$N" "$text"
+      elif test ".$M" = ".date" ; then
+         DC_meta "$M.issued" "$text" # "<date>" -> "<date>issued:"
+      else
+         DC_meta "$M" "$text"
+      fi
+   done
+}
+
+DC_isFormatOf ()       # make sure there is this DC.relation.isFormatOf tag
+{                      # choose argument for a fallback (usually $SOURCEFILE)
+   NAME="$1" ; test ".$NAME" = "." && NAME="$SOURCEFILE"   
+   info1grep DC.relation.isFormatOf || DC_meta relation.isFormatOf "$NAME"
+}
+
+DC_publisher ()        # make sure there is this DC.publisher meta tag
+{                      # choose argument for a fallback (often $USER)
+   NAME="$1" ; test ".$NAME" = "." && NAME="$USER"
+   info1grep DC.publisher || DC_meta publisher "$NAME"
+}
+
+DC_modified ()         # make sure there is a DC.date.modified meta tag
+{                      # maybe choose from filesystem dates if possible
+   Q="$1" # target file
+   if ! info1grep DC.date.modified 
+   then meta='<meta name="DC.date.modified"'
+       modified=`stat $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
+       modified=`echo "$modified" | eval $SED -e "'s/:..[.][$NN]*//'" $TRIMM`
+       test ".$modified" = "." && modified=`date -f "$Q" +%Y-%m-%d 2>$NULL`
+       test ".$modified" = "." && modified=`ls -l "$Q" | cut -b 43-55`
+       DC_meta date.modified "$modified"
+   fi
+}
+
+DC_date ()             # make sure there is this DC.date meta tag
+{                      # choose from one of the available DC.date.* specials
+   Q="$1" # source file
+   if ! info1grep DC.date
+   then text=""
+      for kind in available issued modified created ; do
+        text=`info_get_entry DC.date.$kind` 
+      # test ".$text" != "." && echo "$kind = date = $text ($Q)"
+        test ".$text" != "." && break
+      done
+      if test ".$text" = "." ; then
+        M="date"
+        term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
+        part=`eval $SED $term $TRIMM -e q $Q`
+        text=`echo "$part" | eval $SED -e "'s|^[$AA]*:||'" $TRIMM`
+      fi
+      if test ".$text" = "." ; then 
+         # this should be rewritten.... ugly way to parse out a date:
+         CLEAN=" -e '/^%%%%%/!d' -e 's:^%*::' -e 's:</.*::' -e 's:.*>::'"
+         EDATE=" -e 's:.*<date>:%%%%%%:' -e 's:.*<!--date-->:%%%%%%:' $CLEAN"
+         text=`eval $SED $EDATE $TRIMM -e "'s|^ *[$AA]*:||'" -e q $Q` 
+         text=`echo "$text" | $SED -e 's|\\&.*||'`
+      fi
+      text=`echo "$text" | $SED -e "s/[$NN]*:.*//"`
+      DC_meta date "$text"
+      DX_text issue "$kind $text"
+   else
+      DX_text issue "dated `info_get_entry DC.date`"
+   fi
+}
+
+DC_title ()
+{
+   # choose a title for the document, either an explicit title-tag
+   # or one of the section headers in the document or fallback to filename
+   Q="$1" # target file
+   if ! info1grep DC.title
+   then
+      for M in TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6 ; do
+        term="-e '/<$M>/!d' -e 's|.*<$M>||' -e 's|</$M>.*||'"
+        text=`eval $SED $term $TRIMM -e q $Q`
+        test ".$text" != "." && break
+        term="-e '/<$M [^<>]*>/!d' -e 's|.*<$M [^<>]*>||' -e 's|</$M>.*||'"
+        text=`eval $SED $term $TRIMM -e q $Q`
+        test ".$text" != "." && break
+      done
+      if test ".text" = "." ; then
+        text=`basename $Q .html | $SED -e 'y/_/ /' -e "s/\\$/ info/"`
+      fi
+      term=`echo "$text" | $SED -e 's/.*[(]//' -e 's/[)].*//'`
+      text=`echo "$text" | $SED -e 's/[(][^()]*[)]//'`
+      if test ".$term" = "." || test ".$term" = ".$text" ; then
+         DC_meta title "$text"
+      else
+         DC_meta title "$term - $text"
+      fi
+   fi
+}    
+
+DC_section () # not really a DC relation (shall we use isPartOf ?) 
+{             # each document should know its section father
+   Q="$1" # source file
+   FF=`sed_anchor "$F"`
+   sectn=`$SED -e "/^=sect=$FF /!d" -e "s/^=sect=$FF //" -e q ./$MK.$INFO`
+   if test ".$sectn" != "." ; then
+      DC_meta relation.section "$sectn"
+   fi
+}
+
+DC_selected () # not really a DC title (shall we use alternative ?)
+{
+   # each document might want to highlight the currently selected item
+   Q="$1" # source file
+   FF=`sed_anchor "$F"`
+   short=`$SED -e "/=use.=$FF /!d" -e "s/=use.=[^ ]* //" -e q ./$MK.$INFO`
+   if test ".$short" != "." ; then
+      DC_meta title.selected "$short"
+   fi
+}
+
+make_move () # experimental - make a ~move~ file that can be applied
+{            # to htm sourcefiles in a subdirectory of the sitefile.
+    S=`back_path "$F"` 
+    if test ".$S" = "" ; then
+       # echo "backpath '$F' = none needed"
+       $CATNULL > $F.~move~
+    else
+       # echo "backpath '$F' -> '$S'"
+      $SED -e "/href=\"[^\"]*\"/!d" -e "s/.*href=\"//" -e "s/\".*//" \
+         -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" \
+       $SITEFILE $X | sort | uniq \
+       | $SED -e "s,.*,s|href=\"&\"|href=\"$S&\"|," > $F.~move~
+    fi
+}
+
+siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
+{
+  OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.site.tmp"
+  INP="$2" ; test ".$INP" = "." && INP="./$MK.$INFO"
+  _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
+  _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
+  _page_="s|<!--\"\\1\"-->.*<!--page-->|\\&<page>\\2</page>|"
+  $SED -e "s:=list=\\([^ ]*\\) \\(.*\\):$_list_:" \
+       -e "s:=date=\\([^ ]*\\) \\(.*\\):$_date_:" \
+       -e "s:=long=\\([^ ]*\\) \\(.*\\):$_page_:" \
+       -e "/^s|/!d" $INP > $OUT
+}
+
+make_multisitemap ()
+{  # each category gets its own column along with the usual entries
+   OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="./$F.$BODY"
+   INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
+  _form_="<!--\"\\2\"--><!--use\\1--><!--page--><!--end\\1-->"
+  _form_="$_form_<br><!--name--><!--date-->"
+  _tiny_="small><small><small" ; _tinyX_="small></small></small "
+  _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
+  echo "<table width=\"100%\"><tr><td> " > $OUTPUT
+  $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
+       -f ./$MK.site.tmp -e "/<name/!d" \
+       -e "s|<!--use1-->|</td><td valign=\"top\"><b>|" \
+       -e "s|<!--end1-->|</b>|"  \
+       -e "s|<!--use2-->|<br>|"  \
+       -e "s|<!--use.-->|<br>|" -e "s/<!--[^<>]*-->/ /g" \
+       -e "s|<page>||" -e "s|</page>||" \
+       -e "s|<name |<$_tiny_><a |" -e "s|</name>||" \
+       -e "s|<date>| |" -e "s|</date>|</a><br></$_tinyX_>|" \
+       $INPUTS              >> $OUTPUT
+   echo "</td><tr></table>" >> $OUTPUT
+}
+
+make_listsitemap ()
+{   # traditional - the body contains a list with date and title extras
+   OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="$F.$BODY"
+   INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
+   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--page-->"
+   _tabb_="<td>\\&nbsp\\;</td>" 
+   echo "<table width=\"80%\" cellspacing=\"0\" cellpadding=\"0\">" > $OUTPUT
+   $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
+        -f ./$MK.site.tmp -e "/<name/!d" \
+        -e "s|<!--use1-->|<tr><td>*</td>|" \
+        -e "s|<!--use2-->|<tr><td>-</td>|" \
+        -e "s|<!--use.-->|<tr><td> </td>|" -e "s/<!--[^<>]*-->/ /g" \
+        -e "s|<name |<td><a |" -e "s|</name>|</a></td>$_tabb_|" \
+        -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
+        -e "s|<page>|<td><em>|" -e "s|</page>|</em></td></tr>|" \
+        $INPUTS             >> $OUTPUT
+   echo "</table>"          >> $OUTPUT
+}
+
+
+# ==========================================================================
+#  
+#  During processing we will create a series of intermediate files that
+#  store relations. They all have the same format being
+#   =relationtype=key value
+#  where key is usually s filename or an anchor. For mere convenience
+#  we assume that the source html text does not have lines that start
+#  off with =xxxx= (btw, ye remember perl section notation...). Of course
+#  any other format would be usuable as well.
+#
+
+# we scan the SITEFILE for href references to be converted
+# - in the new variant we use a ".gets.tmp" sed script that            SECTS
+# marks all interesting lines so they can be checked later
+# with an sed anchor of <!--sect[$NN]--> (or <!--sect[$AZ]-->)
+Hr="hr"
+He="hr><em"
+Br="br"
+Bs="br><small"
+Be="br><em"
+Eu="u"
+Es="small"
+echo     "/^<$Hr>[-|[]*<a href=/s/^/<!--sect1-->/"      > $MK.gets.tmp
+echo     "/^<$He>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
+echo     "/^<$Br>[*][*]*<a href=/s/^/<!--sect1-->/"    >> $MK.gets.tmp
+echo     "/^<$Br>[-|][-|]*<a href=/s/^/<!--sect2-->/"  >> $MK.gets.tmp
+echo     "/^<$Br>[/:][/:]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
+echo     "/^<$Br>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
+echo     "/^<$Bs>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
+echo     "/^<$Be>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
+echo     "/^<$Eu>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
+echo     "/^<$Br>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
+echo     "/^<$Bs>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
+echo     "/^<$Be>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
+echo     "/^<$Es>[/:,[]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+$SED -e "s/>\\[/> *[/" ./$MK.gets.tmp > $MK.puts.tmp
+# the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
+# shall not be used otherwise for being generated - this is nice for
+# some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
+
+# scan sitefile for references pages - store as =use+= relation
+_uses_="=use\\1=\\2 \\3" ; _sect_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*"
+$SED -f $MK.gets.tmp           -e "/<!--sect[$NN]-->/!d" \
+     -e "s:$_sect_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
+     $SITEFILE > $MK.$INFO
+# scan used pages and store relation =sect= pointing to section group
+$SED -e "/=use.=/!d" -e "/=use1=/{h;s:=use1=\\([^ ]*\\) .*:\\1:;x}" \
+     -e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
+     -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
+
+FILELIST=`$SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK.$INFO`
+
+# ==========================================================================
+# originally this was a one-pass compiler but the more information
+# we were scanning out the more slower the system ran - since we
+# were rescanning files for things like section information. Now
+# we scan the files first for global information.
+#                                                                    1.PASS
+
+for F in $FILELIST ; do case "$F" in
+http:*|*://*) ;; # skip
+${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
+if test "$SOURCEFILE" != "$F" ; then
+   echo "=text=today `date +%Y-%m-%d`"               > $F.$INFO
+   echo "=meta=formatter `basename $0`"             >> $F.$INFO
+   DC_meta title sitemap
+   DC_meta date.available `date +%Y-%m-%d`
+   DC_meta subject sitemap
+   DC_meta DCMIType Collection
+   DC_VARS_Of $SOURCEFILE 
+   DC_modified $SOURCEFILE ; DC_date $SOURCEFILE 
+   test ".$USER" != "." && DC_publisher "$USER"
+   echo "'$SOURCEFILE': " sitemap
+   echo "=list=$F sitemap"          >> $MK.$INFO
+   echo "=date=$F `date +%Y-%m-%d`" >> $MK.$INFO
+   echo "=long=$F generated sitemap index" >> $MK.$INFO
+fi ;;
+../*) 
+   echo "!! -> '$F' (skipping topdir build)"
+   ;;
+# */*.html) 
+#    make_move  # try for later subdir build
+#    echo "!! -> '$F' (skipping subdir build)"
+#    ;;
+# */*/*/|*/*/|*/|*/index.htm|*/index.html) 
+#    echo "!! -> '$F' (skipping subdir index.html)"
+#    ;;
+*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
+if test "$SOURCEFILE" != "$F" ; then :
+if test -f "$SOURCEFILE" ; then make_move
+   echo "=text=today `date +%Y-%m-%d`"               > $F.$INFO
+   echo "=text=todaytarbz2 `date +%Y-%m%d`.tar.bz2" >> $F.$INFO
+   echo "=meta=formatter `basename $0`"             >> $F.$INFO
+   echo "" >$F # let's go...
+   DC_VARS_Of "$SOURCEFILE" 
+   DC_title "$SOURCEFILE"
+   DC_isFormatOf "$SOURCEFILE" 
+   DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE" ; DC_date "$SITEFILE"
+   DC_section "$F" ;  DC_selected "$F"
+   test ".$USER" != "." && DC_publisher "$USER"
+   DX_text date.formatted `date +%Y-%m-%d`
+   sectn=`info_get_entry DC.relation.section`
+   short=`info_get_entry DC.title.selected`
+   echo "=list=$short" >> $F.$INFO    ; echo "=list=$F $short" >> $MK.$INFO
+   title=`info_get_entry DC.title`
+   echo "=page=$title" >> $F.$INFO    ; echo "=long=$F $title" >> $MK.$INFO
+   edate=`info_get_entry DC.date`
+   issue=`info_get_entry issue`
+   echo "=date=$edate" >> $F.$INFO    ; echo "=date=$F $edate" >> $MK.$INFO
+   echo "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')"
+else
+   echo "'$SOURCEFILE': does not exist"
+   echo "=list=$F $F"                 >> $MK.$INFO
+   echo "=long=$F (no source)"        >> $MK.$INFO
+fi ; else
+   echo "<$F> - skipped"
+fi ;;
+*/) echo "'$F' : directory - skipped"
+   echo "=list=$F `sed_anchor $F`" >> $MK.$INFO
+   echo "=long=$F (directory)"        >> $MK.$INFO
+   ;;
+*) echo "?? -> '$F'"
+   ;;
+esac done
+
+#                                     -------------------------------------
+#                                     check for magic hints in the $SITEFILE
+sectionlayout="list"
+sitemaplayout="list"
+if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
+echo "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " \
+     "$SITEFILE" >&2
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multi-->"               $SITEFILE >$NULL ; then
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multilayout-->"         $SITEFILE >$NULL ; then
+sectionlayout="multi"
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:multisectionlayout-->"  $SITEFILE >$NULL ; then
+sectionlayout="multi"
+fi
+if $GREP "<!--mksite:multisitemaplayout-->"  $SITEFILE >$NULL ; then
+sitemaplayout="multi"
+fi
+if $GREP "<!--mksite:listlayout-->"          $SITEFILE >$NULL ; then
+sectionlayout="list"
+sitemaplayout="list"
+fi
+if $GREP "<!--mksite:listsectionlayout-->"   $SITEFILE >$NULL ; then
+sectionlayout="list"
+fi
+if $GREP "<!--mksite:listsitemaplayout-->"   $SITEFILE >$NULL ; then
+sitemaplayout="list"
+fi
+
+# ==========================================================================
+# and now generate the output pages
+#                                                                   2.PASS
+
+for F in $FILELIST ; do case "$F" in
+http:*|*://*) : ;; # skip
+# .............................................................. SITE FILE
+${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
+if test "$SOURCEFILE" != "$F" ; then
+if test -f "$SOURCEFILE" ; then
+   # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
+   info2vars $MK.vars.tmp          # have <!--title--> vars substituted
+   info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
+   SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
+   $CAT ./$MK.puts.tmp                                       > $F.$HEAD 
+   echo "/^$SECTS.*<a href=\"$F\">/s|</a>|</a></b>|"        >> $F.$HEAD
+   echo "/^$SECTS.*<a href=\"$F\">/s|<a href=|<b><a href=|" >> $F.$HEAD
+   echo "/<head>/r $MK.meta.tmp"                            >> $F.$HEAD
+   $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD
+   echo "/<\\/body>/d"                >> $F.$HEAD
+   case "$sitemaplayout" in
+   multi) make_multisitemap $F.$BODY ;;       # here we use ~body~ as
+   *)     make_listsitemap  $F.$BODY ;;       # a plain text file
+   esac
+   $SED -f $F.$HEAD                          $SITEFILE  > $F   # ~head~
+   $CAT    $F.$BODY                                    >> $F   # ~body~
+   $SED -e "/<\\/body>/!d" -f ./$MK.vars.tmp $SITEFILE >> $F   #</body>
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F` "(sitemap)"
+else
+   echo "'$SOURCEFILE': does not exist"
+fi fi ;;
+../*) 
+   echo "!! -> '$F' (skipping topdir build)"
+   ;;
+# */*.html) 
+#   echo "!! -> '$F' (skipping subdir build)"
+#   ;;
+# */*/*/|*/*/|*/|*/index.htm|*/index.html) 
+#   echo "!! -> '$F' (skipping subdir index.html)"
+#   ;;
+# ............................................................... HTML FILES
+*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`            #     2.PASS
+if test "$SOURCEFILE" != "$F" ; then
+if test -f "$SOURCEFILE" ; then
+   info2vars $MK.vars.tmp          # have <!--title--> vars substituted
+   info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
+   SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
+   CURRENT_SECTION=`info_get_entry DC.relation.section`
+   SECTION=`sed_anchor "$CURRENT_SECTION"`
+   FF=`sed_anchor "$F"`
+   case "$sectionlayout" in
+   multi) # sitefile navigation bar is split into sections
+      $CAT ./$MK.puts.tmp                                          > $F.$HEAD 
+      # grep all pages with a =sect= relation to current $SECTION and
+      # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
+      # after that all the (still) numeric SECTNs are deactivated / killed.
+      $SED -e "/^=sect=[^ ]* $SECTION/!d" \
+           -e "s, .*,\"\\\\)|<!--sectX-->\\\\1|,"  \
+           -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," ./$MK.$INFO >> $F.$HEAD
+      echo "s|^$SECTN[^ ]*\\(<a href=[^<>]*>\\).*|<!-- \\1 -->|"  >> $F.$HEAD
+      echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          >> $F.$HEAD
+      echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   >> $F.$HEAD
+      echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    >> $F.$HEAD
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD #tag and vars
+      echo "/<\\/body>/d"                >> $F.$HEAD #cut lastline
+      echo "/<head>/r $MK.meta.tmp"      >> $F.$HEAD #add metatags
+   ;;
+   *) # traditional.... the sitefile is the full navigation bar
+      $CAT ./$MK.puts.tmp                                          > $F.$HEAD  
+      echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          >> $F.$HEAD
+      echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   >> $F.$HEAD
+      echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    >> $F.$HEAD
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD #tag and vars
+      echo "/<\\/body>/d"                >> $F.$HEAD #cut lastline
+      echo "/<head>/r $MK.meta.tmp"      >> $F.$HEAD #add metatags
+   ;; esac
+      echo "/<title>/d"                   > $F.$BODY #not that line
+      $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$BODY #tag and vars
+      $CAT ./$F.~move~ >> $F.$HEAD
+      $SED -f ./$F.$HEAD $SITEFILE                       > $F # ~head~
+      $SED -f ./$F.$BODY $SOURCEFILE                    >> $F # ~body~
+      $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
+else
+   echo "'$SOURCEFILE': does not exist"
+fi ; else
+   echo "<$F> - skipped"
+fi ;;
+*/) echo "'$F' : directory - skipped"
+   ;;
+*) echo "?? -> '$F'"
+   ;;
+esac
+   if test -d DEBUG && test -f "./$F" ; then
+      cp ./$F.$INFO DEBUG/$F.info.TMP
+      for P in tags vars meta page date list html sect info ; do
+      test -f ./$MK.$P.tmp && cp ./$MK.$P.tmp DEBUG/$F.$P.tmp
+      test -f ./$MK.$P.TMP && cp ./$MK.$P.TMP DEBUG/$F.$P.TMP
+      done
+   fi
+done
+rm ./$MK.*.tmp
+exit 0
