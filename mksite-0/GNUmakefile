@@ -39,7 +39,7 @@ clean :
 	- rm *.html */*.html */*.tmp
 
 DISTFILES = GNUmakefile README.TXT COPYING.ZLIB \
-            mksite.txt mksite.sh \
+            mksite.txt mksite.sh mksite.pl \
             doc/*.htm doc/*.gif test*/*.htm 
 SUBDIRS =
 PACKAGE = mksite
@@ -115,3 +115,10 @@ upload : preload
 uploads :
 	test -s "$(file)"
 	- scp "$(file)" $(WWWNAME)@$(WWWHOST):$(WWWPATH)/$(file)
+
+mksite_.pl : mksite.sh GNUmakefile mksiteperl.pl
+	perl mksiteperl.pl $< > $@
+
+q : mksite_.pl
+	diff -u0 mksite.pl mksite_.pl
+
