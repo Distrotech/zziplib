@@ -1,0 +1,40 @@
+<H3>simplevars = oldstyle updateable content</H3>
+
+<PRE>
+   &lt;!--mksite:simplevars--&gt; 
+   &lt;!--mksite:nosimplevars--&gt; <b>
+   &lt;!--mksite:warnsimplevars--&gt; </b>
+</PRE>
+<P>
+  The option can be selected in the sitefile, per default we do
+  update content prefixed with these comment variables <em>and</em>
+  additionally warn on those expansions. The simplevars expansion
+  is highly depracated and subject to be removed in the future. It
+  is a heritage of earlier mksite.sh generations where it was the
+  only variable expansion variant. Therefore we default to
+  <em>warnsimplevars</em> that expands them but warns about it.
+</P>
+<PRE>
+   input: derived <code>&lt;!--varname--&gt;</code>2004/04 FOO
+  output: derived 2004-04-16 FOO
+ default: derived 2004/04 FOO
+
+   input: derived <code>&lt;!--varname?--&gt;</code>2004/04 FOO
+  output: derived - 2004-0416 FOO
+  output: derived (2004-0416) FOO
+ default: derived  2004/04 FOO
+</PRE>
+<P>
+   Note how a single word is updated with this variable expansion.
+   Over time we included a set of wordchars to update atleast
+   default text content with simple date formatting or simple
+   filename formatting.
+</P>
+<P>
+   For the variable expansion we always use the edited variant
+   value as we did describe it in <a href="expandvars.html">expandvars</a>.
+   Anyway, do not use this expansion mechanisms - fix any instance
+   that you will be warned about and add an explicit <br>
+   <code>&lt;!--mksite:nosimplevars--&gt; </code> to your sitefile.
+</P>
+

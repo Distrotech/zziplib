@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.30 2004-04-23 19:18:03 guidod Exp $
+# $Id: mksite.sh,v 1.31 2004-04-24 11:37:56 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -241,12 +241,20 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  V1="\\\\([-]*\\\\)\\\\\\\$"
   V1="\\\\([^<>]*\\\\)\\\\\\\$"
   V2="\\\\([^{<>}]*\\\\)"
   V3="\\\\([^<>]*\\\\)"
   test ".$commentvars"  = ".no" && updatevars="no"   # duplicated from
   test ".$commentvars"  = ".no" && expandvars="no"   # option handling
   test ".$commentvars"  = ".no" && simplevars="no"   # tests below
+  test ".$expandvars" != ".no" && \
+  $SED -e "/=....=formatter /d" \
+  -e "/=name=/s,=name=$V9,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1[?]-->|\\\\1\\2|," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
   test ".$expandvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
@@ -260,25 +268,32 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
   test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
-  -e "/=text=/s,=text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V9,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
-  -e "/=text=/s,=text=$V8,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V9,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V9,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V8,s|<!--$V0\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  test ".$updatevars" != ".no" && \
+  $SED -e "/=....=formatter /d" \
+  -e "/=name=/s,=name=$V9,s|<!--$V0\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V0\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
+  -e "/=name=/s,=name=$V8,s|<!--$V0\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V0\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
   -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
+  -e "/=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
+  -e "/=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
   -e "/=text=/s,=text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
   -e "/=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
-  -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
-  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
+  -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
+  -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1\\2|," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   test ".$attribvars" != ".no" && \
   $SED -e "/=....=formatter /d" \

@@ -11,23 +11,38 @@
 </P>
 <PRE>
    input: some <code>&lt;!--$varname--&gt;</code> text
-  output: some value text
+  output: some Value text
  default: some  text
 
+   input: some <code>&lt;!--added $varname--&gt;</code> text
+  output: some added Value text
+ default: some  text
+
+   input: section <code>&lt;!--of $varname?--&gt;</code> !
+  output: section of value !
+ default: section !
+
    input: section <code>&lt;!--$varname?--&gt;</code> !
-  output: section - text !
-  output: section (text) !
+  output: section - value !
+  output: section (value) !
+ default: section !
 </PRE>
 <P>
    This is the preferred method of expanding variables. They are
    invisible in the source htm file. They add some text to the
    result. The variant expansions can be selected via "?" after
-   the variable name. The variant is usually (a) hyphenated for
-   toplevel variables or (b) parenthesed for secondary variables.
+   the variable name. The variant expansion has always (a) the
+   lowercased variant of the original value and (b) any markup
+   removed from the original value. That makes it most usueful
+   to be pasted into <code>&lt;title&gt;</code> tag contents.
 </P>
 <P>
-   A toplevel variable is "DC.title" and "DC.author" that can be
-   selected as "$title" and "$author". The secondary variable 
+   The <em>direct<em> usage of the variant name (without even
+   some whitspace inside the comment markup) makes for an
+   additional modification where the variant is usually (a) hyphenated 
+   for toplevel variables or (b) parenthesed for secondary variables.
+   The toplevel variables are "DC.title" and "DC.author" that can be
+   selected as "$title" and "$author". The secondary variables 
    are usually those of "DC.date", e.g. "DC.date.modified" and
    "DC.date.issued" that can be selected as "$modified" and
    "$issued".
@@ -35,7 +50,11 @@
 <P>
    The specification of variants stems from times when there was
    no complex expansion of variables available that would allow
-   additional formatting within the comment box. Therefore the
-   most common formatting was done in the mksite.sh script. The
-   variant expansions have survived can still be used.
+   additional formatting within the comment box. See the
+   <a href="simplevars.html">simplevars</a> for those. Therefore 
+   the most common formatting was done in the mksite.sh script
+   making for the usual editing of those values. The variant 
+   expansions have survived can still be used in that mode and
+   make sometimes for a little shorter input text, e.g. for
+   <code>&lt;title&gt;</code> content specs.
 </P>

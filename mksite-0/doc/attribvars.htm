@@ -10,11 +10,11 @@
 </P>
 <PRE>
    input: download &lt;a href="pkg-${varname:=current}.tar.bz2"&gt; !
-  output: download &lt;a href="pkg-value.tar.bz2"&gt; !
+  output: download &lt;a href="pkg-Value.tar.bz2"&gt; !
  default: download &lt;a href="pkg-current.tar.bz2"&gt; !
 
    input: download &lt;a href="pkg${varname:?}.tar.bz2"&gt; !
-  output: download &lt;a href="pkg-value.tar.bz2"&gt; !
+  output: download &lt;a href="pkgvalue.tar.bz2"&gt; !
  default: download &lt;a href="pkg.tar.bz2"&gt; !
 </PRE>
 <P>
@@ -33,15 +33,16 @@
    variants as well <code>${varname:=default}</code> and
    <code>${varname:?default}</code>. A similar syntax was
    picked up for the <a href="updatevars.html">updatevars</a>
-   expansion which update content attribute text intead of
+   expansion which updates content text intead of
    choosing attribute values.
 </P>
 <P>
-   The variant expansion scheme is the same as for the
-   <a href="expandvars.html">expandvars</a> being hyphenated
-   for toplevel variables ("$title" and "$author") and 
-   parenthesed for secondary variables ("$modified" and
-   "$issued"). The specification of the variant formatting
-   stems from those and is not usually used with 
-   <a href="attribvars.html">attribvars</a>.
+   The variant expansion scheme is <em>never</em> using the
+   direct expansion of <a href="expandvars.html">expandvars</a> 
+   which were hyphenated for toplevel variables ("$title" and "$author") 
+   and parenthesed for secondary variables ("$modified" and
+   "$issued"). Such addon texts are <em>never</em> present with
+   with attribvars. Instead they only represent the core
+   functionality of (a) lowercasing any original value and
+   (b) removing any markup from the original value.
 </P>
