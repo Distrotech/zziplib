@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.2 2004-10-10 13:33:23 guidod Exp $
+# $Id: mksite.pl,v 1.3 2004-10-10 19:08:25 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -324,55 +324,6 @@ sub esc
     return $TXT;
 }
 
-my $F; # current file during loop <<<<<<<<<
-my $i = 100;
-sub savelist {
-    if (-d "DEBUG") {
-	my $X = "$F._$i"; $i++;
-	open X, ">DEBUG/$X" or die "could not open $X: $!";
-	print X "#! /usr/bin/perl -".$#_."\n";
-	print X join("\n", @{$_[0]}); close X;
-    }
-}
-
-sub eval_MK_SITE {
-    savelist(\@MK_SITE);
-    eval join("\n", @MK_SITE);
-}
-
-sub eval_MK  { 
-    savelist(\@_);
-    eval join("\n", @_); 
-}
-sub eval_MKs {
-    savelist(\@_);
-    eval join(";\n", @_); 
-}
-
-sub eval_MK_  {
-    my $FILENAME = $_[0]; shift @_;
-    my $result = "";
-    my $script = "my \$FILE; my \$extra = ''; \n";
-    $script.= "if (not open FILE, '<$FILENAME') {\n ";
-    $script.= "   print STDERR '# could not open $FILENAME (ignored)';\n";
-    $script.= "}else{ for (<FILE>) { \n";
-    $script.= join(";\n  ", @_);
-    $script.= "\n; \$result .= \$_; ";
-    $script.= "\n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
-    $script.= "\n} close FILE; }\n";
-    savelist([$script,""]);
-    eval $script;
-    return $result;
-}
-my $sed_read = "\$extra .= "; # "/r ";
-
-sub foo { print "               '$F'\n"; }
-sub ls_s {
-    my $result = `ls -s @_`;
-    chomp($result);
-    return $result;
-}
-
 my %SOURCE;
 sub source # $file : @lines
 {
@@ -385,6 +336,55 @@ sub source # $file : @lines
     } close FILE;
     @{$SOURCE{$FILE}} = @TEXT;
     return @{$SOURCE{$FILE}};
+}
+sub savesource # $file \@lines
+{
+    my ($FILE,$LINES,$Z) = @_;
+    @{$SOURCE{$FILE}} = @{$LINES};
+}
+
+my $F; # current file during loop <<<<<<<<<
+my $i = 100;
+sub savelist {
+    if (-d "DEBUG") {
+	my $X = "$F._$i"; $i++;
+	open X, ">DEBUG/$X" or die "could not open $X: $!";
+	print X "#! /usr/bin/perl -".$#_."\n";
+	print X join("\n", @{$_[0]}); close X;
+    }
+}
+
+sub eval_MK_LIST # $str @list
+{
+    my $result = $_[0]; shift @_;
+    my $extra = "";
+    my $script = "\$_ = \$result;";
+    $script .= join(";\n ", @_);
+    $script .= "\n;\$result = \$_;\n";
+    eval $script;
+    return $result.$extra;
+}
+
+sub eval_MK_FILE  {
+    my $FILENAME = $_[0]; shift @_;
+    my $result = "";
+    my $script = "my \$FILE; my \$extra = ''; \n";
+    $script.= "for (source('$FILENAME')) { \n";
+    $script.= join(";\n  ", @_);
+    $script.= "\n; \$result .= \$_; ";
+    $script.= "\n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
+    $script.= "\n} if(\$extra){\$result.=\$extra;}\n";
+    savelist([$script,""]);
+    eval $script;
+    return $result;
+}
+my $sed_add = "\$extra .= "; # "/r ";
+
+sub foo { print "               '$F'\n"; }
+sub ls_s {
+    my $result = `ls -s @_`;
+    chomp($result);
+    return $result;
 }
 
 # ======================================================================
@@ -419,7 +419,7 @@ sub dir_name
 
 sub info2test_sed # \@ \@ # cut out all old-style <!--vars--> usages
 {
-    my ($INP,$XXX) = $@;
+    my ($INP,$XXX) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
     my $V8=" *([^ ][^ ]*) (.*)";
@@ -451,7 +451,7 @@ sub info2test_sed # \@ \@ # cut out all old-style <!--vars--> usages
 
 sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 {
-    my ($INP,$XXX) = $@;
+    my ($INP,$XXX) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
     my $V8=" *([^ ][^ ]*) (.*)";
@@ -527,14 +527,14 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     if ($attribvars ne "no") {
 	for (@$INP) {
 	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-     if (/^=text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=Text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=Name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=Text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|\$1$SS$2\$3|;");}
-     if (/^=Name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|\$1$SS$2\$3|;");}
+    if (/^=text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=Text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=Name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=Text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=Name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
 	}
     }
     if ($simplevars ne "no") {
@@ -560,7 +560,7 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 
 sub info2meta_sed     # generate <meta name..> text portion
 {
-    my ($INP,$XXX) = $@;
+    my ($INP,$XXX) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
     # http://www.metatab.de/meta_tags/DC_type.htm
@@ -846,8 +846,8 @@ sub info_get_entry_section
 sub site_get_selected  # return section of given page
 {
     my $_F_ = &sed_slash_key(@_);
-    for my $info (grep {/=[u]se.=$_F_ /} @MK_INFO) {
-	$info =~ s/=[u]se.=[^ ]* //; return $info;
+    for my $x (grep {/=[u]se.=$_F_ /} @MK_INFO) {
+	my $info = $x; $info =~ s/=[u]se.=[^ ]* //; return $info;
     }
 }
 
@@ -867,30 +867,48 @@ sub info_get_entry_selected
 
 sub site_get_rootsections # return all sections from root of nav tree
 {
-    my @list = grep {/=use1=/} @MK_INFO;
-    return map { s/=[u]se.=([^ ]*) .*/$1/ } @list;
+    my @OUT;
+    for my $x (grep {/=use1=/} @MK_INFO) { 
+	$_ = $x;
+	s/=[u]se.=([^ ]*) .*/$1/; 
+	push @OUT, $_;
+    }
+    return @OUT;
 }
 
 sub site_get_sectionpages # return all children pages in the given section
 {
     my $_F_=&sed_slash_key(@_);
-    my @list = grep {/^=sect=[^ ]* $_F_\$/} @MK_INFO;
-    return map { s/^=sect=//; s/ .*// } @list;
+    my @OUT = ();
+    for my $x (grep {/^=sect=[^ ]* $_F_$/} @MK_INFO) {
+	$_ = $x;
+	s/^=sect=//; s/ .*//;
+	push @OUT, $_;
+    }
+    return @OUT;
 }
 
 sub site_get_subpages # return all page children of given page
 {
     my $_F_=&sed_slash_key(@_);
-    my @list = grep {/^=node=[^ ]* $_F_\$/} @MK_INFO;
-    return map { s/^=node=//; s/ .*// } @list;
+    my @OUT = ();
+    for my $x (grep {/^=node=[^ ]* $_F_$/} @MK_INFO) {
+	$_ = $x;
+	s/^=node=//; s/ .*//;
+	push @OUT, $_;
+    }
+    return @OUT;
 }
 
 sub site_get_parentpage # ret parent page for given page (".." for sections)
 {
     my $_F_=&sed_slash_key(@_);
-    my @list = grep {/^=node=$_F_ \$/} @MK_INFO;
-    my @parents = map { s/^=node=[^ ]* //; s/ .*// } @list;
-    return $parents[0];
+    my @parents = ();
+    for my $x (grep {/^=node=$_F_ $/} @MK_INFO) {
+	$_ = $x;
+	s/^=node=[^ ]* //; s/ .*//;
+	return $_;
+    } 
 }
 
 sub DX_alternative    # detect wether page asks for alternative style
@@ -910,7 +928,7 @@ sub info2head_sed  # append alternative handling script to $HEAD
     if ($have) {
 	push @OUT, "/<!--mksite:alternative:$have .*-->/ && do {";
 	push @OUT, "s/<!--mksite:alternative:$have( .*)-->/\$1/";
-	push @OUT, "print; last; };";
+	push @OUT, "$sed_add \$_; last; };";
     }
     return @OUT;
 }
@@ -919,8 +937,7 @@ sub info2body_sed  # append alternative handling script to $BODY
     my @OUT = ();
     my $have=&info_get_entry("alternative");
     if ($have) {
-	my $_replace_="s/<!--mksite:alternative:$have( .*)-->/\$1/";
-	push @OUT, "/<!--mksite:alternative:$have .*-->/$_replace_";
+	push @OUT, "s/<!--mksite:alternative:$have( .*)-->/\$1/";
     }
     return @OUT;
 }
@@ -959,11 +976,11 @@ sub fast_href  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
 }
 
 sub make_fast # experimental - make a FAST file that can be applied
-{                # to htm sourcefiles in a subdirectory of the sitefile.
+{             # to htm sourcefiles in a subdirectory of the sitefile.
 #   R="$1" ; test ".$R" = "." && R="$F"
     my ($R,$Z) = @_;
     my $S=&back_path ($R);
-    my @OUT = ();   push @OUT, "s/----------make_fast------//;";
+    my @OUT = ();
     if (not $S) {
 	# echo "backpath '$F' = none needed"
 	return @OUT;
@@ -1034,18 +1051,18 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
     my ($INP,$Z) = @_ ; $INP= \@MK_INFO if not $INP;
     my @OUT = ();
     my $_list_=
-	sub{"s|<!--\"$1\"-->.*<!--name-->|\$\&<name href=\\\"$1\\\">$2</name>|"};
+	sub{"s|<!--\\\"$1\\\"-->.*<!--name-->|\$\&<name href=\\\"$1\\\">$2</name>|"};
     my $_date_=
-	sub{"s|<!--\"$1\"-->.*<!--date-->|\$\&<date>$2</date>|"};
+	sub{"s|<!--\\\"$1\\\"-->.*<!--date-->|\$\&<date>$2</date>|"};
     my $_long_=
-	sub{"s|<!--\"$1\"-->.*<!--long-->|\$\&<long>$2</long>|"};
+	sub{"s|<!--\\\"$1\\\"-->.*<!--long-->|\$\&<long>$2</long>|"};
     
-    for my $info ($INP) {
+    for my $info (@$INP) {
 	$info =~ s:&:\\\\&:g;
 	$info =~ s:=list=([^ ]*) (.*):&$_list_:e;
 	$info =~ s:=date=([^ ]*) (.*):&$_date_:e;
 	$info =~ s:=long=([^ ]*) (.*):&$_long_:e;
-	$info =~ /^s|/ || next;
+	$info =~ /^s\|/ || next;
 	push @OUT, $info;
     }
     return @OUT;
@@ -1064,7 +1081,7 @@ sub make_multisitemap
     for my $x (grep {/=[u]se.=/} @$INPUTS) {
 	$_ = $x;
 	s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	&eval_MK_SITE(); /<name/ or next;
+	$_ = &eval_MK_LIST($_, @MK_SITE); /<name/ or next;
 	s|<!--use1-->|</td><td valign=\"top\"><b>|;
 	s|<!--end1-->|</b>|;
 	s|<!--use2-->|<br>|;
@@ -1090,7 +1107,7 @@ sub make_listsitemap
     for my $x (grep {/=[u]se.=/} @$INPUTS) {
 	$_ = $x;
 	s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	&eval_MK_SITE(); /<name/ or next;
+	$_ = &eval_MK_LIST($_, @MK_SITE); /<name/ or next;
         s|<!--use1-->|<tr><td>*</td>|;
         s|<!--use2-->|<tr><td>-</td>|;
         /<!--use3-->/ and s|<name [^<>]*>|$&- |;
@@ -1158,9 +1175,7 @@ sub make_printerfile_fast # generate s/file.html/file.print.html/ for hrefs
 	my $a=&sed_slash_key($p);
 	my $b=&html_printerfile($p);
 	if ($b ne $p) {
-	    $b=&html_printerfile($p);
-	    $b =~ s:&:\\\\&:g;
-	    $b =~ s:/:\\\\\\/:g;
+	    $b =~ s:/:\\/:g;
 	    push @OUT,  "s/<a href=\\\"$a\\\">/<a href=\\\"$b\\\">/;";
 	}
     }
@@ -1181,18 +1196,18 @@ sub echo_printsitefile_style
 sub make_printsitefile_head # $sitefile
 {
     my $MK_STYLE = &echo_printsitefile_style();
-    my $text = "";
+    my @OUT = ();
     for (source($SITEFILE)) {
-	if (/<title>/) { $text .= $_; next; }
-	if (/<head>/) {  $text .= $_; next; }
-        if (/<\/head>/) { $text .= $_; next; }
-	if (/<body>/) { $text .= $_; next; }
-	if (/^.*<link [^<>]*rel=\"shortcut icon\"[^<>]*>.*\$/) {
-	    $text .= $_; next;
+	if (/<head>/) {  push @OUT, $_; 
+			 push @OUT, $MK_STYLE; next; }
+	if (/<title>/) { push @OUT, $_; next; }
+        if (/<\/head>/) { push @OUT, $_; next; }
+	if (/<body>/) { push @OUT, $_; next; }
+	if (/<link [^<>]*rel=\"shortcut icon\"[^<>]*>/) {
+	    push @OUT, $_; next;
 	}
     }
-    $text =~ s|(<head>)|$1$MK_STYLE|; 
-    return $text;
+    return @OUT;
 }
 
 # ------------------------------------------------------------------------
@@ -1203,10 +1218,10 @@ sub make_printsitefile_head # $sitefile
 # navigation header with 1...3 lines matching the nesting level
 
 # these alt-texts will be only visible in with a text-mode browser:
-my $printsitefile_square="width=\"8\" height=\"8\" border=\"0\"";
-my $printsitefile_img_1="<img alt=\"|go text:\" $printsitefile_square />";
-my $printsitefile_img_2="<img alt=\"||topics:\" $printsitefile_square />";
-my $printsitefile_img_3="<img alt=\"|||pages:\" $printsitefile_square />";
+my $printsitefile_square="width=\\\"8\\\" height=\\\"8\\\" border=\\\"0\\\"";
+my $printsitefile_img_1="<img alt=\\\"|go text:\\\" $printsitefile_square />";
+my $printsitefile_img_2="<img alt=\\\"||topics:\\\" $printsitefile_square />";
+my $printsitefile_img_3="<img alt=\\\"|||pages:\\\" $printsitefile_square />";
 my $_SECT="mksite:sect:";
 
 sub echo_current_line # $sect $extra
@@ -1216,12 +1231,12 @@ sub echo_current_line # $sect $extra
 }
 sub make_current_entry # $sect $file      ## requires $MK_SITE
 {
-    my ($S,$R,$Z) = @_;
+    my ($R,$S,$Z) = @_;
     my $RR=&sed_slash_key($R); 
     my $sep=" - " ; my $_left_=" [ " ; my $_right_=" ] ";
     $_ = &echo_current_line 
 	("$R", "<a href=\"$S\"><!--\"$S\"--><!--name--></a>$sep");
-    &eval_MK_SITE();
+    $_ = &eval_MK_LIST($_, @MK_SITE);
     s/<name[^<>]*>//; s/<\/name>//;
     if (/<a href=\"$RR\"/) { s/<a href/$_left_$&/ }
     if (/<a href=\"$RR\"/) { s/<\/a>/$&$_right_/ }
@@ -1241,7 +1256,7 @@ sub make_subpage_entry
     my $sep=" - " ;
     $_ = &echo_subpage_line 
 	("$S", "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep");
-    &eval_MK_SITE();
+    $_ = &eval_MK_LIST($_, @MK_SITE);
     s/<name[^<>]*>//; s/<\/name>//;
     s/<!--\"[^\"]*\"--><!--name-->//;
     return $_;
@@ -1252,9 +1267,9 @@ sub make_printsitefile
    # building the printsitefile looks big but its really a loop over sects
     my ($INPUTS,$Z) = @_; $INPUTS=\@MK_INFO if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
-    my $_form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->";
-    my $_tabb_="<td>\\&nbsp\\;</td>";
-    my $OUT = &make_printsitefile_head ($SITEFILE);
+    print "....................................... $F._$i\n";
+    savelist(\@MK_SITE);
+    my @OUT = &make_printsitefile_head ($SITEFILE);
 
     my $sep=" - " ;
     my $_sect1="<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep";
@@ -1262,33 +1277,33 @@ sub make_printsitefile
     my $_sect3="<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep";
     @MK_SECT1 = &site_get_rootsections();
     for my $r (@MK_SECT1) {
-	$OUT .= &echo_current_line ("$r", "<!--mksite:sect1:A--><br>$_sect1");
+	push @OUT, &echo_current_line ("$r", "<!--mksite:sect1:A--><br>$_sect1");
     for my $s (@MK_SECT1) {
-	$OUT .= &make_current_entry ("$r", "$s");
+	push @OUT, &make_current_entry ("$r", "$s");
     }
-	$OUT .= &echo_current_line ("$r", "<!--mksite:sect1:Z-->");
+	push @OUT, &echo_current_line ("$r", "<!--mksite:sect1:Z-->");
 
 #   @MK_SECT2 = &site_get_sectionpages "$r";
     @MK_SECT2 = &site_get_subpages ("$r");
     for my $s (@MK_SECT2) {
 	next if $r eq $s;
-	$OUT .= &echo_current_line ("$s", "<!--mksite:sect2:A--><br>$_sect2");
+	push @OUT, &echo_current_line ("$s", "<!--mksite:sect2:A--><br>$_sect2");
     for my $t (@MK_SECT2) {
 	next if $r eq $t;
-	$OUT .= &make_current_entry ("$s", "$t");
+	push @OUT, &make_current_entry ("$s", "$t");
     } # "$t"
-	$OUT .= &echo_current_line  ("$s", "<!--mksite:sect2:Z-->");
+	push @OUT, &echo_current_line  ("$s", "<!--mksite:sect2:Z-->");
 
 #   @MK_SECT3 = &site_get_sectionpages "$s";
     @MK_SECT3 = &site_get_subpages ("$s");
     for my $t (@MK_SECT3) {
 	next if $s eq $t;
-	$OUT .= &echo_current_line ("$t", "<!--mksite:sect3:A--><br>$_sect3");
+	push @OUT, &echo_current_line ("$t", "<!--mksite:sect3:A--><br>$_sect3");
     for my $u (@MK_SECT3) {
 	next if $s eq $u;
-	$OUT .= &make_current_entry ("$t", "$u");
+	push @OUT, &make_current_entry ("$t", "$u");
     } # "$u"
-	$OUT .= &echo_current_line  ("$t", "<!--mksite:sect3:Z-->");
+	push @OUT, &echo_current_line  ("$t", "<!--mksite:sect3:Z-->");
     } # "$t"
 
     my $_have_children_="0";
@@ -1296,12 +1311,12 @@ sub make_printsitefile
 	next if $u eq $s;
     if ($_have_children_ = "0") { 
 	$_have_children_="1";
-        $OUT .= &echo_subpage_line ("$s", "<!--mksite:sect3:A--><br>$_sect3");
+        push @OUT, &echo_subpage_line ("$s", "<!--mksite:sect3:A--><br>$_sect3");
     }
-	$OUT .= &make_subpage_entry ("$s", "$u");
+	push @OUT, &make_subpage_entry ("$s", "$u");
     } # "$u"
     if ($_have_children_ = "1") { 
-        $OUT .= &echo_subpage_line  ("$s", "<!--mksite:sect3:Z-->");
+        push @OUT, &echo_subpage_line  ("$s", "<!--mksite:sect3:Z-->");
     }
     } # "$s"
 
@@ -1310,17 +1325,19 @@ sub make_printsitefile
 	next if $r eq $t;
     if ($_have_children_ = "0") { 
 	$_have_children_="1";
-        $OUT .= &echo_subpage_line ("$r", "<!--mksite:sect2:A--><br>$_sect2");
+        push @OUT, &echo_subpage_line ("$r", "<!--mksite:sect2:A--><br>$_sect2");
     }
-	$OUT .= &make_subpage_entry ("$r", "$t");
+	push @OUT, &make_subpage_entry ("$r", "$t");
     } # "$t"
     if ($_have_children_ = "1") { 
-        $OUT .= &echo_subpage_line  ("$r", "<!--mksite:sect2:Z-->");
+        push @OUT, &echo_subpage_line  ("$r", "<!--mksite:sect2:Z-->");
     }
     } # "$r"
-    $OUT .= "<a name=\".\"></a>";
-    $OUT .= "</body></html>";
-    return $OUT
+    push @OUT, "<a name=\".\"></a>";
+    push @OUT, "</body></html>";
+    print "----------------------> $F._$i";
+    savelist(\@OUT);
+    return @OUT;
 }
 
 # create a selector that can grep a printsitefile for the matching entries
@@ -1329,18 +1346,19 @@ sub select_in_printsitefile # arg = "page" : return to stdout >> $P.$HEAD
     my ($N,$Z) = @_;
     my $_selected_="$N" ; $_selected_="$F" if not $_selected_;
     my $_section_=&sed_slash_key($_selected_);
+    print "section===$_section_\n";
     my @OUT = ();
-    push @OUT, "s/^<!--$_SECT\"$_section_\"-->//";        # sect3
-    push @OUT, "s/^<!--$_SECT\[*\]:\"$_section_\"-->//";    # children
+    push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect3
+    push @OUT, "s/^<!--$_SECT\[*\]:\\\"$_section_\\\"-->//;";    # children
     $_selected_=&site_get_parentpage($_selected_);
     $_section_=&sed_slash_key($_selected_);
-    push @OUT, "s/^<!--$_SECT\"$_section_\"-->//";        # sect2
+    push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect2
     $_selected_=&site_get_parentpage($_selected_);
     $_section_=&sed_slash_key($_selected_);
-    push @OUT, "s/^<!--$_SECT\"$_section_\"-->//";        # sect1
-    push @OUT, "/^<!--$_SECT\"[^\"]*\"-->/ and next";
-    push @OUT, "/^<!--$_SECT\[*\]:\"[^\"]*\"-->/ and next";
-    push @OUT, "s/^<!--mksite:sect[$NN]:[$AZ]-->//";
+    push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect1
+    push @OUT, "/^<!--$_SECT\\\"[^\\\"]*\\\"-->/ and next;";
+    push @OUT, "/^<!--$_SECT\[*\]:\\\"[^\\\"]*\\\"-->/ and next;";
+    push @OUT, "s/^<!--mksite:sect[$NN]:[$AZ]-->//;";
     return @OUT;
 }
 
@@ -1480,7 +1498,7 @@ sub make_sitemap_list
     # scan sitefile for references pages - store as =use+= relation
     for (source($SITEFILE)) {
 #	print join("\n;",@MK_GETS);
-	eval_MK(@MK_GETS); 
+	$_ = &eval_MK_LIST($_, @MK_GETS);
 	/^<!--sect[$NN]-->/ or next;
 	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	s{^$_getY_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
@@ -1527,9 +1545,9 @@ sub make_sitemap_page
 	push @MK_INFO, "$x $sect";
     }
     # and for the root sections we register ".." as the parenting group
-    for (grep {/=[u]se1=/} @MK_INFO) {
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1 ../;
-	push @MK_INFO, trimm($x);
+    for my $x (grep {/=[u]se1=/} @MK_INFO) {
+	$_ = $x; s/=[u]se.=([^ ]*) .*/=node=$1 ../;
+	push @MK_INFO, trimm($_);
     }
 }
 sub echo_site_filelist
@@ -1568,7 +1586,7 @@ sub scan_sitefile # $F
 	if ($printerfriendly) {
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
-	print "'$SOURCEFILE': $short (sitemap)";
+	print "'$SOURCEFILE': $short (sitemap)\n";
 	site_map_list_title ($F, "$short");
 	site_map_long_title ($F, "generated sitemap index");
 	site_map_list_date  ($F, &timetoday());
@@ -1695,7 +1713,7 @@ sub make_sitefile # "$F"
    my @HEAD = (); my @BODY = (); my $FOOT = "";
    push @HEAD, @MK_PUTS;
    push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section);
-   push @HEAD, "/<head>/ and $sed_read join(\"\\n\", \@MK_META);";
+   push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
    push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS;
    push @HEAD, "/<\\/body>/ and next;";                #cut lastline
    if ( $sitemaplayout eq "multi") {
@@ -1705,15 +1723,17 @@ sub make_sitefile # "$F"
    }
 
    my $html = "";
-   $html .= eval_MK_($SITEFILE, @HEAD);
+   $html .= &eval_MK_FILE($SITEFILE, @HEAD);
    $html .= join("\n", source($SOURCEFILE));
    for (source($SITEFILE)) {
        /<\/body>/ or next;
-       eval_MK(@MK_VARS);
+       $_ = &eval_MK_LIST($_, @MK_VARS);
        $html .= $_;
    }
-   # open F, ">$F"; print F, $html; close F;
-   print "'$SOURCEFILE': ",`ls -s $SOURCEFILE`,"->",`ls -s $F`,"(sitemap)";
+  open F, ">$F"; print F $html; close F;
+  print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"\n";
+   savesource("$F.~head~", \@HEAD);
+   savesource("$F.~body~", \@BODY);
 } else {
     print "'$SOURCEFILE': does not exist";
 } }
@@ -1739,7 +1759,7 @@ sub make_htmlfile # "$F"
     }
     push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS;         #tag and vars
     push @HEAD, "/<\\/body>/ and next;";                #cut lastline
-    push @HEAD, "/<head>/ and $sed_read join(\"\\n\",\@MK_META);"; #add metatags
+    push @HEAD, "/<head>/ and $sed_add join(\"\\n\",\@MK_META);"; #add metatags
     push @BODY, "/<title>/ and next;";                  #not that line
     push @BODY, @MK_VARS; push @BODY, @MK_TAGS;         #tag and vars
     push @BODY, &bodymaker_for_sectioninfo();             #if sectioninfo
@@ -1750,17 +1770,19 @@ sub make_htmlfile # "$F"
 	$FOOT = &body_for_emailfooter();
     }
     my $html = "";
-    $html .= eval_MK_($SITEFILE, @HEAD);
-    $html .= eval_MK_($SOURCEFILE, @BODY);
+    $html .= eval_MK_FILE($SITEFILE, @HEAD);
+    $html .= eval_MK_FILE($SOURCEFILE, @BODY);
     $html .= $FOOT;
     for (source($SITEFILE)) {
 	/<\/body>/ or next;
-	eval_MK(@MK_VARS);
+	$_ = &eval_MK_LIST($_, @MK_VARS);
 	$html .= $_;
     }
     savelist(\@{$INFO{$F}});
    open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
-   print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"($SITEFILE)\n";
+   print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"\n";
+    savesource("$F.~head~", \@HEAD);
+    savesource("$F.~body~", \@BODY);
  } else {
      print "'$SOURCEFILE': does not exist";
  }} else {
@@ -1774,36 +1796,47 @@ sub make_printerfriendly # "$F"
     my $printsitefile="0";                                        # FRIENDLY
     my @FAST = (); my $BODY_TXT; my $BODY_SED;
     my $P=&html_printerfile ($F);
+    my @HEAD = (); my @BODY = ();
     if ("$F" =~ /^(${SITEFILE}|${SITEFILE}l)$/) {
 	@FAST = &make_fast ("$F");
-	$printsitefile="*>" ; $BODY_TXT="./$F.$BODY" ; $BODY_SED="./$P.$HEAD";;
+	$printsitefile=">=>" ; $BODY_TXT="$F.~body~" ; 
     } elsif ("$F" =~ /^(.*[.]html)$/) {
-	$printsitefile="=>" ; $BODY_TXT="$SOURCEFILE"; $BODY_SED="./$F.$BODY";;
+	$printsitefile="=>" ; $BODY_TXT="$SOURCEFILE";
     }
     if ($printsitefile ne "0" and -f $SOURCEFILE) {
       @MK_FAST = &make_printerfile_fast (\@FILELIST);
-      my @HEAD = (); my @BODY = ();
-      push @HEAD, @MK_VARS; my @HEAD, @MK_TAGS; my @HEAD, @MK_FAST;
-      my @MK_METT = map {
-	  /DC.relation.isFormatOf/ and s|content=\"[^\"]*\"|content=\"$F\"| 
-	  } @MK_META;
-      push @HEAD, "/<head>/ and $sed_read join(\"\\n\", \@MK_METT);";
+      push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS; push @HEAD, @MK_FAST;
+      @MK_METT = map { my $x = $_; $x =~
+      /DC.relation.isFormatOf/ and $x =~ s|content=\"[^\"]*\"|content=\"$F\"| ;
+	  $x } @MK_META;
+      push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_METT);";
       push @HEAD, "/<\\/body>/ and next;";
       push @HEAD, &select_in_printsitefile ("$F");
       my $_ext_=&print_extension($printerfriendly);
-      push @HEAD, map { s/[.]html\"|/$_ext_$&/g } @FAST;
+      push @HEAD, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g ; $x } @FAST;
       my $line_=&sed_slash_key($printsitefile_img_2);
-      push @HEAD, "/$line_/ and s| href=\\\"[#][.]\\\"| href=\\\"$F\\\"|";
+      print "back-print-href skipped\n";
+      push @HEAD, "/$line_/ and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
       push @HEAD, @FAST;
+      push @HEAD, "/<body>/ and $sed_add '<!-- done -->'; # HEAD";
       push @BODY, @MK_VARS; push @BODY, @MK_TAGS; push @BODY, @MK_FAST;
-      push @BODY, map { s/[.]html\"|/$_ext_$&/g } @FAST;
+#      push @BODY, map { s/[.]html\"|/$_ext_$&/g } @FAST;
       push @BODY, @FAST;
-#     $CAT                                $BODY_SED    >> ./$P.$BODY; # ORIG
-
-##      $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P; # ~head~
-##      $SED_LONGSCRIPT ./$P.$BODY                   $BODY_TXT >> $P; # ~body~
-##      $SED -e "/<\\/body>/!d" -f $MK_VARS $PRINTSITEFILE >> $P; #</body>
-      print "'$SOURCEFILE': ",ls_s($SOURCEFILE),"$printsitefile",ls_s($P),"\n";
+      my $html = "";
+      $html .= eval_MK_FILE($PRINTSITEFILE, @HEAD);
+      print "(1) $SITEFILE = ", length($html), "   $F._$i\n";
+      savelist(\@HEAD);
+      $html .= eval_MK_FILE($BODY_TXT, @BODY);
+      print "(2) $BODY_TXT = ", length($html), "  $F._$i\n";
+      savelist(\@BODY);
+      for (source($PRINTSITEFILE)) {
+	  /<\/body>/ or next;
+	  $_ = &eval_MK_LIST($_, @MK_VARS);
+	  $html .= $_;
+      }
+      print "(3) > $P = ", length($html), "\n";
+      open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
+      print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"\n";
   }
 }
 
@@ -1850,9 +1883,14 @@ for (@FILELIST) {                                    #### 1. PASS
 
 if ($printerfriendly) {                            # .......... PRINT VERSION
     my $_ext_=esc(&print_extension($printerfriendly));
-    $PRINTSITEFILE=$SITEFILE; $PRINTSITEFILE =~ s/\.[$AA]*$/$_ext_$&/;
-    print "NOTE: going to create printer-friendly sitefile $PRINTSITEFILE";
-##    &make_printsitefile > "$PRINTSITEFILE";
+    $PRINTSITEFILE=$SITEFILE; $PRINTSITEFILE =~ s/(\.\w*)$/$_ext_$1/;
+    $F=$PRINTSITEFILE;
+    my @TEXT = &make_printsitefile();
+    print "NOTE: going to create printer-friendly sitefile '$PRINTSITEFILE'"
+	." $F._$i\n";
+    savelist(\@TEXT);
+    my @LINES = map { chomp; $_."\n" } @TEXT;
+    savesource($PRINTSITEFILE, \@LINES);
 }
 
 if ($simplevars eq " ") {
