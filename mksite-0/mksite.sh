@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.18 2004-04-21 12:08:11 guidod Exp $
+# $Id: mksite.sh,v 1.19 2004-04-21 13:24:38 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -1108,7 +1108,8 @@ if test -f "$SOURCEFILE" ; then
       echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     >> ./$P.$HEAD
       echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" >> ./$P.$HEAD
       _ext_=`print_extension "$printerfriendly"`
-#     $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$F.~moveprint~
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~ >> ./$P.$HEAD
       $CAT                             ./$F.~move~ >> ./$P.$HEAD
       $SED_LONGSCRIPT ./$P.$HEAD $PRINTSITEFILE               > $P # ~head~
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE                 >> $P # ~body~
