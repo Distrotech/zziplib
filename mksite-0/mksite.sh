@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.14 2004-04-21 09:41:04 guidod Exp $
+# $Id: mksite.sh,v 1.15 2004-04-21 10:38:29 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -583,16 +583,16 @@ make_move () # experimental - make a ~move~ file that can be applied
 siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
 {                    # the resulting script will act on each item/line
                      # containing <!--"filename"--> and expand any following
-                     # reference of <!--name--> or <!--date--> or <!--page-->
+                     # reference of <!--name--> or <!--date--> or <!--long-->
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.site.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$MK.$INFO"
   _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
   _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
-  _page_="s|<!--\"\\1\"-->.*<!--page-->|\\&<page>\\2</page>|"
+  _long_="s|<!--\"\\1\"-->.*<!--long-->|\\&<long>\\2</long>|"
   $SED -e "s:&:\\\\&:g" \
        -e "s:=list=\\([^ ]*\\) \\(.*\\):$_list_:" \
        -e "s:=date=\\([^ ]*\\) \\(.*\\):$_date_:" \
-       -e "s:=long=\\([^ ]*\\) \\(.*\\):$_page_:" \
+       -e "s:=long=\\([^ ]*\\) \\(.*\\):$_long_:" \
        -e "/^s|/!d" $INP > $OUT
 }
 
@@ -600,8 +600,8 @@ make_multisitemap ()
 {  # each category gets its own column along with the usual entries
    OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="./$F.$BODY"
    INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
-   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
-  _form_="<!--\"\\2\"--><!--use\\1--><!--page--><!--end\\1-->"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><long><date> addon-sed
+  _form_="<!--\"\\2\"--><!--use\\1--><!--long--><!--end\\1-->"
   _form_="$_form_<br><!--name--><!--date-->"
   _tiny_="small><small><small" ; _tinyX_="small></small></small "
   _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
@@ -612,7 +612,7 @@ make_multisitemap ()
        -e "s|<!--end1-->|</b>|"  \
        -e "s|<!--use2-->|<br>|"  \
        -e "s|<!--use.-->|<br>|" -e "s/<!--[^<>]*-->/ /g" \
-       -e "s|<page>||" -e "s|</page>||" \
+       -e "s|<long>||" -e "s|</long>||" \
        -e "s|<name |<$_tiny_><a |" -e "s|</name>||" \
        -e "s|<date>| |" -e "s|</date>|</a><br></$_tinyX_>|" \
        $INPUTS              >> $OUTPUT
@@ -623,8 +623,8 @@ make_listsitemap ()
 {   # traditional - the body contains a list with date and title extras
    OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="$F.$BODY"
    INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
-   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
-   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--page-->"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><long><date> addon-sed
+   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
    echo "<table width=\"80%\" cellspacing=\"0\" cellpadding=\"0\">" > $OUTPUT
    $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
@@ -634,7 +634,7 @@ make_listsitemap ()
         -e "s|<!--use.-->|<tr><td> </td>|" -e "s/<!--[^<>]*-->/ /g" \
         -e "s|<name |<td><a |" -e "s|</name>|</a></td>$_tabb_|" \
         -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
-        -e "s|<page>|<td><em>|" -e "s|</page>|</em></td></tr>|" \
+        -e "s|<long>|<td><em>|" -e "s|</long>|</em></td></tr>|" \
         $INPUTS             >> $OUTPUT
    echo "</table>"          >> $OUTPUT
 }
@@ -695,8 +695,8 @@ make_printsitefile ()
    echo "     a:visited { $_bold_ color : #000040 ; }"  >> $MK.style.tmp
    echo "     body      { background-color : white ; }" >> $MK.style.tmp
    echo "   </style>"                                   >> $MK.style.tmp
-   siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
-   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--page-->"
+   siteinfo2sitemap ./$MK.site.tmp # have <name><long><date> addon-sed
+   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
    $SED -e "/<title>/p" -e "/<title>/d" \
         -e "/<head>/p"   -e "/<head>/d" \
@@ -928,7 +928,7 @@ if test -f "$SOURCEFILE" ; then make_move "$F"
    short=`info_get_entry DC.title.selected`
    echo "=list=$short" >> $F.$INFO    ; echo "=list=$F $short" >> $MK.$INFO
    title=`info_get_entry DC.title`
-   echo "=page=$title" >> $F.$INFO    ; echo "=long=$F $title" >> $MK.$INFO
+   echo "=long=$title" >> $F.$INFO    ; echo "=long=$F $title" >> $MK.$INFO
    edate=`info_get_entry DC.date`
    issue=`info_get_entry issue`
    echo "=date=$edate" >> $F.$INFO    ; echo "=date=$F $edate" >> $MK.$INFO
