@@ -1,0 +1,85 @@
+<H3>sitemapstyle = selecting generator for sitemap file</H3>
+
+<PRE><b>
+   &lt;!--mksite:listsitemapstyle--&gt; </b>
+   &lt;!--mksite:multisitemapstyle--&gt; 
+</PRE>
+<P>
+  The option can be selected in the sitefile, per default we do
+  use <code>mksite:listsitemapstyle</code>. 
+  <code>&lt;!--mksite:multi--&gt;</code> 
+  will select <code>mksite:multisitemapstyle</code> as well.
+</P>
+<P>
+ The sitemap file is always generated into the target variant of
+ the sitefile - if your sitefile is named "site.htm" then the
+ sitemap will generated into "site.html". To make this happen
+ the target sitemap file must be named in the sitefile as a
+ generation html file. To stick with the example, in your
+ file "site.htm" the following line should be present:
+<PRE>
+&lt;br&gt;-&lt;a href="site.html"&gt;our sitemap&lt;/a&gt.
+</PRE>
+<P>
+ Note that there may be multiple sitefiles for a website and
+ each will get its own sitemap. The sitemap is really just a
+ conversion of the sect/subsect hierarchy present in the
+ sitefile that you did create for your website. Most styles
+ for a sitemap will present each sect1/ sect2/... entry 
+ sligthly differently.
+</P>
+<P>
+ In the <code>listsitemapstyle</code> each sect/subsect
+ entry is presented in a linear list top-down. The order 
+ matches exactly the order of html targets in the sitefile.
+ Each sect1 is prefixed by "*", each sect2 is prefixed by
+ a "-", and each sect3 is slightly indented, i.e. prefixed with
+ a "&nbsp;" and has also added some dots or a hyphen to mark its
+ relation to the nexthigher topic entry. Here is an example:
+</P>
+<center><table cellspacing="0" cellpadding="0">
+ <tr><td>*</td> <td><a href="examples.html">examples</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em>Examples of sitefiles</em></td></tr>
+
+ <tr><td>-</td> <td><a href="horizontal.html"> horizontal</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em>Horizontal Navigation Bar</em></td></tr>
+ <tr><td>-</td> <td><a href="vertical.html"> vertical</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em>Vertical Navigation Bar</em></td></tr>
+
+ <tr><td>-</td> <td><a href="tabbed.html"> tabbed</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em>Tabbed Vertical Navigation Bar</em></td></tr>
+ <tr><td> </td> <td><a href="tabbed2.html">-  (2)</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em><em>new</em> Tabbed Vertical Navigation Bar</em></td></tr>
+
+ <tr><td>-</td> <td><a href="multi.html"> multi section</a></td><td>&nbsp;</td> <td><small>2004-04-22 </small></td><td>&nbsp;</td> <td><em>Multi Section Vertical Navigation Bar</em></td></tr>
+</table></center>
+<P>
+  As seen in example, the listsitemapstyle presents each page with (a) the 
+  shorthand name taken from the sitefile along with the href hotlink from
+  the sitefile (b) attach the date meta attribute from that file being
+  usually the last modified one (c) and put in the title attribute of
+  the target page which is often the first <code>&lt;H2&gt;</code> or
+  similar markup in the text body of the source.
+</P>
+<P>
+  This style can be too long for some occassions. The multisitemapstyle
+  uses a more compact notation. There the three entries are set together
+  in table cell. The sitemap table itself has as many columns as there 
+  are sect1 section entries, and each column starts off with the sect1
+  intro page reference. Obsiously this mode has been developed for being
+  used along with the multi<a href="sectionstyle">sectionstyle</a>
+  layout for the website.
+</P>
+<P>
+  It turns out that the multisitemapstyle is really more compact but
+  it also makes reading it a lot harder. While many sites will pick up
+  the multisectionstyle quite early in the process (at about 30-80 pages)
+  it occurred that the listsitemapstyle looks better than the 
+  multisitemapstyle for about 100 pages. For newer code it therefore
+  recommended to use the listsitemapstyle along with a multisectionstyle.
+</P>
+<P>
+  Since a sitemap of 100 entries in the list might be hard to read as
+  well (by the amount of entries) the reader of this site is asked to
+  develop some sitemapstyle for the 40-100 range and send it to me. The
+  current multisitemapstyle layout is not all too pleasing to my eyes
+  and therefore not explicitly shown in this feature documentation. If
+  you want to see it then just enable it with the 
+   <code>&lt;!--mksite:multisitemapstyle--&gt;</code> option in the sitefile 
+  and have look. Patches <em>are</em> welcome.
+</P>

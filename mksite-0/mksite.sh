@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.34 2004-04-25 13:37:39 guidod Exp $
+# $Id: mksite.sh,v 1.35 2004-04-27 19:32:30 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -885,7 +885,7 @@ He="hr><em"
 Hs="strong"
 Br="br"
 Bs="br><small"
-Ps="br>[&]nbsp[;]<small"
+Ps="br>\\&nbsp\\;<small"
 Rs="br><><small"
 Be="br><em"
 Eu="u"
@@ -901,22 +901,25 @@ echo     "/^<$Br>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Bs>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Be>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Eu>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
-echo     "/^<$Br>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
-echo     "/^<$Bs>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
-echo     "/^<$Ps>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
-echo     "/^<$Rs>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
-echo     "/^<$Be>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
-echo     "/^<$Es>[/:,[]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Br>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Bs>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Ps>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Rs>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Be>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
+echo     "/^<$Es>[\\/:,[]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
 $SED -e "s/>\\[/> *[/" ./$MK.gets.tmp > $MK.puts.tmp
 # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
 # shall not be used otherwise for being generated - this is nice for
 # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
 
 # scan sitefile for references pages - store as =use+= relation
-_uses_="=use\\1=\\2 \\3" ; _sect_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*"
-$SED -f $MK.gets.tmp           -e "/<!--sect[$NN]-->/!d" \
-     -e "s:$_sect_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
-     $SITEFILE > $MK.$INFO
+_uses_="=use\\1=\\2 \\3" ; 
+_getX_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*"
+_getY_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*<[^<>]*>[^<>]*"
+$SED -f $MK.gets.tmp           -e "/^<!--sect[$NN]-->/!d" \
+     -e "s:^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
+     -e "s:^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
+     -e "/^=....=/!d" $SITEFILE > $MK.$INFO
 # scan used pages and store relation =sect= pointing to section group
 $SED -e "/=use.=/!d" \
      -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
