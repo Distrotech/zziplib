@@ -1,0 +1,76 @@
+<H3> FAQ &amp; Implementation Issues </H3>
+
+<H4> Frequently Asked Questions </H4>
+
+<em> no frequent users problems so far </em>
+
+<H4> Implementation Issues </H4>
+<DL>
+<DT> modification time and date formatting </DT>
+<DD>
+   The posix <a href="#date">`date`</a> command is not required to 
+   support the option "-r" to get the formatted date of a file time. 
+   The linux `stat` command would be even better but it is inherently
+   not portable. And the `ls -l` output does (a) have a different
+   column offset for the modification time for each `ls` implementation
+   and (b) uses a format that can not be easily reformatted. On some
+   unix-compatible workstations you might get interesting results. It
+   is highly recommended to install gnu `date` to get acces to some
+   `strftime()` command but nethertheless the mksite.sh script has been 
+    trying hard to get around the problems.
+</DD>
+<DT> `sed` commands per anchor </DT>
+<DD>
+   The posix <a href="#sed">`sed`</a> spec says <small>`Historically, 
+   the sed ! and } editing commands did not permit multiple commands 
+   on a single line using a semicolon as a command delimiter. 
+   Implementations are permitted, but not required, to support this 
+   extension.`</small>. Therefore one can not write 
+   <code>-e&nbsp; "/anchor/{h;s/x/y/g;x}"</code> but instead it has to be
+   <code>-e&nbsp;"/anchor/{" -e&nbsp;"h" -e&nbsp;"s/x/y/g" -e&nbsp; "x" 
+   -e&nbsp;"}"</code>. Looking closer one can see it is indeed
+   possible to split a line by saying <code>-e&nbsp;"s/xx/y\\"
+   -e&nbsp;"z/"</code> which is an escaped newline. A hint says that
+   some implementations do not support this.
+</DD>
+<DT> `sed` commands per file </DT>
+<DD>
+   There has been no reference in posix <a href="#sed">`sed`</a> spec 
+   but the hpux sed command is limited to 100 lines per sed script
+   file (it is even documented in the <a href="#hpuxsed">hpux sed</a>
+   manpage). This is much below the number of  lines we usually generate
+   into the ~head~ and ~body~ sed script. If you see some error like
+   `too many arguments for command xy` then it is most probably the
+   error `too many commands per sed script`.
+</DD>
+</DL>
+
+<H4> Cross References </H4>
+
+<DL>
+<DT name="date"> unix2003 date </DT>
+<DD>
+<a href="http://www.opengroup.org/onlinepubs/007904975/utilities/date.html">
+        http://www.opengroup.org/onlinepubs/007904975/utilities/date.html
+</a></DD>
+<DT name="sed"> unix2003 sed </DT>
+<DD>
+<a href="http://www.opengroup.org/onlinepubs/007904975/utilities/sed.html">
+         http://www.opengroup.org/onlinepubs/007904975/utilities/sed.html
+</a></DD>
+<DT name="hpuxsed"> hpux(9) sed manpage </DT>
+<DD>
+<a href="http://www.informatik.uni-frankfurt.de/doc/man/hpux/sed.1.html">
+         http://www.informatik.uni-frankfurt.de/doc/man/hpux/sed.1.html
+</a></DD>
+<DT name="sunsed"> sunos(5.9) sed manpage </DT>
+<DD>
+<a href="http://bama.ua.edu/cgi-bin/man-cgi?sed+1">
+         http://bama.ua.edu/cgi-bin/man-cgi?sed+1
+</a></DD>
+<DT name="sunsed"> sunos(5.9) date manpage </DT>
+<DD>
+<a href="http://bama.ua.edu/cgi-bin/man-cgi?date+1">
+         http://bama.ua.edu/cgi-bin/man-cgi?date+1
+</a></DD>
+</DL>
