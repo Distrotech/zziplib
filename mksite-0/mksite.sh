@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.6 2004-04-19 19:24:54 guidod Exp $
+# $Id: mksite.sh,v 1.7 2004-04-20 07:58:35 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -153,8 +153,9 @@ DC_VARS="$DC_VARS relation creator subject description publisher "
 for P in $DC_VARS ; do # dublin core embedded
    echo "s|<$P>[^<>]*</$P>||g"              >>$MK.tags.tmp
 done
-   echo "s|<!--[$AX]*[?]-->||g"             >>$MK.tags.tmp
    echo "s|<!--sect[$AZ$NN]-->||g"          >>$MK.tags.tmp
+   echo "s|<!--[$AX]*[?]-->||g"             >>$MK.tags.tmp
+   echo "s|<!--\\\$[$AX]*[?]:-->||g"        >>$MK.tags.tmp
 
 
 TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
@@ -190,12 +191,55 @@ back_path ()          # helper to get the series of "../" for a given path
     echo "$F" | $SED -e "/\\//!d" -e "s|/[^/]*\$|/|" -e "s|[^/]*/|../|g"
 }
 
-info2vars ()          # generate <!--vars--> substition sed addon script
+info2test ()          # cut out all old-style <!--vars--> usages
+{
+  OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.test.tmp"
+  INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
+  V2=" *\\([^ ][^ ]*\\) \\(.*\\)"
+  V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:-->"
+   echo "s/^/ /" > $OUT
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s%=text=$V3%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=Text=/s%=Text=$V3%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V3%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=Name=/s%=Name=$V3%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=text=/s%=text=$V2%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=Text=/s%=Text=$V2%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
+  -e "/=name=/s%=name=$V2%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/=Name=/s%=Name=$V2%s|.*<!--\\\\(\\1[?]\\\\)-->.*|$_x_|%" \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  echo "/^WARNING:/!d" >> $OUT
+}
+
+info2vars ()          # generate <!--$vars--> substition sed addon script
 {
   OUT="$1" ; test ".$OUT" = "." && OUT="./$MK.vars.tmp"
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
   V2=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V3=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  _dollar_="\\\\([^<>]*\\\\)\\\\\\\$"
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$V3,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V3,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V3,s|<!--$_dollar_\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V3,s|<!--$_dollar_\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V2,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V2,s|<!--$_dollar_\\1-->|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V2,s|<!--$_dollar_\\1[?]-->|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V2,s|<!--$_dollar_\\1[?]-->|\\\\1 (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s,=text=$V3,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V3,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V3,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V3,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/=text=/s,=text=$V2,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=Text=/s,=Text=$V2,s|<!--$_dollar_\\1:-->[$AX]*|\\\\1\\2|," \
+  -e "/=name=/s,=name=$V2,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
+  -e "/=Name=/s,=Name=$V2,s|<!--$_dollar_\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  test ".$simplevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
   -e "/=Text=/s,=Text=$V3,s|<!--\\1-->[$AX]*|\\2|," \
@@ -205,7 +249,7 @@ info2vars ()          # generate <!--vars--> substition sed addon script
   -e "/=Text=/s,=Text=$V2,s|<!--\\1-->[$AX]*|\\2|," \
   -e "/=name=/s,=name=$V2,s|<!--\\1[?]-->[$AX]*| - \\2|," \
   -e "/=Name=/s,=Name=$V2,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
-  -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
 }
 
 info2meta ()         # generate <meta name..> text portion
@@ -615,6 +659,7 @@ esac done
 #                                     check for magic hints in the $SITEFILE
 sectionlayout="list"
 sitemaplayout="list"
+simplevars="test"
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
 echo "WARNING: do not use <!--multi-->, change to <!--mksite:multi--> " \
      "$SITEFILE" >&2
@@ -645,6 +690,16 @@ fi
 if $GREP "<!--mksite:listsitemaplayout-->"   $SITEFILE >$NULL ; then
 sitemaplayout="list"
 fi
+if $GREP "<!--mksite:no-simplevars-->"   $SITEFILE >$NULL ; then
+simplevars="no"
+fi
+if $GREP "<!--mksite:simplevars-->"   $SITEFILE >$NULL ; then
+simplevars="do"
+fi
+
+if test ".$simplevars" = ".do" ; then
+$CATNULL > $MK.olds.tmp
+fi
 
 # ==========================================================================
 # and now generate the output pages
@@ -657,8 +712,12 @@ ${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
+   test ".$simplevars" = ".test" && \
+   info2test $MK.test.tmp          # check <!--title--> vars old-style
    info2vars $MK.vars.tmp          # have <!--title--> vars substituted
    info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
+   test ".$simplevars" = ".test" && \
+   $SED_LONGSCRIPT ./$MK.test.tmp $SOURCEFILE | tee -a ./$MK.olds.tmp
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
    $CAT ./$MK.puts.tmp                                       > $F.$HEAD 
    echo "/^$SECTS.*<a href=\"$F\">/s|</a>|</a></b>|"        >> $F.$HEAD
@@ -690,8 +749,12 @@ fi fi ;;
 *.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`            #     2.PASS
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
-   info2vars $MK.vars.tmp          # have <!--title--> vars substituted
+   test ".$simplevars" = ".test" && \
+   info2test $MK.test.tmp          # check <!--title--> vars old-style
+   info2vars $MK.vars.tmp          # have <!--$title--> vars substituted
    info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
+   test ".$simplevars" = ".test" && \
+   $SED_LONGSCRIPT ./$MK.test.tmp $SOURCEFILE | tee -a ./$MK.olds.tmp
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
    CURRENT_SECTION=`info_get_entry DC.relation.section`
    SECTION=`sed_slash_key "$CURRENT_SECTION"`
@@ -747,5 +810,20 @@ esac
       done
    fi
 done
+if test ".$simplevars" = ".test" ; then oldvars=`cat ./$MK.olds.tmp | wc -l`
+if test "$oldvars" = "0" ; then
+echo "HINT: you have no simplevars in your htm sources, so you may want to"
+echo "hint: set the magic <!--mksite:no-simplevars--> in your $SITEFILE"
+echo "hint: which makes execution _faster_ actually in the 2. pass"
+echo "info: simplevars expansion was the oldstyle way of variable expansion"
+else
+echo "HINT: there were $oldvars simplevars found in your htm sources."
+echo "hint: This style of variable expansion will be disabled in the near"
+echo "hint: future. If you do not want change then add the $SITEFILE magic"
+echo "hint: <!--mksite:simplevars--> somewhere to suppress this warning"
+echo "info: simplevars expansion will be an explicit option in the future."
+echo "info: errornous simplevar detection can be suppressed with a magic"
+echo "info: hint of <!--mksite:no-simplevars--> in the $SITEFILE for now."
+fi fi
 rm ./$MK.*.tmp
 exit 0
