@@ -21,15 +21,23 @@
 <P>
   The printer-friendly layout is all <b>automatic</b> and in parallel
   and not so much to be printer-friendly in fact. Instead it is 
-  targetted at the <em>"visually impaired"</em> who may have a hard time 
-  to find the correct navigation controls when they are pushed all over
-  the screen and its horizontal and vertical edges. There is even a
-  special "WAI" w3c initiative to help spread awareness of the problem.
+  targetted at text-mod readers and the <em>"visually impaired"</em> 
+  who may have a hard time to find the correct navigation controls when 
+  they are pushed all over the screen and its horizontal and vertical edges. 
+  There is even a special "WAI" w3c initiative to help spread awareness of 
+  the problem.
   This website has been of course layouted additionally in "-print" style,
-  you can find a link low on the side bar and under the tiny "=" symbol
+  you can find a link on the side bar and under the tiny square image
   in the top left corner. (the "title=" should make for a little popup).
 </P>
-
+<P>
+  Note that with a text-mode browsers the <code>alt=""</code> will get
+  visible - on the main html page saying "text mode version" and on 
+  the print-style version the first entry is named "go text:" jumping
+  down to the main body area. Just imagine mobile phone with an html
+  browser (or via web proxy) that can only show a few words at a time
+  on the screen. That's almost similar to the linear way to read a
+  text as is done by blind people using a text-to-speech engine.
 <pre>
   &lt;html&gt;&lt;head&gt;&lt;title&gt;common title prefix &lt;!--$title?--&gt;&lt;/title&gt;
   &lt;style&gt;
@@ -50,8 +58,9 @@
   &lt;td class="navsect" align="center"&gt;&lt;a href="index.html"&gt;Overview&lt;/a&gt;&lt;/td&gt;
   &lt;td class="navsect" align="center"&gt;&lt;a href="examples.html"&gt;Examples&lt;/a&gt;&lt;/td&gt;
   &lt;/tr&gt;&lt;tr&gt; &lt;td rowspan="2" class="navprint"&gt;
-  &lt;a href="${printerfriendly:=site.htm}" title="printer friendly / pda version"&gt;
-  &lt;small&gt;&lt;small&gt;=&lt;/small&gt;&lt;/small&gt;&lt;/a&gt;     &lt;!--mksite:printerfriendly--&gt;
+  &lt;!--mksite:printerfriendly--&gt;
+  &lt;a href="${printerfriendly:=site.htm}" title="printer friendly version"&gt;
+  &lt;img alt="printer / text mode version" width="8" height="8" border="0" /&gt;&lt;/a&gt;     
   &lt;/td&gt;&lt;td               colspan="<a href="#show">2</a>"&gt;&lt;/td&gt;&lt;/tr&gt;
   &lt;tr&gt;&lt;td class="body"   colspan="<a href="#show">2</a>"&gt;&lt;/td&gt;&lt;/tr&gt;
 
@@ -83,8 +92,8 @@
   <td class="navisect" align="center"><a href="index.html">Overview</a></td>
   <td align="center"><a href="examples.html">Examples</a></td>
   </tr><tr>  <td rowspan="2" class="navprint">
-  <a href="${printerfriendly:=site.htm}" title ="printer friendly / pda version">
-  <small><small>=</small></small></a>
+  <a href="${printerfriendly:=site.htm}" title ="printer friendly version">
+  <img alt="printer / text mode version" width="8" height="8" border="0" /></a>
   </td><td             colspan="2"></td></tr>
   <tr><td class="body" colspan="2"></td></tr>
 
