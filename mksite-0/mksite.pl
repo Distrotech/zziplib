@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.22 2005-01-29 20:26:11 guidod Exp $
+# $Id: mksite.pl,v 1.23 2005-01-30 11:08:52 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -99,9 +99,9 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	    }
 	    $opt="" ;;
 	} else {
-	    $o{main_file} = $arg if not $o{main_file};
+	    if (not $o{main_file}) { $o{main_file} = $arg; } else {
 	    $o{files} .= $o{fileseparator} if $o{files};
-	    $o{files} .= $arg;
+	    $o{files} .= $arg; };
 	    $opt="" ;;
 	};
     }
@@ -514,7 +514,7 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_\\?-->|\$1$SS\$Z|;"}
 	}
     }
-    if ($simplevars ne "no" && $updatevars != "no") {
+    if ($simplevars ne "no" && $updatevars ne "no") {
 	for (@_INP) { my $Q = "[$AX]*";
     if    (/^=....=formatter /) { next; } 
     elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
@@ -1934,13 +1934,12 @@ savelist(\@MK_INFO);
 
 @FILELIST=&echo_site_filelist();
 if ($o{filelist} or $o{list} eq "file" or $o{list} eq "files") {
-    for (@FILELIST) { print $_,"$n";  } exit;
+    for (@FILELIST) { print $_,"$n";  } exit; # --filelist
 }
-
-if ($#FILELIST < 0) {
-    print "nothing to do$n";
-}
-
+if ($o{files}) { @FILELIST=split(/ /, $o{files}); } # --files
+if ($#FILELIST < 0) { print STDERR "nothing to do$n"; }
+if ($#FILELIST == 0 and 
+    $FILELIST[0] eq $SITEFILE) { print STDERR "only '$SITEFILE'!?$n"; }
 
 for (@FILELIST) {                                    #### 1. PASS
     $F = $_;

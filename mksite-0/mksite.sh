@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.51 2005-01-29 20:23:35 guidod Exp $
+# $Id: mksite.sh,v 1.52 2005-01-30 11:08:50 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -113,9 +113,9 @@ do if test ".$opt" != "." ; then
             eval "export opt_$opt=' '"
          fi
          opt="" ;;
-      *) test ".$opt_main_file" = "." && opt_main_file="$arg"
+      *) if test ".$opt_main_file" = "." ; then opt_main_file="$arg" ; else
          test ".$opt_files" != "." && opt_files="$opt_files$opt_fileseparator"
-         opt_files="$opt_files$arg"
+         opt_files="$opt_files$arg" ; fi
          opt="" ;;
       esac
    fi
@@ -1633,11 +1633,11 @@ make_sitemap_page
 
 FILELIST=`echo_site_filelist`
 if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
-   for F in $FILELIST; do echo "$F" ; done ; exit
+   for F in $FILELIST; do echo "$F" ; done ; exit # --filelist
 fi
-if test ".$FILELIST" = "."; then
-    echo "nothing to do"
-fi
+if test ".$opt_files" ; then FILELIST="$opt_files" ; fi # --files
+if test ".$FILELIST" = "."; then echo "nothing to do" >&2 ; fi
+if test ".$FILELIST" = ".SITEFILE" ; then echo "only '$SITEFILE'?!" >&2 ; fi
 
 for F in $FILELIST ; do case "$F" in                       #### 1. PASS
 http:*|*://*) ;; # skip
@@ -1660,7 +1660,6 @@ ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
 *) echo "?? -> '$F'"
    ;;
 esac done
-
 
 if test ".$printerfriendly" != "." ; then           # .......... PRINT VERSION
   _ext_=`print_extension "$printerfriendly" | sed -e "s/&/\\\\&/"`

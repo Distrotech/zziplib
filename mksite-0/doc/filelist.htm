@@ -1,0 +1,58 @@
+<H2> --files and --filelist </H2>
+
+<P>
+  With mksite.sh it happens that the list of files to be generated is
+  not usually defined on the commandline. Instead the sitefile is being
+  scanned for the target filelist - those lines starting with
+  <code>&lt;br&gt;&lt;a<>href=filename</cod> specify the filenames that
+  the mksite.sh script shall take care of.
+</P>
+<P>
+  <b><tt>--filelist</tt></b> is the commandline option to get the
+  result of this scan over the sitefile. It prints the filelist being
+  generated - I am using this option sometimes to postprocess a list
+  of generated files during selftest checks of the project: the 
+  mksite.sh script and its faster mksite.pl cousin are called with the
+  same options and the resulting files (--filelist!) are checked 
+  whether they are identical.
+</P>
+<P>
+  <b><tt>--files</tt></b> is the inverse option allowing to restrict
+  the series of files to be touched during a site generation run. The
+  sitefile will still be scanned (as it can contain static options
+  atlast) but only one file is being regenerated. Caveat, of course,
+  crossfile resolution of information can not be done like this as
+  the other files in the sitefile --filelist are not even scanned
+  for information. Therefore you should better not try to restrict
+  --files to just the sitefile as it usually contains the last
+  "date" and "title" of the --filelist which are not available.
+</P>
+<P>
+  Restricting the list of touched files is an important option for
+  large websites since the processing with sh/sed is often dramatically
+  slow. Using the --files option allows to have a quick preview of the 
+  generated result of that one page being currently in the making. Sure
+  you should issue a full regeneration of the website when you are done
+  with editing that one page. In fact this mode is so important that it
+  is not required to say <code>"--files=<>a<>b<>c"</code> but instead
+  just run <PRE>
+     sh mksite.sh site.htm a.html b.html
+</PRE></P>
+<P>
+  Note that the sitefile is given by its source filename while the
+  generated files are given by their target filenames - in the
+  sitefile the touched files are also given by their target filenames.
+  As an extra it happens that the explicit files do <em>not</em> need to be 
+  part of the sitefile filelist. That allows you to burn any sitefile
+  envelope around any html body text.
+</P>
+
+
+
+
+
+
+
+
+
+  
