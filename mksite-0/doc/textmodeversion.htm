@@ -28,10 +28,8 @@
   bars reflect the sect/subsect relations in a way most usable form for
   being navigated with a text mode browser (e.g. lynx).
 </P>
-<P> <tt>textmodefile.print.html</tt></em>
-<br>&nbsp;
-<br><em> graphical browser: </em>
-<br>&nbsp;
+<P> <tt>textmode-example.print.html</tt></em></P>
+<table><tr><td>&nbsp;</td><td><table bgcolor="#FFFFE0"><tr><td>
 <br><a href="#." title="section"><img alt="|go text:" width="8" height="8" border="0" /></a> || - 
 <a href="index.print.html">project</a> - 
  [ <a href="features.print.html">features</a> ]  - 
@@ -45,24 +43,31 @@
 <a href="waicheck.print.html"> WAI </a> - 
 <a href="subsects.print.html"> SubSects </a>  - 
 <br>
-   <b> &nbsp;&nbsp;&nbsp;&nbsp; lorem ipsum </b>
-<br> &nbsp;
-<br> <em> textmode browser: </em>
-</P>
-<pre>
-   |go text: || - project - [ features ] - examples - links -
-   ||topics: || - example -  sitemaps - [ text mode version ] -
-   |||pages: || - WAI - SubSects -
-     lorem ipsum...
-</pre>
+   <b> &nbsp;&nbsp;&nbsp;&nbsp; lorem ipsum 
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;</b>
+</td></tr></table></td><td>&nbsp;</td></tr></table>
+<br>
+<table><tr><td>&nbsp;</td><td><table border="3"><tr><td><pre>
+<u>|go text:</u> || - project - [ features ] - examples - links -
+||topics: || - example -  sitemaps - [ text mode version ] -    
+|||pages: || - WAI - SubSects -
+  lorem ipsum...
+</pre></td></tr></table></td><td>&nbsp;</td></tr></table>
 <P>
   Note how there are little squares in the graphical view (if you look at 
-  this page with a graphical browser) while these get replaced with some 
-  alt-texts for a textmode browser. These alt-texts simply hint for the
-  sect/subsect relation (<code>section</code> to <code>topics:</code> to <code>pages:</code>) but the first entry
-  is slightly different - it is named <code>go text:</code> and the hot
-  link under it will jump down to right after the header navigation block 
-  (here: lorem ipsum).
+  this page with a graphical browser) which also have little "title="
+  popups. These squares will get replaced with some alt-texts when using
+  a textmode browser. These title-texts/alt-texts simply hint for the
+  sect/subsect relation (<code>section</code> to <code>topics:</code> 
+  to <code>pages:</code>) but the first entry is slightly different
+  in textmode - it is named <code>go text:</code> and the hot
+  link under it will actually jump down to right <em>after</em> the 
+  header navigation block (here: jumping to lorem ipsum heading).
 </P>
 <P>
   That variant is recommended by <a href="waicheck.html">WAI</a> texts
@@ -70,33 +75,39 @@
   or a braille terminal i.e. purely linear starting with the first word
   on the page. There it is best to have a first hotlink on the page that 
   should help to skip down to the main body text, and it should bear a caption
-  saying just that (like "skip down to text". I hope that "go text:"
-  is identifying this functionality as well. In fact the hot link under
-  "go text:" skips to "#." - and we have generated a little anchor in
-  the print.html text as <code>&lt;a&nbsp;name="."&gt;&lt;/a&gt;</code>.
+  saying just that (like "skip down to text"). It is hinted to put it under 
+  an invisible image so the graphical view representation is not spoiled
+  by the down-to-text hint. Actually I hope that "go text:" is identifying
+  this functionality as well. Technically, the hot link under "go text:"
+  skips to <code>"#."</code> - as we have generated a little html anchor in
+  the print.html text as <code>&lt;a&nbsp;name="."&gt;&lt;/a&gt;</code>
+  marking the end of the header navigation block.
 </P>
 <P>
-  The hotlink under the second img-square (replaced by "topics:" in the
-  text mode view) points back to the normal sitefile representation for
-  colored graphical browsers. It would be best if there is a link to
-  the text mode version in the graphical sitefile represention. And it
-  is recommended to give it the very same look of the generated little
-  img-squares in the print.html view. That's where the recommendation
-  comes from as shown at the top of this page - to make a little
-   <code>&lt;img&gt;</code> with no "src=" and size of 8x8. The very
-  same thing generated into the "*.print.html" header block.
+  The "go text:" is the replacment for the img-square of the first
+  navigation line (for sections). The hotlink under the second img-square 
+  (replaced by "topics:" in the text mode view) points back to the normal 
+  sitefile representation for colored graphical browsers. It is the only
+  backlink to the original sitefile representation. On return it would be 
+  best if there is a link to the text mode version in the graphical 
+  sitefile represention. And there it is advisable to give it the 
+  very same look of the (mksite.sh) generated little img-squares in the 
+  print.html view. That's what the cut-n-paste text at the top of this 
+  page is showing - to make a little  <code>&lt;img&gt;</code> with 
+  no "src=" and size of 8x8. The very same thing generated into the 
+  "*.print.html" header block for each sect/subsect navigation.
 </P>
 <P>
-  In the normal graphical sitefile representation you should use two
-  textuals around the hotlink to the "$printerfriendly" version.
-  - The alt-text replacement of the <code>&lt;img&gt;</code>
-  tag is only seen with text mode browsers, so we let it read as
-  <em>"(go to) printer / text mode version"</em> (it is a hot link
-  by the surrounding <code>&lt;a&nbsp;href&gt;</code>). For the
-  surrounding href we set an "title=" attribute however - modern
+  To exapand on it, in the normal graphical sitefile representation you 
+  should use two text replacement around the hotlink to the 
+   "$printerfriendly" version. - The alt-text replacement of the 
+  <code>&lt;img&gt;</code> tag is only seen with text mode browsers, 
+  so we let it read as <em>"(go to) printer / text mode version"</em> 
+  (it is a hot link by the surrounding <code>&lt;a&nbsp;href&gt;</code>). 
+  For the surrounding href we set a "title=" attribute however - modern
   browsers will present it as a little (yellow) popup text when
   hovering the mouse pointer over it. Here we set the hint for a
-  functionality most useful to people with a graphical browsers, it
+  functionality most useful to people with graphical browsers, it
   says <em>"(go to) printer friendly version"</em>. That's because
   the generated "*.print.html" has less colors and no big shadowed
   navigation bar.
@@ -106,7 +117,49 @@
   all hrefs in the header lines and the body text with hrefs to
   the "*.print.html" version generated. So when all your crafted
   htm(l) files are listed in the sitefile then a user with a text 
-  mode browser will never leave the text mode oriented mode when
-  clicking on a (website internal) hotlink. It will always end on
-  the sister "*.print.html" variant.
+  mode browser will never errornously leave the text mode oriented mode 
+  when clicking on a (website internal) hotlink. It will always end on
+  the printerfriendly "*.print.html" variant.
 </P>
+
+<P> <tt>textmode-example.html</tt></em>
+<br>&nbsp;
+<br>
+<table class="navitable"  cellspacing="0" cellpadding="4" width="100%" ><tr>
+<td class="navisect" align="center"><a href="site.html">
+  <b> <!--$selected--> </b></a></td>
+<td class="navisect" align="center"><a href="index.html">project</a></td>
+<td  align="center"><a href="features.html">features</a></td>
+<td class="navisect" align="center"><a href="examples.html">examples</a></td>
+<td class="navisect" align="center"><a href="links.html">links</a></td>
+
+</tr><tr><td rowspan="2" class="navprint">
+<!--mksite:printerfriendly--> 
+<a href="${printerfriendly:=site.htm}" title="printer friendly version">
+<img alt="printer / text mode version" width="8" height="8" border="0" /></a>
+</td><td                   colspan="4"></td></tr>
+<tr><td       class="body" colspan="4"></td></tr>
+<tr valign="top"><td class="navlist"><!--XmultiX-->
+<hr><a href="index.html">project</a>
+<br>- navlist
+<br>- items
+<hr>
+</td><td class="body"     colspan="4"><!--content-->
+<b> &nbsp; lorem ipsum </b>
+</td></tr></table>
+</P>
+<table><tr><td>&nbsp;</td><td><table border="2"><tr><td><pre>
+<u>textmode versions</u>      project features examples links
+printer / text mode version                          
+------------------------------------------------------------
+project                                              
+- navlist                                            
+- items                                              
+------------------------------------------------------------
+...
+
+    lorem ipsum
+</pre></td></tr></table></td><td>&nbsp;</td></tr></table>
+
+
+
