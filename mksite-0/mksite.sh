@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.33 2004-04-24 12:47:18 guidod Exp $
+# $Id: mksite.sh,v 1.34 2004-04-25 13:37:39 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -882,13 +882,17 @@ select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
 # with an sed anchor of <!--sect[$NN]--> (or <!--sect[$AZ]-->)
 Hr="hr"
 He="hr><em"
+Hs="strong"
 Br="br"
 Bs="br><small"
+Ps="br>[&]nbsp[;]<small"
+Rs="br><><small"
 Be="br><em"
 Eu="u"
 Es="small"
 echo     "/^<$Hr>[-|[]*<a href=/s/^/<!--sect1-->/"      > $MK.gets.tmp
 echo     "/^<$He>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
+echo     "/^<$Hs>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
 echo     "/^<$Br>[*][*]*<a href=/s/^/<!--sect1-->/"    >> $MK.gets.tmp
 echo     "/^<$Br>[-|][-|]*<a href=/s/^/<!--sect2-->/"  >> $MK.gets.tmp
 echo     "/^<$Br>[/:][/:]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
@@ -899,6 +903,8 @@ echo     "/^<$Be>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Eu>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
 echo     "/^<$Br>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
 echo     "/^<$Bs>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
+echo     "/^<$Ps>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
+echo     "/^<$Rs>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
 echo     "/^<$Be>[/:]*<a href=/s/^/<!--sect3-->/"      >> $MK.gets.tmp
 echo     "/^<$Es>[/:,[]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
 $SED -e "s/>\\[/> *[/" ./$MK.gets.tmp > $MK.puts.tmp
