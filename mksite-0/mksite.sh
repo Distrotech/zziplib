@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.35 2004-04-27 19:32:30 guidod Exp $
+# $Id: mksite.sh,v 1.36 2004-05-09 15:14:07 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -37,6 +37,7 @@ LS_L="ls -l"     # linux uses one less char than solaris
 INFO="~~"     # extension for meta data files
 HEAD="~head~" # extension for head sed script
 BODY="~body~" # extension for body sed script
+FOOT="~foot~" # append to body text (non sed)
 
 NULL="/dev/null"                             # to divert stdout/stderr
 CATNULL="$CAT $NULL"                         # to create 0-byte files
@@ -163,6 +164,7 @@ done
 TRIMM=" -e 's:^ *::' -e 's: *\$::'"  # trimm away leading/trailing spaces
 # ======================================================================
 #                                                                FUNCS
+
 sed_longscript ()
 {
     # hpux sed has a limit of 100 entries per sed script !
@@ -455,6 +457,7 @@ DC_date ()             # make sure there is this DC.date meta tag
    Q="$1" # source file
    if info1grep DC.date 
    then DX_text issue "dated `info_get_entry DC.date`"
+        DX_text updated     "`info_get_entry DC.date`"
    else text=""
       for kind in available issued modified created ; do
         text=`info_get_entry DC.date.$kind` 
@@ -474,7 +477,20 @@ DC_date ()             # make sure there is this DC.date meta tag
          text=`eval $SED $EDATE $TRIMM -e "'s|^ *[$AA]*:||'" -e q $Q` 
          text=`echo "$text" | $SED -e 's|\\&.*||'`
       fi
-      text=`echo "$text" | $SED -e "s/[$NN]*:.*//"`
+      text=`echo "$text" | $SED -e "s/[$NN]*:.*//"` # cut way seconds
+      DX_text updated "$text"
+      text1=`echo "$text" | $SED -e "s|^.* *updated ||"`
+      if test ".$text" != ".$text1" ; then
+        kind="modified" ; text=`echo "$text1" | $SED -e "s|,.*||"`
+      fi
+      text1=`echo "$text" | $SED -e "s|^.* *modified ||"`
+      if test ".$text" != ".$text1" ; then
+        kind="modified" ; text=`echo "$text1" | $SED -e "s|,.*||"`
+      fi
+      text1=`echo "$text" | $SED -e "s|^.* *created ||"`
+      if test ".$text" != ".$text1" ; then
+        kind="created" ; text=`echo "$text1" | $SED -e "s|,.*||"`
+      fi
       DC_meta date "$text"
       DX_text issue "$kind $text"
    fi
@@ -602,6 +618,19 @@ info2body_append ()      # append alternative handling script to $BODY
     fi
 }
 
+bodymaker_for_sectioninfo ()
+{
+    test ".$sectioninfo" = ".no" && return
+    _x_="<!--mksite:sectioninfo::-->"
+    _q_="\\([^<>]*[$AX][^<>]*\\)"
+    test ".$sectioninfo" != ". " && _q_="[ ][ ]*$sectioninfo\\([ ]\\)"
+    echo "s|\\(^<[hH][$NN][ >].*</[hH][$NN]>\\)$_q_|\\1$_x_\\2|"
+    echo "/$_x_/s|^|<table width=\"100%\"><tr valign=\"bottom\"><td>|"
+    echo "/$_x_/s|</[hH][$NN]>|&</td><td align=\"right\"><i>|"
+    echo "/$_x_/s|\$|</i></td></tr></table>|"
+    echo "s|$_x_||"
+}
+
 moved_href ()  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
 {   # prints path to $FILETOREFERENCE href-clickable in $FROMCURRENTFILE
     # if no subdirectoy then output is the same as input $FILETOREFERENCE
@@ -703,8 +732,16 @@ print_extension ()
     esac
 }
     
-html_sourcefile () # generally just cut away the trailing "l" (ell)
-{                  # making "page.html" argument into "page.htm" return
+html_sourcefile ()  # generally just cut away the trailing "l" (ell)
+{                   # making "page.html" argument into "page.htm" return
+    _SRCFILE_=`echo "$1" | $SED -e "s/l\\$//"`
+    if test -f "$_SRCFILE_" ; then echo "$_SRCFILE_"
+    elif test -f "$opt_srcdir/$_SRCFILE_" ; then echo "$opt_srcdir/$_SRCFILE_"
+    else echo ".//$_SRCFILE_"
+    fi
+}
+html_printerfile_sourcefile () 
+{                   
     if test ".$printerfriendly" = "."
     then 
     echo "$1" | sed -e "s/l\$//"
@@ -862,8 +899,16 @@ select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
    echo "s/^<!--mksite:sect[$NN]:[$AZ]-->//" 
 }
 
-
-
+body_for_emailfooter ()
+{
+    test ".$emailfooter" = ".no" && return
+    _email_=`echo "$emailfooter" | sed -e "s|[?].*||"`
+    _dated_=`info_get_entry updated`
+    echo "<hr><table border=\"0\" width=\"100%\"><tr><td>"
+    echo "<a href=\"mailto:$emailfooter\">$_email_</a>"
+    echo "</td><td align=\"right\">"
+    echo "$_dated_</td></tr></table>"
+}
 
 # ==========================================================================
 #  
@@ -880,33 +925,66 @@ select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
 # - in the new variant we use a ".gets.tmp" sed script that            SECTS
 # marks all interesting lines so they can be checked later
 # with an sed anchor of <!--sect[$NN]--> (or <!--sect[$AZ]-->)
-Hr="hr"
-He="hr><em"
-Hs="strong"
-Br="br"
-Bs="br><small"
-Ps="br>\\&nbsp\\;<small"
-Rs="br><><small"
-Be="br><em"
-Eu="u"
-Es="small"
-echo     "/^<$Hr>[-|[]*<a href=/s/^/<!--sect1-->/"      > $MK.gets.tmp
-echo     "/^<$He>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
-echo     "/^<$Hs>[-|[]*<a href=/s/^/<!--sect1-->/"     >> $MK.gets.tmp
-echo     "/^<$Br>[*][*]*<a href=/s/^/<!--sect1-->/"    >> $MK.gets.tmp
-echo     "/^<$Br>[-|][-|]*<a href=/s/^/<!--sect2-->/"  >> $MK.gets.tmp
-echo     "/^<$Br>[/:][/:]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
-echo     "/^<$Es>[/:,[]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Br>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
-echo     "/^<$Bs>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
-echo     "/^<$Be>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
-echo     "/^<$Eu>[-|[]*<a href=/s/^/<!--sect2-->/"     >> $MK.gets.tmp
-echo     "/^<$Br>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Bs>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Ps>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Rs>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Be>[\\/:]*<a href=/s/^/<!--sect3-->/"    >> $MK.gets.tmp
-echo     "/^<$Es>[\\/:,[]*<a href=/s/^/<!--sect3-->/"  >> $MK.gets.tmp
+S="\\&nbsp\\;"
+# S="[&]nbsp[;]"
+
+# HR and EM style markups must exist in input - BR sometimes left out 
+# these routines in(ter)ject hardspace before, between, after markups
+# note that "<br>" is sometimes used with HR - it must exist in input
+echo_HR_EM_PP ()
+{
+    echo "/^$1$2$3*<a href=/s/^/$4/"
+    echo "/^<>$1$2$3*<a href=/s/^/$4/"
+    echo "/^$S$1$2$3*<a href=/s/^/$4/"
+    echo "/^$1<>$2$3*<a href=/s/^/$4/"
+    echo "/^$1$S$2$3*<a href=/s/^/$4/"
+    echo "/^$1$2<>$3*<a href=/s/^/$4/"
+    echo "/^$1$2$S$3*<a href=/s/^/$4/"
+}
+
+echo_br_EM_PP ()
+{
+    echo_HR_EM_PP  "$1" "$2" "$3" "$4"
+    echo "/^$2$3*<a href=/s/^/$4/"
+    echo "/^<>$2$3*<a href=/s/^/$4/"
+    echo "/^$S$2$3*<a href=/s/^/$4/"
+    echo "/^$2<>$3*<a href=/s/^/$4/"
+    echo "/^$2$S$3*<a href=/s/^/$4/"
+}    
+
+echo_HR_PP ()
+{
+    echo "/^$1$2*<a href=/s/^/$3/"
+    echo "/^<>$1$2*<a href=/s/^/$3/"
+    echo "/^$S$1$2*<a href=/s/^/$3/"
+    echo "/^$1<>$2*<a href=/s/^/$3/"
+    echo "/^$1$S$2*<a href=/s/^/$3/"
+}
+echo_br_PP ()
+{
+    echo_HR_PP "$1" "$2" "$3"
+    echo "/^$2*<a href=/s/^/$3/"
+    echo "/^<>$2*<a href=/s/^/$3/"
+    echo "/^$S$2*<a href=/s/^/$3/"
+}    
+
+h1="[-|[]"
+b1="[*=]"
+b2="[-|[]"
+b3="[\\/:]"
+q3="[\\/:,[]"
+echo_HR_PP    "<hr>"            "$h1"    "<!--sect1-->"      > $MK.gets.tmp
+echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "<!--sect1-->"     >> $MK.gets.tmp
+echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "<!--sect1-->"     >> $MK.gets.tmp
+echo_HR_PP    "<br>"            "$b1$b1" "<!--sect1-->"     >> $MK.gets.tmp
+echo_HR_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> $MK.gets.tmp
+echo_HR_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> $MK.gets.tmp
+echo_br_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> $MK.gets.tmp
+echo_br_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> $MK.gets.tmp
+echo_br_EM_PP "<br>" "<small>"  "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
+echo_br_EM_PP "<br>" "<em>"     "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
+echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
+echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> $MK.gets.tmp
 $SED -e "s/>\\[/> *[/" ./$MK.gets.tmp > $MK.puts.tmp
 # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
 # shall not be used otherwise for being generated - this is nice for
@@ -967,6 +1045,8 @@ sectiontab=" "         # highlight ^<td class=...>...href="$section"
 currenttab=" "         # highlight ^<br>..<a href="$topic">
 headsection="no"
 tailsection="no"
+sectioninfo="no"       # using <h2> title <h2> = info text
+emailfooter="no"
 
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
 echo \
@@ -1004,6 +1084,11 @@ x=`mksite_magic_option sectiontab` ; case "$x" in
       " "|"no"|"warn") sectiontab="$x" ;; esac
 x=`mksite_magic_option currenttab` ; case "$x" in
       " "|"no"|"warn") currenttab="$x" ;; esac
+x=`mksite_magic_option sectioninfo` ; case "$x" in
+      " "|"no"|"[=-:]") sectioninfo="$x" ;; esac
+x=`mksite_magic_option emailfooter` 
+   test ".$x" != "." && emailfooter="$x"
+
 test ".$opt_print" != "." && printerfriendly="$opt_print"
 test ".$commentvars"  = ".no" && updatevars="no"   # duplicated into
 test ".$commentvars"  = ".no" && expandvars="no"   # info2vars ()
@@ -1031,7 +1116,7 @@ echo "NOTE: '$headsection'headsection '$tailsection'tailsection"
 
 for F in $FILELIST ; do case "$F" in
 http:*|*://*) ;; # skip
-${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
+${SITEFILE}|${SITEFILE}l) SOURCEFILE=`html_sourcefile "$F"`
 if test "$SOURCEFILE" != "$F" ; then
    echo "=text=today `$DATE_NOW +%Y-%m-%d`"          > $F.$INFO
    echo "=meta=formatter `basename $0`"             >> $F.$INFO
@@ -1044,8 +1129,8 @@ if test "$SOURCEFILE" != "$F" ; then
    DC_VARS_Of $SOURCEFILE 
    DC_modified $SOURCEFILE ; DC_date $SOURCEFILE
    DC_section "$F"
-   test ".$printerfriendly" != "." && \
    DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
+   test ".$printerfriendly" != "." && \
    DX_text printerfriendly `moved_html_printerfile "$F"`
    test ".$USER" != "." && DC_publisher "$USER"
    echo "'$SOURCEFILE': $short (sitemap)"
@@ -1063,7 +1148,7 @@ fi ;;
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 
 #    echo "!! -> '$F' (skipping subdir index.html)"
 #    ;;
-*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`                  # SCAN :
+*.html)  SOURCEFILE=`html_sourcefile "$F"`                           # SCAN :
 if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
 if test -f "$SOURCEFILE" ; then make_move "$F"
    echo "=text=today `$DATE_NOW +%Y-%m-%d`"  > $F.$INFO
@@ -1121,7 +1206,7 @@ fi
 for F in $FILELIST ; do case "$F" in
 http:*|*://*) : ;; # skip
 # .............................................................. SITE FILE
-${SITEFILE}|${SITEFILE}l) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`
+${SITEFILE}|${SITEFILE}l)  SOURCEFILE=`html_sourcefile "$F"`
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
@@ -1163,7 +1248,7 @@ fi fi ;;
 #   echo "!! -> '$F' (skipping subdir index.html)"
 #   ;;
 # ............................................................... HTML FILES
-*.html) SOURCEFILE=`echo "$F" | $SED -e "s/l\\$//"`            #     2.PASS
+*.html)  SOURCEFILE=`html_sourcefile "$F"`                      #     2.PASS
 if test "$SOURCEFILE" != "$F" ; then
 if test -f "$SOURCEFILE" ; then
    test ".$simplevars" = ".warn" && \
@@ -1208,11 +1293,15 @@ if test -f "$SOURCEFILE" ; then
    ;; esac
       echo "/<title>/d"                   > $F.$BODY #not that line
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$BODY #tag and vars
+      bodymaker_for_sectioninfo          >> $F.$BODY #if sectioninfo
       info2body_append                      $F.$BODY #cut early
       info2head_append                      $F.$HEAD
       $CAT ./$F.~move~                   >> $F.$HEAD
+      test ".$emailfooter" != ".no" && \
+      body_for_emailfooter                > $F.$FOOT
       $SED_LONGSCRIPT ./$F.$HEAD $SITEFILE               > $F # ~head~
       $SED_LONGSCRIPT ./$F.$BODY $SOURCEFILE            >> $F # ~body~
+      test -f ./$F.$FOOT && $CAT ./$F.$FOOT             >> $F # ~foot~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $SITEFILE >> $F #</body>
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
 else
@@ -1250,7 +1339,7 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$BODY
       $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$BODY # body-
       $CAT                             ./$F.~move~     >> ./$P.$BODY # hrefs
-      $CAT                                $BODY_SED    >> ./$P.$BODY
+#     $CAT                                $BODY_SED    >> ./$P.$BODY # ORIG
       $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P # ~head~
       $SED_LONGSCRIPT ./$P.$BODY                   $BODY_TXT >> $P # ~body~
       $SED -e "/<\\/body>/!d" -f $MK.vars.tmp $PRINTSITEFILE >> $P #</body>
