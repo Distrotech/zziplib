@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.29 2004-04-23 17:04:42 guidod Exp $
+# $Id: mksite.sh,v 1.30 2004-04-23 19:18:03 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -718,6 +718,11 @@ make_printerfile_move () # generate s/file.html/file.print.html/ for hrefs
    done
 }
 
+# these alt-texts will be only visible in with a text-mode browser:
+printsitefile_square="width=\"8\" height=\"8\" border=\"0\""
+printsitefile_img_1="<img alt=\"|go text:\" $printsitefile_square />"
+printsitefile_img_2="<img alt=\"||topics:\" $printsitefile_square />"
+printsitefile_img_3="<img alt=\"|||pages:\" $printsitefile_square />"
 make_printsitefile ()
 {
    OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="$SITEFILE.print.html"
@@ -739,12 +744,9 @@ make_printsitefile ()
         -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
 
    sep=" - " ; _left_=" [ " ; _right_=" ] "
-   _img_1="<img alt=\"|go text:\" width=\"1\" height=\"8\" border=\"0\" />"
-   _sect1="<a href=\"#.\" title=\"section\">$_img_1</a> ||$sep"
-   _img_2="<img alt=\"||topics:\" width=\"1\" height=\"8\" border=\"0\" />"
-   _sect2="<a href=\"#.\" title=\"topics\">$_img_2</a> ||$sep"
-   _img_3="<img alt=\"|||pages:\" width=\"1\" height=\"8\" border=\"0\" />"
-   _sect3="<a href=\"#.\" title=\"pages\">$_img_3</a> ||$sep"
+   _sect1="<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep"
+   _sect2="<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep"
+   _sect3="<a href=\"#.\" title=\"pages\">$printsitefile_img_3</a> ||$sep"
    site_get_rootsections > ./$MK.sect1.tmp
    test -d DEBUG && echo "# rootsections"       > DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect1.tmp        >> DEBUG/printsitemap.txt
@@ -835,6 +837,7 @@ select_in_printsitefile () # arg = "page" : return to stdout >> $P.$HEAD
    echo "s/^<!--mksite:sect:\"$_section_\"-->//"        # sect1
    echo "/^<!--mksite:sect:\"[^\"]*\"-->/d"     
    echo "/^<!--mksite:sect:[*]:\"[^\"]*\"-->/d" 
+   echo "s/^<!--mksite:sect[$NN]:[$AZ]-->//" 
 }
 
 
@@ -1205,15 +1208,17 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$HEAD
       $SED -e "/DC.relation.isFormatOf/s|content=\"[^\"]*\"|content=\"$F\"|" \
            ./$MK.meta.tmp > ./$MK.mett.tmp
-      echo "/<head>/r $MK.mett.tmp"                    >> ./$P.$HEAD
+      echo "/<head>/r $MK.mett.tmp"                    >> ./$P.$HEAD # meta
       echo "/<\\/body>/d"                              >> ./$P.$HEAD
       select_in_printsitefile "$F"                     >> ./$P.$HEAD
-      _ext_=`print_extension "$printerfriendly"`
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$HEAD
-      $CAT                             ./$F.~move~     >> ./$P.$HEAD
+      _ext_=`print_extension "$printerfriendly"`                     # head-
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$HEAD # hrefs
+      line_=`sed_slash_key "$printsitefile_img_2"`                   # back-
+      echo "/$line_/s| href=\"[#][.]\"| href=\"$F\"|"  >> ./$P.$HEAD # link.
+      $CAT                             ./$F.~move~     >> ./$P.$HEAD # subdir
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp ./$MK.move.tmp > ./$P.$BODY
-      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$BODY
-      $CAT                             ./$F.~move~     >> ./$P.$BODY
+      $SED -e "s/[.]html\"|/$_ext_&/g" ./$F.~move~     >> ./$P.$BODY # body-
+      $CAT                             ./$F.~move~     >> ./$P.$BODY # hrefs
       $CAT                                $BODY_SED    >> ./$P.$BODY
       $SED_LONGSCRIPT ./$P.$HEAD              $PRINTSITEFILE  > $P # ~head~
       $SED_LONGSCRIPT ./$P.$BODY                   $BODY_TXT >> $P # ~body~
