@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.19 2005-01-28 17:20:43 guidod Exp $
+# $Id: mksite.pl,v 1.20 2005-01-28 20:23:33 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -78,7 +78,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = $arg;
-		$o{variables} .= " "+$opt;
+		$o{variables} .= " ".$opt;
 	    }
 	    $opt="";;
 	} elsif (/^-.*-.*$/) {
@@ -1484,12 +1484,13 @@ sub echo_br_EM_PP
 {
     my ($U,$V,$W,$X,$Z) = @_;
     my @list = &echo_HR_EM_PP  ("$U", "$V", "$W", "$X");
-    push @list, (
-		  "/^$V$W*<a href=/   and s/^/$X/;",
-		  "/^<>$V$W*<a href=/ and s/^/$X/;",
-		  "/^$S$V$W*<a href=/ and s/^/$X/;",
-		  "/^$V<>$W*<a href=/ and s/^/$X/;",
-		  "/^$V$S$W*<a href=/ and s/^/$X/;" );
+    my @listt = (
+		 "/^$V$W*<a href=/   and s/^/$X/;",
+		 "/^<>$V$W*<a href=/ and s/^/$X/;",
+		 "/^$S$V$W*<a href=/ and s/^/$X/;",
+		 "/^$V<>$W*<a href=/ and s/^/$X/;",
+		 "/^$V$S$W*<a href=/ and s/^/$X/;" );
+    push @list, @listt;
     return @list;
 }    
 
@@ -1508,10 +1509,11 @@ sub echo_br_PP
 {
     my ($U,$V,$W,$Z) = @_;
     my @list = &echo_HR_PP ("$U", "$V", "$W");
-    push @list, (
+    my @listt = (
 		 "/^$V*<a href=/   and s/^/$W/;",
 		 "/^<>$V*<a href=/ and s/^/$W/;",
 		 "/^$S$V*<a href=/ and s/^/$W/;" );
+    push @list, @listt;
     return @list;
 }
 sub echo_sp_PP
@@ -1554,7 +1556,7 @@ sub make_sitemap_init
     push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "<!--sect3-->");
-    @MK_PUTS = map { s/(>)(\[)/$1 *$2/; $_ } @MK_GETS;
+    @MK_PUTS = map { my $x=$_; $x =~ s/(>)(\[)/$1 *$2/; $x } @MK_GETS;
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
@@ -1737,10 +1739,10 @@ sub head_sed_listsection # $filename $section
     my $SECTS="<!--sect[$NN$AZ]-->" ; 
     my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
     my @OUT = ();
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|";
+    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
+    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
     if ( $sectiontab ne "no") {
-	push @OUT, "/ href=\\\"$SECTION\\\"/ and s|^<td class=\\\"[^\\\"]*\\\"|<td |";
+	push @OUT, "/ href=\\\"$SECTION\\\"/ and s|^<td class=\\\"[^\\\"]*\\\"|<td |;";
     }
     return @OUT;
 }
@@ -1758,11 +1760,12 @@ sub head_sed_multisection # $filename $section
     # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
     # after that all the (still) numeric SECTNs are deactivated / killed.
     for my $section ($SECTION, $headsection, $tailsection) {
+	next if $section eq "no";
 	for (grep {/^=sect=[^ ]* $section/} @MK_INFO) {
 	    my $x = $_;
 	    $x =~ s, .*,\\\"\)|<!--sectX-->\$1|,;
 	    $x =~ s,^=sect=,s|^$SECTS\(.*<a href=\\\",;
-	    push @OUT, $x;
+	    push @OUT, $x.";";
 	}
     }
     push @OUT, "s|^$SECTN\[^ \]*(<a href=[^<>]*>).*|<!-- \$1 -->|;";

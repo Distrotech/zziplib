@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.48 2005-01-28 16:27:02 guidod Exp $
+# $Id: mksite.sh,v 1.49 2005-01-28 20:23:33 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -604,7 +604,7 @@ dx_text ()
 
 DX_text ()   # add a <!--vars--> substition includings format variants
 {
-  N="$1" ; T="$2"
+  N=`trimm "$1"` ; T=`trimm "$2"`
   if test ".$N" != "." ; then
     if test ".$T" != "." ; then
       text=`echo "$T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
@@ -1333,7 +1333,7 @@ make_sitemap_list()
     $SED -f $MK_GETS           -e "/^<!--sect[$NN]-->/!d" \
 	-e "s:^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
 	-e "s:^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*:$_uses_:" \
-	-e "/^=....=/!d" $SITEFILE > $MK_INFO
+	-e "/^=....=/!d"    "$SITEFILE" > "$MK_INFO"
 }
 
 make_sitemap_sect() 
@@ -1485,6 +1485,7 @@ head_sed_multisection() # $filename $section
    # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
    # after that all the (still) numeric SECTNs are deactivated / killed.
    for section in $SECTION $headsection $tailsection ; do
+       test ".$section" = ".no" && continue
    $SED -e "/^=sect=[^ ]* $section/!d" \
         -e "s, .*,\"\\\\)|<!--sectX-->\\\\1|,"  \
         -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," "$MK_INFO"  # $++
