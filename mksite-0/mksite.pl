@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.6 2004-10-11 00:28:54 guidod Exp $
+# $Id: mksite.pl,v 1.7 2004-10-11 02:05:01 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -268,8 +268,8 @@ for my $P (qw/P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH
 	   B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY 
 	   CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE/) {
     my $M=lc($P);
-    push @MK_TAGS, "s|<$P>|<$M class=\"$P\">|g;";
-    push @MK_TAGS, "s|<$P |<$M class=\"$P\" |g;";
+    push @MK_TAGS, "s|<$P>|<$M class=\\\"$P\\\">|g;";
+    push @MK_TAGS, "s|<$P |<$M class=\\\"$P\\\" |g;";
     push @MK_TAGS, "s|</$P>|</$M>|g;";
 }
 push @MK_TAGS, "s|<>|\\&nbsp\\;|g;";
@@ -310,11 +310,11 @@ sub timezone
 
 sub timetoday
 {
-    return strftime("+%Y-%m-%d", localtime());
+    return strftime("%Y-%m-%d", localtime());
 }
 sub timetodays
 {
-    return strftime("+%Y-%m%d", localtime());
+    return strftime("%Y-%m%d", localtime());
 }
 
 sub esc
@@ -454,8 +454,8 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     my ($INP,$XXX) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
-    my $V8=" *([^ ][^ ]*) ([^<>]*)";
-    my $V9=" *DC[.]([^ ][^ ]*) ([^<>]*)";
+    my $V8=" *([^ ][^ ]*) +(?:<^[<>]*>)*([^<>]*)";
+    my $V9=" *DC[.]([^ ][^ ]*) +(?:<^[<>]*>)*([^<>]*)";
     my $N8=" *([^ ][^ ]*) ([$NN].*)";
     my $N9=" *DC[.]([^ ][^ ]*) ([$NN].*)";
     my $V0="([<]*)\\\$";
@@ -514,7 +514,7 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     if ($updatevars ne "no") {
 	for (@$INP) {
 	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-	if (/^=text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\\Q\$1$SS$2\\E|;");}
+	if (/^=text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
 	if (/^=Text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
 	if (/^=name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
 	if (/^=Name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
@@ -1598,7 +1598,6 @@ sub scan_sitefile # $F
 	DC_section ($F);
 	DX_text ("date.formatted", &timetoday());
 	if ($printerfriendly) {
-	    print "------------------->",fast_html_printerfile($F);
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
 	print "'$SOURCEFILE': $short (sitemap)\n";
@@ -1657,7 +1656,8 @@ sub scan_htmlfile # "$F"
 
 sub head_sed_sitemap # $filename $section
 {
-    my ($FF,$V,$Z) = @_;
+    my ($U,$V,$Z) = @_;
+    my $FF=&sed_slash_key($U);
     my $SECTION=&sed_slash_key($V);
     my $SECTS="<!--sect[$NN$AZ]-->" ; 
     my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
@@ -1673,7 +1673,8 @@ sub head_sed_sitemap # $filename $section
 sub head_sed_listsection # $filename $section
 {
    # traditional.... the sitefile is the full navigation bar
-    my ($FF,$V,$Z) = @_;
+    my ($U,$V,$Z) = @_;
+    my $FF=&sed_slash_key($U);
     my $SECTION=&sed_slash_key($V);
     my $SECTS="<!--sect[$NN$AZ]-->" ; 
     my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
@@ -1689,7 +1690,8 @@ sub head_sed_listsection # $filename $section
 sub head_sed_multisection # $filename $section
 {
     # sitefile navigation bar is split into sections
-    my ($FF,$V,$Z) = @_;
+    my ($U,$V,$Z) = @_;
+    my $FF=&sed_slash_key($U);
     my $SECTION=&sed_slash_key($V);
     my $SECTS="<!--sect[$NN$AZ]-->" ; 
     my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
@@ -1730,7 +1732,6 @@ sub make_sitefile # "$F"
    push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
    push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
    push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS; 
-   for (@MK_VARS) { if (/printerfriendly/) { print "=======>$_\n"; } }
    push @HEAD, "/<\\/body>/ and next;";                #cut lastline
    if ( $sitemaplayout eq "multi") {
        push @BODY,  &make_multisitemap();        # here we use ~body~ as
@@ -1835,23 +1836,23 @@ sub make_printerfriendly # "$F"
       push @HEAD, "/\\|\\|\\|pages:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
       push @HEAD, @FAST;
-      push @HEAD, "/<body>/ and $sed_add '<!-- done -->'; # HEAD";
+#      push @HEAD, "/<body>/ and $sed_add '<!-- done -->'; # HEAD";
       push @BODY, @MK_VARS; push @BODY, @MK_TAGS; push @BODY, @MK_FAST;
       push @BODY, map { my $x = $_; $x =~ s/[.]html\"|/$_ext_$&/g; $x } @FAST;
       push @BODY, @FAST;
       my $html = "";
       $html .= eval_MK_FILE($PRINTSITEFILE, @HEAD);
-      print "(1) $SITEFILE = ", length($html), "   $F._$i\n";
-      savelist(\@HEAD);
+#      print "(1) $SITEFILE = ", length($html), "   $F._$i\n";
+#      savelist(\@HEAD);
       $html .= eval_MK_FILE($BODY_TXT, @BODY);
-      print "(2) $BODY_TXT = ", length($html), "  $F._$i\n";
-      savelist(\@BODY);
+#      print "(2) $BODY_TXT = ", length($html), "  $F._$i\n";
+#      savelist(\@BODY);
       for (source($PRINTSITEFILE)) {
 	  /<\/body>/ or next;
 	  $_ = &eval_MK_LIST($_, @MK_VARS);
 	  $html .= $_;
       }
-      print "(3) > $P = ", length($html), "\n";
+#      print "(3) > $P = ", length($html), "\n";
       open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
       print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"\n";
   }
