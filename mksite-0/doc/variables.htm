@@ -25,9 +25,11 @@
    The recommended style is therefore <b><code>&lt;!--$varname--&gt;</code></b>
    to expand the value of <code>$varname</code> in the place of this 
    hot comment. If you want to cut away some text following this
-   <code>$varname</code> varname expansion then add a trailing ":"
-   to the varname, i.e. <b><code>&lt;!--$varname:--&gt;</code></b>. This is
-   the way the oldstyle simplevars were working up to on default.
+   <code>$varname</code> expansion then add a trailing ":=" to the
+   varname, i.e. <b><code>&lt;!--$varname:=--&gt;</code></b>. This is
+   almost the way the oldstyle simplevars were working up to on default.
+   (it does now scan to the next "<", e.g. <code>&lt;wbr&gt;</code>).
+   The alternate form can be selected by <code>&lt;!--$varname:?--&gt;</code>
 </P>
 <P>
    Additionally you can prefix the <code>$varname</code> now with some
@@ -37,6 +39,16 @@
    formatting. Atleast this simple addition gives lots of opportunities
    for nice visualisations.
 </P>
+<P>
+   And since sometimes people need to paste variable expansions inside
+   of markups (without removing the markup itself) we have yet another
+   format of variable referencing: 
+    <b><code>&lt...${today:=defaulttext}...&gt;</code></b>
+   will be either the variable value (if the variable exists) or
+   just the defaulttext as seen (if not existing). The alternate form
+   can be selected by <code>${today:?defaulttext}</code>. This syntax
+   follows the habits of shell variables.
+</P>
 <table border="1" width="100%"><tr valign="top">
 <th> sourcefile reference </th>
 <th> resulting text </th>
@@ -44,17 +56,20 @@
 <td> <code>&lt;!--$modified--&gt;</code>+xxxx </td>
 <td> <!--$modified-->+xxxx </td>
 </tr><tr>
-<td> <code>&lt;!--$modified:--&gt;</code>+xxxx </td>
-<td> <!--$modified:-->+xxxx </td>
+<td> <code>&lt;!--$modified:=--&gt;</code>+xxxx </td>
+<td> <!--$modified:=-->+xxxx </td>
 </tr><tr>
 <td> <code>&lt;!--$modified?--&gt;</code>+xxxx </td>
 <td> <!--$modified?-->+xxxx </td>
 </tr><tr>
+<td> <code>&lt;!--$modified:?--&gt;</code>+xxxx </td>
+<td> <!--$modified:?-->+xxxx </td>
+</tr><tr>
 <td> <code>&lt;!-- changed $modified--&gt;</code>+xxxx </td>
 <td> <!--changed $modified-->+xxxx </td>
 </tr><tr>
-<td> <code>&lt;!-- changed $modified:--&gt;</code>+xxxx </td>
-<td> <!--changed $modified:-->+xxxx </td>
+<td> <code>&lt;!-- changed $modified:=--&gt;</code>+xxxx </td>
+<td> <!--changed $modified:=-->+xxxx </td>
 </tr><tr valign="top">
 <td> <code>&lt;!--modified--&gt;</code>+xxxx
 <br> <code>&lt;!--modified?--&gt;</code>+xxxx  
