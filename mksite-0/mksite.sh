@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.46 2004-11-27 09:02:38 guidod Exp $
+# $Id: mksite.sh,v 1.47 2005-01-21 02:58:35 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -320,7 +320,9 @@ done
 DC_VARS="contributor date source language coverage identifier"
 DC_VARS="$DC_VARS rights relation creator subject description"
 DC_VARS="$DC_VARS publisher DCMIType"
-for P in $DC_VARS ; do # dublin core embedded
+_EQUIVS="refresh expires content-type cache-control      redirect charset"
+_EQUIVS="$_EQUIVS content-language content-script-type content-style-type"
+for P in $DC_VARS $_EQUIVS ; do # dublin core embedded
    echo "s|<$P>[^<>]*</$P>||g"              >> "$MK_TAGS"
 done
    echo "s|<!--sect[$AZ$NN]-->||g"          >> "$MK_TAGS"
@@ -329,6 +331,13 @@ done
    echo "s|<!--\\\$[$AX]*:[?=]-->||g"       >> "$MK_TAGS"
    echo "s|\\(<[^<>]*\\)\\\${[$AX]*:[?=]\\([^<{}>]*\\)}\\([^<>]*>\\)|\\1\\2\\3|g"        >>$MK_TAGS
 
+# see overview at www.metatab.de - http-equivs are
+# <refresh>5; url=target</reresh>   or <redirect>target</redirect>
+# <content-type>text/html; charset=koi8-r</content-type> iso-8859-1/UTF-8
+# <content-language>de</content-language>             <charset>UTF-8</charset>
+# <content-script-type>text/javascript</content-script-type> /jscript/vbscript
+# <content-style-type>text/css</content-style-type>
+# <cache-control>no-cache</cache-control>
 
 trimm ()
 {
@@ -528,26 +537,30 @@ info2meta_sed ()         # generate <meta name..> text portion
 {
   # http://www.metatab.de/meta_tags/DC_type.htm
   INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
+  V6=" *HTTP[.]\\([^ ][^ ]*\\) \\(.*\\)"
+  V7=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
   INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
-  INFO_META_TYPEDCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
-  INFO_META_NAME="name=\"\\1\" content=\"\\2\""
+  INFO_META_DCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
   INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `timezone`\"" 
+  INFO_META_NAME="name=\"\\1\" content=\"\\2\""
+  INFO_META_HTTP="http-equiv=\"\\1\" content=\"\\2\""
   $SED -e "/=....=today /d" \
-  -e "/=meta=DC[.]DCMIType /s,=meta=$V9,<meta $INFO_META_TYPE_SCHEME />," \
-  -e "/=meta=DC[.]type Collection$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Dataset$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Event$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Image$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Service$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Software$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Sound$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]type Text$/s,=meta=$V8,<meta $INFO_META_TYPEDCMI />," \
-  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V8,<meta $INFO_META_NAME />," \
-  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V8,<meta $INFO_META_NAME_TZ />," \
-  -e "/=meta=/s,=meta=$V8,<meta $INFO_META_NAME />," \
+  -e "/=meta=HTTP[.]/s,=meta=$V6, <meta $INFO_META_HTTP />," \
+  -e "/=meta=DC[.]DCMIType /s,=meta=$V7, <meta $INFO_META_TYPE_SCHEME />," \
+  -e "/=meta=DC[.]type Collection$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Dataset$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Event$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Image$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Service$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Software$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Sound$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]type Text$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
+  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V8, <meta $INFO_META_NAME />," \
+  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V8, <meta $INFO_META_NAME_TZ />," \
+  -e "/=meta=/s,=meta=$V8, <meta $INFO_META_NAME />," \
   -e "/<meta name=\"[^\"]*\" content=\"\" /d" \
+  -e "/<meta http-equiv=\"[^\"]*\" content=\"\" /d" \
   -e "/^=/d" $INP # $++
 }
 
@@ -597,19 +610,26 @@ DX_text ()   # add a <!--vars--> substition includings format variants
 
 dx_meta ()
 {
-    echo "=meta=$1 $2" >> "$tmp/$F.$INFO"
+    echo "=meta=$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
 }
 
 DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
 {
-   echo "=meta=$1 $2"  >> "$tmp/$F.$INFO"
+   echo "=meta=$1 $2"  | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
    DX_text "$1" "$2"
 }
 
 DC_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
 {
-   echo "=meta=DC.$1 $2"  >> "$tmp/$F.$INFO"
+   echo "=meta=DC.$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
    DX_text "DC.$1" "$2"
+   DX_text "$1" "$2"
+}
+
+HTTP_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
+{
+   echo "=meta=HTTP.$1 $2" | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
+   DX_text "HTTP.$1" "$2"
    DX_text "$1" "$2"
 }
 
@@ -622,6 +642,7 @@ DC_VARS_Of () # check DC vars as listed in $DC_VARS global and generate DC_meta
       part=`trimm "$part"`
       text=`echo  "$part" | $SED -e "s|^[$AA]*:||"`
       text=`trimm "$text"`
+      test ".$text" = "." && continue
       # <mark:part> will be <meta name="mark.part">
       if test ".$text" != ".$part" ; then
          N=`echo "$part" | $SED -e "s/:.*//"`
@@ -630,6 +651,26 @@ DC_VARS_Of () # check DC vars as listed in $DC_VARS global and generate DC_meta
          DC_meta "$M.issued" "$text" # "<date>" -> "<date>issued:"
       else
          DC_meta "$M" "$text"
+      fi
+   done
+}
+
+HTTP_VARS_Of () # check HTTP-EQUIVs as listed in $_EQUIV global then
+{               # generate meta tags that are http-equiv= instead of name=
+   FILENAME="$1" ; test ".$FILENAME" = "." && FILENAME="$SOURCEFILE"   
+   for M in $_EQUIVS ; do
+      # scan for a <markup> of this name
+      part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $FILENAME`
+      part=`trimm "$part"`
+      text=`echo  "$part" | $SED -e "s|^[$AA]*:||"`
+      text=`trimm "$text"`
+      test ".$text" = "." && continue
+      if test ".$M" = ".redirect" ; then
+         HTTP_meta "refresh" "5; url=$text" ; DX_text "$M" "$text"
+      elif test ".$M" = ".charset" ; then
+         HTTP_meta "content-type" "text/html; charset=$text" 
+      else
+         HTTP_meta "$M" "$text"
       fi
    done
 }
@@ -1342,8 +1383,8 @@ scan_sitefile () # $F
    DC_meta date.available "`timetoday`"
    DC_meta subject sitemap
    DC_meta DCMIType Collection
-   DC_VARS_Of $SOURCEFILE 
-   DC_modified $SOURCEFILE ; DC_date $SOURCEFILE
+   DC_VARS_Of "$SOURCEFILE"  ; HTTP_VARS_Of "$SOURCEFILE"
+   DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE"
    DC_section "$F"
    DX_text date.formatted `timetoday`
    test ".$printerfriendly" != "." && \
@@ -1364,7 +1405,7 @@ scan_htmlfile() # "$F"
    dx_init "$F"
    dx_text today "`timetoday`"
    dx_text todays "`timetodays`"
-   DC_VARS_Of "$SOURCEFILE" 
+   DC_VARS_Of "$SOURCEFILE" ; HTTP_VARS_Of "$SOURCEFILE"
    DC_title "$SOURCEFILE"
    DC_isFormatOf "$SOURCEFILE" 
    DC_modified "$SOURCEFILE" ; DC_date "$SOURCEFILE" ; DC_date "$SITEFILE"
