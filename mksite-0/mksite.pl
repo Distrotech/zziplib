@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.27 2005-01-31 03:54:01 guidod Exp $
+# $Id: mksite.pl,v 1.28 2005-02-01 04:58:23 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -931,7 +931,7 @@ sub info_get_entry_selected
 sub site_get_rootsections # return all sections from root of nav tree
 {
     my @OUT;
-    for (grep {/=use1=/} @MK_INFO) { 
+    for (grep {/=[u]se1=/} @MK_INFO) { 
 	my $x = $_;
 	$x =~ s/=[u]se.=([^ ]*) .*/$1/; 
 	push @OUT, $x;
@@ -1162,9 +1162,9 @@ sub make_multisitemap
 	my $x = $_;
 	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
 	$x = &eval_MK_LIST($x, @MK_SITE); $x =~ /<name/ or next;
-	$x =~ s|<!--use1-->|</td><td valign=\"top\"><b>|;
-	$x =~ s|<!--end1-->|</b>|;
-	$x =~ s|<!--use2-->|<br>|;
+	$x =~ s|<!--[u]se1-->|</td><td valign=\"top\"><b>|;
+	$x =~ s|<!--[e]nd1-->|</b>|;
+	$x =~ s|<!--[u]se2-->|<br>|;
 	$x =~ s|<!--[u]se.-->|<br>|; $x =~ s/<!--[^<>]*-->/ /g;
 	$x =~ s|<long>||; $x =~ s|</long>||;
 	$x =~ s|<name |<$_tiny_><a |; $x =~ s|</name>||;
@@ -1198,7 +1198,7 @@ sub make_listsitemap
         $x =~ s|<name |<td><a |;     $x =~ s|</name>|</a></td>$_tabb_|;
         $x =~ s|<date>|<td><small>|; $x =~ s|</date>|</small></td>$_tabb_|;
         $x =~ s|<long>|<td><em>|;    $x =~ s|</long>|</em></td></tr>|;
-        push @OUT, $x.$n; 
+        push @OUT, $x; 
     }
     for $xx (grep {/=[u]se.=/} @$INPUTS) {
 	my $x = $xx; $x =~ s/=[u]se.=name:sitemap://; $x =~ s:\s*::gs; 
@@ -1630,13 +1630,13 @@ sub make_sitemap_sect
     my $sect = "";
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=sect=$1/;
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=sect=$1/; chomp $x;
 	push @MK_INFO, "$x $sect";
     }
     for (grep {/=[u]se.=/} @MK_INFO) {
-	if (/=use1=([^ ]*) .*/) { $sect = $1; }
+	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
 	/=[u]se[13456789]=/ and next;
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/;
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
 	push @MK_INFO, "$x $sect";
     }
 }
@@ -1650,20 +1650,20 @@ sub make_sitemap_page
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
 	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
 	/=[u]se[1]=/ and next;
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=page=$1/;
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=page=$1/; chomp $x;
 	push @MK_INFO, "$x $sect";
     }
     for (grep {/=[u]se.=/} @MK_INFO) {
 	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
 	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
-	/=[u]se[12456789]=/ and next;
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/;
-	push @MK_INFO, "$x $sect";
+	/=[u]se[12456789]=/ and next; 
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
+	push @MK_INFO, "$x $sect"; print "(",$_,")","$x $sect", $n;
     }
     # and for the root sections we register ".." as the parenting group
     for (grep {/=[u]se1=/} @MK_INFO) {
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1 ../;
-	push @MK_INFO, trimm($x);
+	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
+	push @MK_INFO, trimm("$x ..");
     }
 }
 sub echo_site_filelist

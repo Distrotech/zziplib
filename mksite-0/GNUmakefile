@@ -113,6 +113,7 @@ snapshot : distdir
 
 # -----------------------------------------------------------------------
 SUMMARY = The mksite.sh documentation formatter
+RPM_MAKE_ARGS = prefix=%_prefix DESTDIR=%buildroot VERSION=%version
 distdir-hook : $(PACKAGE).spec
 $(PACKAGE).spec : $(distdir)
 	echo "Name: $(PACKAGE)" > $@
@@ -144,10 +145,10 @@ $(PACKAGE).spec : $(distdir)
 	echo "%prep" >> $@
 	echo "%setup -q" >> $@
 	echo "%build" >> $@
-	echo "make" >> $@
+	echo "make $(RPM_MAKE_ARGS)" >> $@
 	echo "%install" >> $@
-	echo "make install-data prefix=%_prefix DESTDIR=%buildroot" >> $@
-	echo "make install-programs prefix=%_prefix DESTDIR=%buildroot" >> $@
+	echo "make install-data $(RPM_MAKE_ARGS)" >> $@
+	echo "make install-programs $(RPM_MAKE_ARGS)" >> $@
 	echo "%clean" >> $@
 	echo "rm -rf %buildroot" >> $@
 	echo "%files sh" >> $@
@@ -213,4 +214,9 @@ mksite_.pl : mksite.sh GNUmakefile mksiteperl.pl
 
 q : mksite_.pl
 	diff -U0 mksite.pl mksite_.pl
+
+guidod-hub:
+	cp mksite.sh mksite.pl ../guidod-hub
+	$(MAKE) -C ../guidod-hub
+	$(MAKE) -C ../guidod-hub check
 
