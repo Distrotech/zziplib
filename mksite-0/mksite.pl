@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.20 2005-01-28 20:23:33 guidod Exp $
+# $Id: mksite.pl,v 1.21 2005-01-29 16:50:55 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -312,6 +312,12 @@ sub trimm
     $T =~ s:\A\s*::s; $T =~ s:\s*\Z::s;
     return $T;
 }
+sub trimmm
+{
+    my ($T,$Z) = @_;
+    $T =~ s:\A\s*::s; $T =~ s:\s*\Z::s; $T =~ s:\s+: :g;
+    return $T;
+}
 sub timezone
 {
     # +%z is an extension while +%Z is supposed to be posix
@@ -364,7 +370,7 @@ sub savelist {
 	my $X = "$F._$i"; $i++; $X =~ s|/|:|g;
 	open X, ">DEBUG/$X" or die "could not open $X: $!";
 	print X "#! /usr/bin/perl -".$#_."$n";
-	print X join("$n", @{$_[0]}); close X;
+	print X join("$n", @{$_[0]}),$n; close X;
     }
 }
 
@@ -655,18 +661,19 @@ sub dx_init
 sub dx_line
 {
     my ($U,$V,$W,$Z) = @_; chomp($U); chomp($V);
-    push @{$INFO{$F}}, $U.$V." ".trimm($W);
+    push @{$INFO{$F}}, $U.$V." ".trimmm($W);
 }
 
 sub DX_line
 {
-    my ($U,$V,$W,$Z) = @_; chomp($U); chomp($V);  $W =~ s/<[^<>]*>//g;
-    push @{$INFO{$F}}, $U.$V." ".trimm($W);
+    my ($U,$V,$W,$Z) = @_; $W =~ s/<[^<>]*>//g;
+    &dx_line ($U,$V,$W);
 }
 
 sub dx_text
 {
-    &dx_line ("=text=",$1,$2);
+    my ($U,$V,$Z) = @_;
+    &dx_line ("=text=",$U,$V);
 }
 
 sub DX_text   # add a <!--vars--> substition includings format variants
@@ -1055,10 +1062,10 @@ sub make_fast # experimental - make a FAST file that can be applied
 	    push @hrefs, $_;
 	}
 	my $ref = "";
-	for (sort(@hrefs)) {
+	for (sort(@hrefs)) { 
 	    next if /\$/; # some href="${...}" is problematic
-	    next if $ref eq $_; # uniq
-	    $ref = $_; push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
+	    next if $ref eq $_; $ref = $_; # uniq
+	    push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
 	}
 	return @OUT;
     }
@@ -1131,7 +1138,6 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
     
     for (@$INP) {
 	my $info = $_;
-	$info =~ s:&:\\\\&:g;
 	$info =~ s:=list=([^ ]*) (.*):&$_list_:e;
 	$info =~ s:=date=([^ ]*) (.*):&$_date_:e;
 	$info =~ s:=long=([^ ]*) (.*):&$_long_:e;
@@ -1229,14 +1235,15 @@ sub html_printerfile_sourcefile
 
 sub fast_html_printerfile {
     my ($U,$V,$Z) = @_;
-    my $x=&html_printerfile($U) ; return &fast_href($x,$V);
+    my $x=&html_printerfile($U) ; return basename($x);
+#   my $x=&html_printerfile($U) ; return &fast_href($x,$V);
 }
 
 sub html_printerfile # generate the printerfile for a given normal output
 {
     my ($U,$Z) = @_;
     my $_ext_=&esc(&print_extension($printerfriendly));
-    $U =~ s/([.][\w]*)$/$_ext_$1/; return $U;
+    $U =~ s/([.][\w]*)$/$_ext_$1/; return $U; # index.html -> index.print.html
 }
 
 sub make_printerfile_fast # generate s/file.html/file.print.html/ for hrefs
@@ -1249,7 +1256,8 @@ sub make_printerfile_fast # generate s/file.html/file.print.html/ for hrefs
 	my $b=&html_printerfile($p);
 	if ($b ne $p) {
 	    $b =~ s:/:\\/:g;
-	    push @OUT,  "s/<a href=\\\"$a\\\">/<a href=\\\"$b\\\">/;";
+	    push @OUT, 
+	    "s/<a href=\\\"$a\\\"([^<>])*>/<a href=\\\"$b\\\"\$1>/;";
 	}
     }
     return @OUT;
@@ -1570,7 +1578,7 @@ sub make_sitemap_list
 {
     # scan sitefile for references pages - store as =use+= relation
     for (source($SITEFILE)) {
-#	print join("$n;",@MK_GETS);
+#	print join("$n;",@MK_GETS),$n;
 	$_ = &eval_MK_LIST($_, @MK_GETS);
 	/^<!--sect[$NN]-->/ or next;
 	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
@@ -1647,8 +1655,8 @@ sub scan_sitefile # $F
 	dx_init "$F";
 	dx_text ("today", &timetoday());
 	my $short=$F; 
-	$short =~ "s:.*/::"; $short =~ "s:[.].*::"; # basename for all exts
-	$short .=" *";
+	$short =~ s:.*/::; $short =~ s:[.].*::; # basename for all exts
+	$short .=" ~";
 	DC_meta ("title", "$short");
 	DC_meta ("date.available", &timetoday());
 	DC_meta ("subject", "sitemap");
@@ -1722,11 +1730,10 @@ sub head_sed_sitemap # $filename $section
     my $SECTS="<!--sect[$NN$AZ]-->" ; 
     my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
     my @OUT = ();
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|";
-    if ( $sectiontab ne "no") {
-	push @OUT, "/ href=\\\"$SECTION\\\"/ and s|^<td class=\\\"[^\\\"]*\\\"|<td |";
-    }
+    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
+    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
+    push @OUT, "/ href=\\\"$SECTION\\\"/ "
+	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
 }
 
@@ -1741,9 +1748,8 @@ sub head_sed_listsection # $filename $section
     my @OUT = ();
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
-    if ( $sectiontab ne "no") {
-	push @OUT, "/ href=\\\"$SECTION\\\"/ and s|^<td class=\\\"[^\\\"]*\\\"|<td |;";
-    }
+    push @OUT, "/ href=\\\"$SECTION\\\"/ "
+	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
 }
 
@@ -1771,8 +1777,8 @@ sub head_sed_multisection # $filename $section
     push @OUT, "s|^$SECTN\[^ \]*(<a href=[^<>]*>).*|<!-- \$1 -->|;";
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
-    push @OUT, "/ href=\\\"$SECTION\\\"/ and s|^<td class=\\\"[^\\\"]*\\\"|<td |;"
-	if $sectiontab;
+    push @OUT, "/ href=\\\"$SECTION\\\"/ "
+	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
 }
 
@@ -1801,8 +1807,8 @@ sub make_sitefile # "$F"
    }
 
    my $html = ""; # 
-   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD);
-   $html .= join("$n", @F_FOOT);
+   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD); chomp $html;
+   $html .= join("$n", @F_FOOT); $html.=$n;
    for (source($SITEFILE)) {
        /<\/body>/ or next;
        $html .= &eval_MK_LIST($_, @MK_VARS);
@@ -2036,6 +2042,5 @@ print "note: errornous simplevar detection can be suppressed with a magic$n";
 print "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now.$n";
 } }
 
-print "(\$selected still buggy)$n";
 ## rm ./$MK.*.tmp
 exit 0

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.49 2005-01-28 20:23:33 guidod Exp $
+# $Id: mksite.sh,v 1.50 2005-01-29 16:50:40 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -307,7 +307,7 @@ mknewfile "$MK_TAGS"
 for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
          B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
          CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE
-do M=`echo $P | $SED -e "y/$UPPER/$LOWER/"`
+do M=`echo "$P" | $SED -e "y/$UPPER/$LOWER/"`
   echo "s|<$P>|<$M class=\"$P\">|g"         >> "$MK_TAGS"
   echo "s|<$P |<$M class=\"$P\" |g"         >> "$MK_TAGS"
   echo "s|</$P>|</$M>|g"                    >> "$MK_TAGS"
@@ -345,14 +345,18 @@ trimm ()
 {
     echo "$1" | $SED -e "s:^ *::" -e "s: *\$::";
 }
+trimmm ()
+{
+    echo "$1" | $SED -e "s:^ *::" -e "s: *\$::" -e "s:[	 ][	 ]*: :g";
+}
 
 timezone ()
 {
     # +%z is an extension while +%Z is supposed to be posix
     _timezone=`$DATE_NOW +%z`
     case "$_timezone" in
-	*+*) echo $_timezone ;;
-	*-*) echo $_timezone ;;
+	*+*) echo "$_timezone" ;;
+	*-*) echo "$_timezone" ;;
 	*) $DATE_NOW +%Z
     esac
 }
@@ -589,12 +593,13 @@ dx_init()
 
 dx_line ()
 {
-    echo "$1$2 "`trimm "$3"` >> "$tmp/$F.$INFO"
+    echo "$1$2 "`trimmm "$3"` >> "$tmp/$F.$INFO"
 }
 
 DX_line ()
 {
-    echo "$1$2 "`trimm "$3"` | sed -e "s/<[^<>]*>//g" >> "$tmp/$F.$INFO"
+    dx_val_=`echo "$3" | sed -e "s/<[^<>]*>//g"`
+    dx_line "$1" "$2" "$dx_val_"
 }
 
 dx_text ()
@@ -608,13 +613,13 @@ DX_text ()   # add a <!--vars--> substition includings format variants
   if test ".$N" != "." ; then
     if test ".$T" != "." ; then
       text=`echo "$T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      echo       "=text=$N $T"                       >> "$tmp/$F.$INFO"
-      echo       "=name=$N $text"                    >> "$tmp/$F.$INFO"
+      dx_line "=text=" "$N" "$T"
+      dx_line "=name=" "$N" "$text"
       varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
       if test ".$N" != ".$varname" ; then 
       text=`echo "$varname $T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      echo       "=Text=$varname $T"                 >> "$tmp/$F.$INFO"
-      echo       "=Name=$varname $text"              >> "$tmp/$F.$INFO"
+      dx_line "=Text=" "$varname" "$T"
+      dx_line "=Name=" "$varname" "$text"
       fi
     fi
   fi
@@ -1044,7 +1049,8 @@ html_printerfile_sourcefile ()
 }
 
 fast_html_printerfile () {
-    x=`html_printerfile "$1"` ; fast_href "$x" $2 # $++
+    x=`html_printerfile "$1"` ; basename "$x" # $++
+#   x=`html_printerfile "$1"` ; fast_href "$x" $2 # $++
 }
 
 html_printerfile () # generate the printerfile for a given normal output
@@ -1062,6 +1068,7 @@ make_printerfile_fast () # generate s/file.html/file.print.html/ for hrefs
        if test "$b" != "$p" ; then
          b=`html_printerfile "$p" | sed -e "s:&:\\\\&:g" -e "s:/:\\\\\\/:g"`
          echo "s/<a href=\"$a\">/<a href=\"$b\">/" # $++
+         echo "s/<a href=\"$a\" /<a href=\"$b\" /" # $++
        fi
    done
 }
@@ -1390,7 +1397,7 @@ scan_sitefile () # $F
    dx_init "$F"
    dx_text today "`timetoday`"
    short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"` # basename for all exts
-   short="$short *"
+   short="$short ~"
    DC_meta title "$short"
    DC_meta date.available "`timetoday`"
    DC_meta subject sitemap
@@ -1400,7 +1407,7 @@ scan_sitefile () # $F
    DC_section "$F"
    DX_text date.formatted `timetoday`
    test ".$printerfriendly" != "." && \
-   DX_text printerfriendly `fast_html_printerfile "$F"`
+   DX_text "printerfriendly" `fast_html_printerfile "$F"`
    test ".$USER" != "." && DC_publisher "$USER"
    echo "'$SOURCEFILE': $short (sitemap)"
    site_map_list_title "$F" "$short"
@@ -1425,7 +1432,7 @@ scan_htmlfile() # "$F"
    test ".$USER" != "." && DC_publisher "$USER"
    DX_text date.formatted "`timetoday`"
    test ".$printerfriendly" != "." && \
-   DX_text printerfriendly `fast_html_printerfile "$F"`
+   DX_text "printerfriendly" `fast_html_printerfile "$F"`
    sectn=`info_get_entry DC.relation.section`
    short=`info_get_entry DC.title.selected`
    site_map_list_title "$F" "$short"
@@ -1621,7 +1628,7 @@ make_sitemap_page
 
 FILELIST=`echo_site_filelist`
 if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
-   for F in $FILELIST; do echo $F ; done ; exit
+   for F in $FILELIST; do echo "$F" ; done ; exit
 fi
 if test ".$FILELIST" = "."; then
     echo "nothing to do"
@@ -1686,10 +1693,11 @@ if test ".$printerfriendly" != "." ; then                         # PRINTER
 fi
 # .............. debug ....................
    if test -d DEBUG && test -f "./$F" ; then
-      cp "$tmp/$F.$INFO" DEBUG/$F.info.TMP
+      FFFF=`echo "$F" | sed -e s,/,:,g`
+      cp "$tmp/$F.$INFO" DEBUG/$FFFF.info.TMP
       for P in tags vars meta page date list html sect info ; do
-      test -f $tmp/$MK.$P.tmp && cp $tmp/$MK.$P.tmp DEBUG/$F.$P.tmp
-      test -f $tmp/$MK.$P.TMP && cp $tmp/$MK.$P.TMP DEBUG/$F.$P.TMP
+      test -f $tmp/$MK.$P.tmp && cp $tmp/$MK.$P.tmp DEBUG/$FFFF.$P.tmp
+      test -f $tmp/$MK.$P.TMP && cp $tmp/$MK.$P.TMP DEBUG/$FFFF.$P.TMP
       done
    fi
 done
