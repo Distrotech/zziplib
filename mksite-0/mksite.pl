@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.8 2004-10-11 02:52:42 guidod Exp $
+# $Id: mksite.pl,v 1.9 2004-10-11 03:28:20 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -194,10 +194,11 @@ sub mksite_magic_option
     for (source($INP)) {
 	s/(<!--mksite:)($U)-->/$1$2: -->/g;
 	s/(<!--mksite:)(\w\w*)($U)-->/$1$3:$2-->/g;
-	/<!--mksite:$U:/ || next;
+	/<!--mksite:$U:/ or next;
 	s/.*<!--mksite:$U:([^<>]*)-->.*/$1/;
 	s/.*<!--mksite:$U:([^-]*)-->.*/$1/;
-	/<!--mksite:$U:/ && next;
+	/<!--mksite:$U:/ and next;
+	chomp;
 	return $_;
     }
     return "";
@@ -206,13 +207,13 @@ sub mksite_magic_option
 {
     my $x;
     $x=mksite_magic_option("sectionlayout"); if 
-	($x =~ /^("list"|"multi")$/) { $sectionlayout="$x" ; }
+	($x =~ /^(list|multi)$/) { $sectionlayout="$x" ; }
     $x=mksite_magic_option("sitemaplayout"); if
-	($x =~ /^("list"|"multi")$/) { $sitemaplayout="$x" ; }
+	($x =~ /^(list|multi)$/) { $sitemaplayout="$x" ; }
     $x=mksite_magic_option("simplevars"); if
-	($x =~ /^(" "|"no"|"warn")$/) { $simplevars="$x" ; }
+	($x =~ /^( |no|warn)$/) { $simplevars="$x" ; }
     $x=mksite_magic_option("attribvars"); if 
-	($x =~ /^(" "|"no"|"warn")$/) { $attribvars="$x" ; }
+	($x =~ /^( |no|warn)$/) { $attribvars="$x" ; }
     $x=mksite_magic_option("updatevars"); if
 	($x =~ /^( |no|warn)$/) { $updatevars="$x" ; }
     $x=mksite_magic_option("expandvars"); if
@@ -1004,7 +1005,7 @@ sub make_fast # experimental - make a FAST file that can be applied
 	    next if /\$/; # some href="${...}" is problematic
 	    next if $ref eq $_; # uniq
 	    $ref = $_; push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
-	    $ref = $_; print "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;\n";
+#	    $ref = $_; print "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;\n";
 	}
 	return @OUT;
     }
