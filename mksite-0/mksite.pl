@@ -23,9 +23,9 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.18 2005-01-28 16:27:02 guidod Exp $
+# $Id: mksite.pl,v 1.19 2005-01-28 17:20:43 guidod Exp $
 
-use strict;
+use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
 use POSIX qw(strftime);
 
@@ -58,7 +58,7 @@ my $n = "\n";
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
-my %o = {}; # to store option variables
+my %o = (); # to store option variables
 $o{variables}="files";
 $o{fileseparator}="?";
 $o{files}="";
@@ -151,8 +151,8 @@ my @MK_SECT1= (); # "./$MK.sect1.tmp"
 my @MK_SECT2= (); # "./$MK.sect2.tmp"
 my @MK_SECT3= (); # "./$MK.sect3.tmp"
 my @MK_INFO= (); # "./$MK~~"
-my %INFO= {}; # used for $F.$PARTs
-my %FAST= {};
+my %INFO= (); # used for $F.$PARTs
+my %FAST= ();
 
 # ========================================================================
 # ========================================================================
@@ -247,19 +247,18 @@ $updatevars="no" if $commentvars eq "no"; # duplicated into
 $expandvars="no" if $commentvars eq "no"; # info2vars_sed
 $simplevars="no" if $commentvars eq "no"; # function above
 
-print "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout$n"
-    if -d DEBUG;
-print "NOTE: '$simplevars'simplevars '$printerfriendly'printerfriendly$n"
-    if -d DEBUG;
-print "NOTE: '$attribvars'attribvars '$updatevars'updatevars$n"
-    if -d DEBUG;
-print "NOTE: '$expandvars'expandvars '$commentvars'commentvars $n"
-    if -d DEBUG;
-print "NOTE: '$currenttab'currenttab '$sectiontab'sectiontab$n"
-    if -d DEBUG;
-print "NOTE: '$headsection'headsection '$tailsection'tailsection$n"
-    if -d DEBUG;
-
+print "NOTE: '$sectionlayout\'sectionlayout '$sitemaplayout\'sitemaplayout$n"
+    if -d "DEBUG";
+print "NOTE: '$simplevars\'simplevars '$printerfriendly\'printerfriendly$n"
+    if -d "DEBUG";
+print "NOTE: '$attribvars\'attribvars '$updatevars\'updatevars$n"
+    if -d "DEBUG";
+print "NOTE: '$expandvars\'expandvars '$commentvars\'commentvars $n"
+    if -d "DEBUG";
+print "NOTE: '$currenttab\'currenttab '$sectiontab\'sectiontab$n"
+    if -d "DEBUG";
+print "NOTE: '$headsection\'headsection '$tailsection\'tailsection$n"
+    if -d "DEBUG";
 
 # ==========================================================================
 # init a few global variables
@@ -304,7 +303,7 @@ push @MK_TAGS, "s|<!--sect[$AZ$NN]-->||g;";
 push @MK_TAGS, "s|<!--[$AX]*[?]-->||g;";
 push @MK_TAGS, "s|<!--\\\$[$AX]*[?]:-->||g;";
 push @MK_TAGS, "s|<!--\\\$[$AX]*:[?=]-->||g;";
-push @MK_TAGS, "s|(<[^<>]*)\\\${[$AX]*:[?=]([^<{}>]*)}([^<>]*>)|\\1\\2\\3|g;";
+push @MK_TAGS, "s|(<[^<>]*)\\\${[$AX]*:[?=]([^<{}>]*)}([^<>]*>)|\$1\$2\$3|g;";
 
 my $TRIMM=" -e 's:^ *::' -e 's: *\$::'";  # trimm away leading/trailing spaces
 sub trimm
@@ -483,7 +482,6 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     $expandvars = "no" if $commentvars  eq "no";   # option handling
     $simplevars = "no" if $commentvars  eq "no";   # tests below
     my @_INP = (); for (@{$INP}) { my $x=$_; $x =~ s/'/\\'/; push @_INP, $x; }
-    my @OUT = (); 
     if ($expandvars ne "no") {
 	for (@_INP) { 
     if    (/^=....=formatter /) { next; } 
@@ -1437,7 +1435,7 @@ sub select_in_printsitefile # arg = "page" : return to stdout >> $P.$HEAD
 
 sub body_for_emailfooter
 {
-    return "" if $emailfooter = "no";
+    return "" if $emailfooter eq "no";
     my $_email_=$emailfooter; $_email_ =~ s|[?].*||;
     my $_dated_=&info_get_entry("updated");
     return "<hr><table border=\"0\" width=\"100%\"><tr><td>"
@@ -1556,7 +1554,7 @@ sub make_sitemap_init
     push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "<!--sect3-->");
-    @MK_PUTS = map { s/(>)(\[)/\1 *\2/; $_ } @MK_GETS;
+    @MK_PUTS = map { s/(>)(\[)/$1 *$2/; $_ } @MK_GETS;
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
@@ -1577,7 +1575,7 @@ sub make_sitemap_list
 	s{^$_getY_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	/^=....=/ or next;
 	push @MK_INFO, trimm($_);
-    } close SITEFILE;
+    }
 }
 
 sub make_sitemap_sect
