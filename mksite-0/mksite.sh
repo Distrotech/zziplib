@@ -20,11 +20,12 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.41 2004-10-12 03:03:11 guidod Exp $
+# $Id: mksite.sh,v 1.42 2004-10-16 23:19:38 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
 test ".$SITEFILE" = "." && test -f "site.html" && SITEFILE="site.html"
+test ".$SITEFILE" = "." && SITEFILE="site.htm"
 MK="-mksite"     # note the "-" at the start
 SED="sed"
 CAT="cat"        # "sed -e n" would be okay too
@@ -136,6 +137,20 @@ test ".$opt_main_file" != "." && test -f "$opt_main_file" && \
 SITEFILE="$opt_main_file"
 test ".$opt_site_file" != "." && test -f "$opt_site_file" && \
 SITEFILE="$opt_site_file"
+
+if test ".$opt_help" != "." ; then
+    F="$SITEFILE"
+    echo "$0 [sitefile]";
+    echo "  default sitefile = $F";
+    echo "options:";
+    echo " --file-list = show list of target files as ectracted from $F"
+    echo " --srcdir xx = if source files are not where mksite is executed"
+    exit;
+    echo " internal:"
+    echo "--fileseparator x = for building the internal filelist (default '?')"
+    echo "--files xx = for list of additional files to be processed"
+    echo "--main-file xx = for the main sitefile to take file list from"
+fi
 
 if test ".$SITEFILE" = "." ; then
    echo "error: no SITEFILE found (default would be 'site.htm')"
@@ -1489,15 +1504,6 @@ make_printerfriendly () # "$F"
 # ========================================================================
 # ========================================================================
 # ========================================================================
-
-if test ".$opt_help" != "." ; then
-    F="$SITEFILE"
-    echo "$0 [sitefile]";
-    echo "  default sitefile = $F";
-    echo "options:";
-    echo " --file-list = show list of target files as ectracted from $F";
-    exit;
-fi
 
 # ========================================================================
 #                                                          #### 0. INIT

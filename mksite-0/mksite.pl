@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.12 2004-10-14 20:22:56 guidod Exp $
+# $Id: mksite.pl,v 1.13 2004-10-16 23:19:38 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -31,8 +31,9 @@ use POSIX qw(strftime);
 
 # initialize some defaults
 my $SITEFILE="";
-$SITEFILE="site.htm"  if ".$SITEFILE" == "." and -f "site.htm";
-$SITEFILE="site.html" if ".$SITEFILE" == "." and -f "site.html";
+$SITEFILE="site.htm"  if not $SITEFILE and -f "site.htm";
+$SITEFILE="site.html" if not $SITEFILE and -f "site.html";
+$SITEFILE="site.htm"  if not $SITEFILE;
 # my $MK="-mksite";     # note the "-" at the start
 my $SED="sed";
 
@@ -122,12 +123,25 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	$opt="";
     }
 
-	
 ### env | grep ^opt
 
 $SITEFILE=$o{main_file} if $o{main_file} and -f $o{main_file};
 $SITEFILE=$o{site_file} if $o{site_file} and -f $o{site_file};
 
+if ($o{help}) {
+    $_=$SITEFILE;
+    print "$0 [sitefile]\n";
+    print "  default sitefile = $_\n";
+    print "options:\n"
+	. " --file-list = show list of target files as ectracted from $_\n"
+	. " --srcdir xx = if source files are not where mksite is executed\n";
+    exit;
+    print " internal:\n"
+	."--fileseparator x = for building the internal filelist (default '?')"
+	."--files xx = for list of additional files to be processed"
+	."--main-file xx = for the main sitefile to take file list from";
+}
+	
 if (not $SITEFILE) {
     print STDERR "error: no SITEFILE found (default would be 'site.htm')";
     exit 1;
@@ -1844,16 +1858,6 @@ sub make_printerfriendly # "$F"
 # ========================================================================
 # ========================================================================
 # ========================================================================
-
-if ($o{help}) {
-    $_=$SITEFILE;
-    print "$0 [sitefile]\n";
-    print "  default sitefile = $_\n";
-    print "options:\n";
-    print " --file-list = show list of target files as ectracted from $_\n";
-    exit;
-}
-
 # ========================================================================
 #                                                          #### 0. INIT
 $F=$SITEFILE;
