@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.21 2004-04-22 11:29:22 guidod Exp $
+# $Id: mksite.sh,v 1.22 2004-04-22 15:07:37 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -663,6 +663,7 @@ make_listsitemap ()
         -f ./$MK.site.tmp -e "/<name/!d" \
         -e "s|<!--use1-->|<tr><td>*</td>|" \
         -e "s|<!--use2-->|<tr><td>-</td>|" \
+        -e  "/<!--use3-->/s|<name [^<>]*>|&- |" \
         -e "s|<!--use.-->|<tr><td> </td>|" -e "s/<!--[^<>]*-->/ /g" \
         -e "s|<name |<td><a |" -e "s|</name>|</a></td>$_tabb_|" \
         -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
