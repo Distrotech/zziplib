@@ -6,23 +6,26 @@ test1.html : test1/*.htm mksite.sh
 	cd test1 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1/\\1|" \
 	    test1/index.html > $@
+	sleep 5 # done $@
 test2.html : test2/*.htm mksite.sh
 	cd test2 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \
 	    test2/index.html > $@
+	sleep 5 # done $@
 
 test1 test2 site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
 	cd doc && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.html > $@
+	sleep 5 # done $@
 
 print.html : doc/*.htm mksite.sh
 	cd doc && sh ../mksite.sh site.htm -print
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.print.html > $@
 
-index.html : test1.html test2.html doc.html
+index.html : doc.html test1.html test2.html
 	cp doc.html index.html
 
 site.html : *.htm mksite.sh

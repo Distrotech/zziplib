@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.15 2004-04-21 10:38:29 guidod Exp $
+# $Id: mksite.sh,v 1.16 2004-04-21 11:46:12 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -496,15 +496,27 @@ DC_selected () # not really a DC title (shall we use alternative ?)
    fi
 }
 
-site_get_subsections () # return all section child pages of given page
+site_get_rootsections () # return all sections from root of nav tree
+{
+   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" ./$MK.$INFO
+}
+
+site_get_sectionpages () # return all children pages in the given section
 {
    _F_=`sed_slash_key "$1"`
    $SED -e "/^=sect=[^ ]* $_F_\$/!d" -e "s/^=sect=//" -e "s/ .*//" ./$MK.$INFO
 }
 
-site_get_rootsections () # return all sections from root of nav tree
+site_get_subpages () # return all page children of given page
 {
-   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" ./$MK.$INFO
+   _F_=`sed_slash_key "$1"`
+   $SED -e "/^=node=[^ ]* $_F_\$/!d" -e "s/^=node=//" -e "s/ .*//" ./$MK.$INFO
+}
+
+site_get_parentpage () # return parent page for given page (".." for sections)
+{
+   _F_=`sed_slash_key "$1"`
+   $SED -e "/^=node=$_F_ /!d" -e "s/^=node=[^ ]* //" -e "q" ./$MK.$INFO
 }
 
 mksite_magic_option ()
@@ -720,7 +732,8 @@ make_printsitefile ()
    done
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect1:Z-->" >> $OUTPUT
 
-   site_get_subsections "$r" > ./$MK.sect2.tmp
+#  site_get_sectionpages "$r" > ./$MK.sect2.tmp
+   site_get_subpages "$r"     > ./$MK.sect2.tmp
    test -d DEBUG && echo "# subsections $r"    >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect2.tmp        >> DEBUG/printsitemap.txt
    for s in `cat ./$MK.sect2.tmp` ; do test "$r" = "$s" && continue
@@ -736,7 +749,8 @@ make_printsitefile ()
    echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:Z-->" >> $OUTPUT
 
 
-   site_get_subsections "$s" > ./$MK.sect3.tmp
+#  site_get_sectionpages "$s" > ./$MK.sect3.tmp
+   site_get_subpages "$s"     > ./$MK.sect3.tmp
    test -d DEBUG && echo "# subsubsections $s" >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./$MK.sect3.tmp        >> DEBUG/printsitemap.txt
    for t in `cat ./$MK.sect3.tmp` ; do test "$s" = "$t" && continue
@@ -830,6 +844,29 @@ $SED -e "/=use.=/!d" \
      -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
      -e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
      -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
+$SED -e "/=use.=/!d" \
+     -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
+     -e "/=use1=/d" \
+     -e "/=use3=/d" \
+     -e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
+     -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
+# scan used pages and store relation =page= pointing to topic group
+$SED -e "/=use.=/!d" \
+     -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
+     -e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
+     -e "/=use1=/d" \
+     -e "s/=use.=\\([^ ]*\\) .*/=page=\\1/" \
+     -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
+$SED -e "/=use.=/!d" \
+     -e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
+     -e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
+     -e "/=use1=/d" \
+     -e "/=use2=/d" \
+     -e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
+     -e G -e "s:\\n: :" ./$MK.$INFO >> $MK.$INFO
+# and for the root sections we register ".." as the parenting group
+$SED -e "/=use1=/!d" \
+     -e "s/=use.=\\([^ ]*\\) .*/=node=\\1 ../"  ./$MK.$INFO >> $MK.$INFO
 
 FILELIST=`$SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK.$INFO`
 
