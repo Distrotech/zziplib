@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.55 2005-01-31 02:12:41 guidod Exp $
+# $Id: mksite.sh,v 1.56 2005-01-31 03:54:01 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1004,14 +1004,22 @@ make_listsitemap ()
    echo "<table cellspacing=\"0\" cellpadding=\"0\">" # $++
    $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
         -f "$MK_SITE" -e "/<name/!d" \
-        -e "s|<!--use1-->|<tr><td>*</td>|" \
-        -e "s|<!--use2-->|<tr><td>-</td>|" \
-        -e  "/<!--use3-->/s|<name [^<>]*>|&- |" \
-        -e "s|<!--use.-->|<tr><td> </td>|" -e "s/<!--[^<>]*-->/ /g" \
+        -e "s|<!--use\\(1\\)-->|<tr class=\"listsitemap\\1\"><td>*</td>|" \
+        -e "s|<!--use\\(2\\)-->|<tr class=\"listsitemap\\1\"><td>-</td>|" \
+        -e "s|<!--use\\(.\\)-->|<tr class=\"listsitemap\\1\"><td> </td>|" \
+        -e  "/<tr.class=\"listsitemap3\">/s|<name [^<>]*>|&- |" \
+        -e "s|<!--[^<>]*-->| |g" \
+	-e "s|<name href=\"name:sitemap:|<name href=\"|" \
         -e "s|<name |<td><a |" -e "s|</name>|</a></td>$_tabb_|" \
         -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
         -e "s|<long>|<td><em>|" -e "s|</long>|</em></td></tr>|" \
         $INPUTS             # $++
+   for xx in `grep "=use.=name:sitemap:" $INPUTS` ; do
+       xx=`echo $xx | sed -e "s/=use.=name:sitemap://"`
+       if test -f "$xx" ; then
+	   grep "<tr.class=\"listsitemap[$NN]\">" $xx # $++
+       fi
+   done
    echo "</table>"          # $++
 }
 
@@ -1479,7 +1487,16 @@ scan_htmlfile() # "$F"
 scan_namespec ()
 {
     # nothing so far
-    echo "skip: $1"
+    case "$1" in
+	name:sitemap:*)
+	    short=`echo "$F" | $SED -e "s:.*/::" -e "s:[.].*::"` 
+	    short=`echo "$short ~" | $SED -e "s/name:sitemap://"` 
+	    site_map_list_title "$F" "$short"
+	    site_map_long_title "$F" "external sitemap index"
+	    site_map_list_date  "$F" "`timetoday`"
+	    echo "'$F' external sitemap index$n" 
+	    ;;
+    esac
 }
 scan_httpspec ()
 {
