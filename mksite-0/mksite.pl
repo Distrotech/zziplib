@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.15 2004-10-17 19:29:11 guidod Exp $
+# $Id: mksite.pl,v 1.16 2004-11-27 09:02:38 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -57,6 +57,7 @@ my $AX="$AA.+-";                                  # script more readable
 # ==========================================================================
 # reading options from the command line                            GETOPT
 my %o = {}; # to store option variables
+$o{variables}="files";
 $o{fileseparator}="?";
 $o{files}="";
 $o{main_file}="";
@@ -74,6 +75,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = $arg;
+		$o{variables} .= " "+$opt;
 	    }
 	    $opt="";;
 	} elsif (/^-.*-.*$/) {
@@ -492,6 +494,10 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
     if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
 	}
+        for (split / /, $o{variables}) {
+	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_-->|\$1$SS\$Z|;"};
+	    {push @OUT, "\$Z='$o{$_}';s|<!--$V1$_\\?-->|\$1$SS\$Z|;"};
+	}
     }
     if ($simplevars ne "no" && $updatevars != "no") {
 	for (@$INP) {
@@ -539,6 +545,9 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     if (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
     if (/^=name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
     if (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
+	}
+        for (split / /, $o{variables}) {
+	    {push @OUT,"\$Z='$o{$_}';s|<$V1\{$_:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
 	}
     }
     if ($simplevars ne "no") {

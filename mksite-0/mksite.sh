@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.45 2004-10-17 19:36:41 guidod Exp $
+# $Id: mksite.sh,v 1.46 2004-11-27 09:02:38 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -74,6 +74,7 @@ export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
+opt_variables="files"
 opt_fileseparator="?"
 opt_files=""
 opt_main_file=""
@@ -91,6 +92,7 @@ do if test ".$opt" != "." ; then
          else
             arg=`echo "$arg" | $SED -e "s/^[^=]*=//"`
             eval "export opt_$opt='$arg'"
+	    opt_variables="$opt_variables $opt"
          fi
          opt="" ;;
       -*-*)   
@@ -457,6 +459,10 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+  if test ".$expandvars" != ".no" ; then for opt in $opt_variables ; do
+      opt_value=`eval "echo \$opt_$opt"` 
+      echo "s|<!--$V1$opt[?]*-->|\\\\1$SS$opt_value|" # $++
+  done ; fi
   test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\2|," \
@@ -497,6 +503,10 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=Name=/s,=Name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+  if test ".$attribvars" != ".no" ; then for opt in $opt_variables ; do
+      opt_value=`eval "echo \$opt_$opt"` 
+      echo "s|<$V1{$opt:[=?]$V2}$V3>|<\\\\1$SS$opt_value\\\\3>|" # $++
+  done ; fi
   test ".$simplevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
