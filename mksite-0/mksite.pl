@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.4 2004-10-10 23:45:09 guidod Exp $
+# $Id: mksite.pl,v 1.5 2004-10-10 23:47:47 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -1118,7 +1118,7 @@ sub make_listsitemap
     my @OUT = (); 
     my $_form_=sub{
 	"<!--\"$2\"--><!--use$1--><!--name--><!--date--><!--long-->"};
-    my $_tabb_="<td>\\&nbsp\\;</td>";
+    my $_tabb_="<td>\&nbsp\;</td>";
     push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">";
     for (grep {/=[u]se.=/} @$INPUTS) {
 	my $x = $_; 
