@@ -1,0 +1,40 @@
+<H3> You need... content pages. </H3>
+
+<p>
+  The content pages should <em>not</em> contain anything usually needed for the
+  html envelope of a webpages - do not use "&lt;html&gt;", "&lt;head&gt;"
+  "&lt;body&gt;". For a fact, you can even omit the "&lt;title&gt;" tag
+  as it is purely optional for mksite.sh - the shell script will scan
+  the content page looking for the html header markups "&lt;h1&gt;",
+  "&lt;h2&gt;",... "&lt;h6&gt;" and use the first one for the page title.
+</p>
+<p><b>Example:</b><code>
+<br>&lt;H4&gt; Lorem Ipsum &lt;/H4&gt;
+<br>&lt;P&gt;<small>
+<br>Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+</small><br>&lt;/P&gt;
+</p>
+
+<p> That's all - just a header line and some text. 
+<br> Mark them as "<b>H4</b>"eader and "<b>P</b>"aragraphs. 
+<br> The rest is done in the sitefile.
+</p>
+
+<P><small>
+  The text above is used quite usually in typography to denote a blind text,
+  i.e. text that is not readily available. A typograph may create a style
+  for a book and in order to show it around some helper text must be inserted
+  as a placeholder for the real text to be added later. To use "lorem ipsum" 
+  is a very old habit going back right to the 1500s as the first days of
+  "industrial" book printing. The text itself is latin, an excerpt of 
+  "De Finibus et Malorum" by the great Cicero - it speaks about ethics and 
+  the first line translates roughly to "There is no one who loves pain itself, 
+  who seeks after it and wants to have it, simply because it is pain.". 
+  Actually, you may use any other blind text at hand but take notice that 
+  modern Desktop Publishing systems will detect the words "Lorem Ipsum" and 
+  before sending it to the printer (creating ten thousand copies) it will
+  warn harshly "hey there is some blind text left". And there: use Lorem
+  Ipsum.
+</small></P>
+
+

@@ -1,0 +1,74 @@
+<H4> How to... seperate content and navigation </H4>
+
+<P>
+  In the first example we did tell you to put the target hrefs leftmost
+  in the sitefile. That will automatically create a 
+  <a href="horizontal.html">horizontal navigation bar</a>
+  at the top of each generated page. But the actual look is still
+  somewhat scary - the reader can not quite distinguish whether this
+  first line is content text, the pages header line, or just some other
+  generated helper items.
+</P>
+<P>
+  So let's expand the example - first we show a longer CSS &lt;style&gt;
+  block, and we move the navigation items to the &lt;center&gt; and
+  &lt;u&gt;nderline the navigation bar so that it stands out visually
+  from the rest of the text.
+</P>
+<center><table border="0" cellspacing="0" cellpadding="0"><tr>
+<td bgcolor="#C0C0C0">&nbsp;</td><td><code><small>
+      &lt;html&gt;&lt;head&gt;&lt;title&gt; my website &lt;!--$title--&gt; &lt;/title&gt;
+<br>  &nbsp;&lt;style&gt;  
+<br>  &nbsp;&nbsp;&nbsp;  
+   H4 { text-align : right ; } 
+<br>  &nbsp;&nbsp;&nbsp;   
+<b>   a:link&nbsp;&nbsp;&nbsp;   
+         { text-decoration : none ; color : #000080 ; }</b>
+<br>  &nbsp;&nbsp;&nbsp;   
+<b>   a:visited      { text-decoration : none ; color : #200060 ; }</b>
+<br>  &nbsp;&nbsp;&nbsp;   
+<b>   p &nbsp;&nbsp;&nbsp;   &nbsp;&nbsp;&nbsp;   
+             { text-align : justify ; }</b>
+<br>  &nbsp;&lt;/style&gt;
+<br>  &lt;/head&gt;&lt;body&gt;
+<br>  <b>&lt;center&gt;</b>
+<br>  <b>&lt;u&gt;-</b>&lt;a 
+      href="index.html"&gt; Overview &lt;/a&gt;
+      <b>&lt;/u&gt;</b>
+<br>  <b>&lt;u&gt;-</b>&lt;a 
+      href="loremipsum.html"&gt; Lorem Ipsum &lt;/a&gt;
+      <b>&lt;/u&gt;</b>
+<br>  <b>&lt;u&gt;-</b>&lt;a 
+      href="pagename.html"&gt; more pages... &lt;/a&gt;
+      <b>&lt;/u&gt;</b>
+<br>  <b>-&lt;/center&gt;</b>
+<br>  &lt;br&gt;
+<br>  &lt;/body&gt;&lt;/html&gt;
+</small></code></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td bgcolor="#C0C0C0">&nbsp;</td>
+</td></tr></table></center>
+
+<P>
+  The resulting page does look already quite promising but in the next
+  section we will expand on this scheme to create a vertical navigation
+  bar instead of a horizontal one.
+</P>
+<hr width="80%" align="center">
+<center>
+<u>- <a href="index.html"> Overview </a> </u>
+<u>- <a href="loremipsum.html"> <b>Lorem Ipsum</b> </a> </u>
+<u>- <a href="pagename.html"> more pages... </a> </u>
+-</center>
+<br>
+<H4> Lorem Ipsum </H4>
+<P><small>
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore m
+agna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
+ no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed dia
+m nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et just
+o duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum 
+dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam er
+at, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata
+ sanctus est Lorem ipsum dolor sit amet.
+</small>
+</P>

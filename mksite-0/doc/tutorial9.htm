@@ -1,0 +1,60 @@
+<H4> How to get... meta variables </H4>
+
+<publisher>Guido Draheim</publisher>
+
+<P>
+  Just have a look the generated "*.html" files - you will see that
+  the mksite.sh script has already generated a series of &lt;meta&gt;
+  tags in the header block. Most of these automatic variables will
+  pick up the names of the "Dublic Core" ontology of meta
+  information which is a real internet standard. Some search engines
+  like google may pick that information to enhance their results.
+</P>
+<PRE>
+&lt;meta name="formatter" content="mksite.sh" /&gt;
+&lt;meta name="DC.title" content="How to get... meta variables" /&gt;
+&lt;meta name="DC.relation.isFormatOf" content="tutorial9.htm" /&gt;
+&lt;meta name="DC.date.modified" content="2004-10-12" /&gt;
+&lt;meta name="DC.date" content="2004-10-12" /&gt;
+&lt;meta name="DC.relation.section" content="index.html" /&gt;
+&lt;meta name="DC.title.selected" content=" (9)" /&gt;
+&lt;meta name="DC.publisher" content="guidod" /&gt;
+</PRE>
+<P>
+  It is possible to add more such meta variables by adding pieces to
+  your content text. Just mark them up with then name of the Dublin
+  Core give it as markup. So, in order to override the "DC.publisher"
+  and the "DC.date" you would add these two lines somewhere in your
+  content text: <PRE>
+    &lt;publisher&gt;Guido Draheim&lt;/publisher&gt;
+    &lt;date&gt;2004-11-07&lt;/date&gt;
+</PRE>
+</P>
+<P>
+  That way one can memorize the last edit date in the document and
+  also the last editor of the document. The automatic values would
+  be the last modification time of the source file in the file
+  system for edit date and the current login user as the being the 
+  publisher. This is mostly correct for home pages but it would be
+  not if you share some doc files with collegues.
+</P>
+<P>
+  The list of current DC values is as follows:  <PRE>
+       contributor date source language coverage identifier
+       rights relation creator subject description
+       publisher DCMIType
+</PRE>
+  and a lot of these can take subcategories - the "date" parameter
+  can also be subdivided into "DC.date.issued", "DC.date.modified",
+  "DC.date.available", "DC.date.created" - and you can set each of
+  these by adding the subcategory inside the text with a colon-prefix
+  like this:<PRE>
+    &lt;date&gt;created:2004-11-07&lt;/date&gt;
+    &lt;relation&gt;isCopyOf:OtherPage.html&lt;/relation&gt;
+</PRE>
+</P>
+<P>
+   None of these meta-tags will be copied as text content - they are
+   removed during generation of the content block, so they will be
+   only set as meta-variables in the header block.
+</P>

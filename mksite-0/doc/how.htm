@@ -11,7 +11,7 @@
   lowercased variant of the section header.
 </P>
 
-<P> <small><b> (b) site.htm sitefile (header) </b></small>:
+<P> <small><b> (b) site.htm sitefile (navigation) </b></small>:
   The "*.htm" files define the body of each "html" output page 
   which is often presented in a central white (inline)frame. To
   define the navigation items you only need to create a single
@@ -58,5 +58,6 @@
   <b><nobr><code>`mksite.sh site.htm`</code></nobr></b>. That's all.
   <br> and the engine will do something quite but not entirely unlike <PRE>
   sed -f xyz.html~head~ site.htm &gt;xyz.html
-  sed -f xyz.html~body~ xyz.htm &gt;&gt;xyz.html</PRE>
+  sed -f xyz.html~body~ xyz.htm &gt;&gt;xyz.html
+</PRE> where ~head~ is generated from site.htm and ~body~ from xyz.htm.
 </P>

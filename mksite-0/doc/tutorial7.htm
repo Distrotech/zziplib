@@ -1,0 +1,82 @@
+<H4> How to... create a vertical bar </H4>
+
+<P>
+  On the previous page we have show how to create a horizontal navigation
+  bar with the help of "&lt;center&gt;" tags around the "href"s of the
+  sitefile. To create a vertical bar we need to build a "&lt;table&gt;"
+  with the left (earlier) column to contain the navigation items and
+  the right (later) column to contain the text content.
+</P>
+<P>
+  The trick here is the fact that mksite.sh will treat the final
+  line containing "&lt;/body&gt;" slightly specially - it will ensure
+  that this line is not added to the front before the text content but
+  it will be added after the content. It will be the only line ever
+  moved after the text content but that is enough to create our 
+  two-column table that is the base of a vertical navigation bar layout.
+</P>
+<center><table border="0" cellspacing="0" cellpadding="0"><tr>
+<td bgcolor="#C0C0C0">&nbsp;</td><td><code><small>
+      &lt;html&gt;&lt;head&gt;&lt;title&gt; my website &lt;!--$title--&gt; &lt;/title&gt;
+<br>  &nbsp;&lt;style&gt;  
+<br>  &nbsp;&nbsp;&nbsp;  
+   H4 { text-align : right ; } 
+<br>  &nbsp;&nbsp;&nbsp;   
+>   a:link&nbsp;&nbsp;&nbsp;   
+         { text-decoration : none ; color : #000080 ; }
+<br>  &nbsp;&nbsp;&nbsp;   
+   a:visited      { text-decoration : none ; color : #200060 ; }
+<br>  &nbsp;&nbsp;&nbsp;   
+   p &nbsp;&nbsp;&nbsp;   &nbsp;&nbsp;&nbsp;   
+             { text-align : justify ; }
+<br>  &nbsp;&lt;/style&gt;
+<br>  &lt;/head&gt;&lt;body&gt;
+<br>  <b>&lt;table&gt;&lt;tr valign="top"&gt;</b>
+<br>  <b>&lt;td width="140" bgcolor="yellow"&gt; &lt;!-- navigation --&gt;</b>
+<br>  <b>&lt;br&gt;</b>&lt;a 
+      href="index.html"&gt; Overview &lt;/a&gt;
+<br>  <b>&lt;br&gt;-</b>&lt;a 
+      href="loremipsum.html"&gt; Lorem Ipsum &lt;/a&gt;
+<br>  <b>&lt;br&gt;-</b>&lt;a 
+      href="pagename.html"&gt; more pages... &lt;/a&gt;
+<br>  <b>&lt;/td&gt;&lt;td bgcolor="white"&gt; &lt;!-- body text --&gt;</b>
+<br>  <b>&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</b>&lt;/body&gt;&lt;/html&gt;
+</small></code></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td bgcolor="#C0C0C0">&nbsp;</td>
+</td></tr></table></center>
+
+<P>
+  Note that here each of the "href"s is prefixed with an explicit linebreak by 
+  means of hard &lt;br&gt;eaks. That will ensure the navigations items are
+  shown vertical - if a name of a navigation item is too short than it would
+  be set to it right. That is sometimes even intended - the tutorial subpages
+  are shown by number and list each other horizontally. Buter after the
+  subpages there is another &lt;br&gt;reak that makes seperates the next
+  topic vertically.
+</P>
+<P>
+  A short hyphen before subpage entries can help to order subpages vertically
+  under a leader topic. Therefore, in our example the "Overview" leads to
+  its subpages of "Lorem Ipsum" and "More pages...".
+</P>
+
+<hr>
+<table><tr valign="top">
+<td width="140" bgcolor="yellow"> <!-- navigation column -->
+<br><a href="index.html"> Overview </a>
+<br>-<a href="loremipsum.html"> Lorem&nbsp;Ipsum </a>
+<br>-<a href="pagename.html"> more&nbsp;pages... </a>
+</td><td bgcolor="white"> <!-- body text -->
+<H4> Lorem Ipsum </H4>
+<P><small>
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore m
+agna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
+ no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr,  sed dia
+m nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et just
+o duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum 
+dolor sit amet, consetetur sadipscing elitr,  sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam er
+at, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata
+ sanctus est Lorem ipsum dolor sit amet.
+</small>
+</P>
+</td></tr></table>

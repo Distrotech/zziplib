@@ -1,0 +1,68 @@
+<H4> You need... a site.htm sitefile. </H4>
+
+<P>
+  The sitefile is two things: (a) it provides the html envelope for you
+  webpages (b) it lists the webpages that mksite.sh should look at.
+</P>
+
+<P><b>(a)</b> - simply think of the sitefile as being the "header" text
+  added before the content of your "content" pages. The last line containing
+  "&lt;body&gt;" is cut out and added after the "content" block. You can
+  add everything to the sitefile that is common to your webpages - including
+  any common title tag, some additional CSS "&lt;style&gt;" block, or a
+  navigation bar for the webpages. The "mksite.sh" script will be modifying
+  the sitefile text slightly for each output page - e.g. it will highlight
+  the current page entry on the navigation bar. Also you can add some
+  variables like <small>"&lt;!--$date--&gt;" or "&lt;!--$title--&gt;" </small>
+  that will be expanded by the mksite web generator.
+</P>
+<center><table border="0" cellspacing="0" cellpadding="0"><tr>
+<td bgcolor="#C0C0C0">&nbsp;</td><td><code><small>
+      &lt;html&gt;&lt;head&gt;&lt;title&gt; my website &lt;!--$title--&gt; &lt;/title&gt;
+<br>  &lt;style&gt;  H4 { text-align : right ; } &lt;/style&gt;
+<br>  &lt;/head&gt;&lt;body&gt;
+<br>  ...
+<br>  &lt;/body&gt;&lt;/html&gt;
+</small></code></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td bgcolor="#C0C0C0">&nbsp;</td>
+</td></tr></table></center>
+
+<P><b>(b)</b> - Above we show just the three lines of the html envelope but
+nothing of the navigation items. To do navigation in html one adds href
+entries, i.e. <small><code>"&lt;a href="pagename.html"&gt;page name&lt;/a&gt;"
+</code></small>.
+That can be done here in the sitefile as well and just like in normal html. 
+However the mksite.sh script will care for some hrefs more closer than for 
+others: if you make a href start leftmost on the text border than these files 
+shall be <em>generated</em>. Whatever filename is included in the href 
+("pagename.html") will be a target file and mksite.sh will look for 
+corresponding source file to be around - in this case let's assumke a file 
+named "pagename.htm" might be found and mksite.sh will think that it is the 
+content page for the target. </P>
+<P> As the bottom line: 
+   <em>for each html page you want to have, make a href starting leftmost.</em>
+</P>
+<center><table border="0" cellspacing="0" cellpadding="0"><tr>
+<td bgcolor="#C0C0C0">&nbsp;</td><td><code><small>
+      &lt;html&gt;&lt;head&gt;&lt;title&gt; my website &lt;!--$title--&gt; &lt;/title&gt;
+<br>  &lt;style&gt;  H4 { text-align : right ; } &lt;/style&gt;
+<br>  &lt;/head&gt;&lt;body&gt;
+<br>  <b>&lt;a href="index.html"&gt;Overview&lt;/a&gt;</b>
+<br>  <b>&lt;a href="loremipsum.html"&gt;Lorem Ipsum&lt;/a&gt;</b>
+<br>  <b>&lt;a href="pagename.html"&gt;more pages...&lt;/a&gt;</b>
+<br>  <b>&lt;br&gt;</b>
+<br>  &lt;/body&gt;&lt;/html&gt;
+</small></code></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td bgcolor="#C0C0C0">&nbsp;</td>
+</td></tr></table></center>
+
+<P> If you do not want mksite.sh to touch a target "html" file then simply
+add some spaces before the "href" on the line. Remember that each target
+page specification must be fit onto one line but that is usually no problem
+for a href that should be on a navigation bar. - We will show later that you
+may add some markup around the "href" and mksite.sh will still recognize it
+as a target href but the sitefile above is actually complete: it will show
+up as a top line with your navigation items and the content text added below
+(plus the current page will be highlighted in "<b>b</b>"old on the 
+"navigation bar").
+</P>

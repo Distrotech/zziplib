@@ -1,0 +1,39 @@
+<H4> When done... run the script </H4>
+
+<P>
+  If you do have (a) content pages (b) the mksite.sh script (c)
+  the sitefile - then simply run the script. Provide the sitefile
+  as the only arugment to the script.
+<P>
+<center><code>sh mksite.sh site.htm &nbsp; &nbsp; &nbsp; &nbsp;</code></center>
+<ul>
+<li> The mksite.sh script will first scan the sitefile for any href
+starting leftmost - and build a "filelist" from it. This filelist
+is the list of target html files. It will look around for the
+corresponding source file. In our examples the target files are
+called "*.html" and mksite.sh will automatically find any "*.htm"
+content file. (But it may as well be the other way round.) 
+</li>
+<li> Next it will scan each source file for meta information. During
+processing it will show you the most basic meta information items like
+title and last modification date. These items are assembled internally
+in a set of global lists that are going to be used later - each page
+will also get a series of "&lt; meta...&gt;" tags in the header block
+that are derived from the assembled meta information.
+</li>
+<li> After scanning all source files it will start creating the target
+html files. Internally it will not do it directly: instead the script
+generates two "sed" scripts named "~head~" and "~body~". After generating
+these looooong sed scripts the transformation from source to target is done 
+in one step - one for the header and one for the content. <PRE>
+  sed -f page.html~head~ site.htm &gt;page.html
+  sed -f page.html~body~ page.htm &gt;&gt;page.html
+</PRE></li>
+<li> We will show you later that it is possible to add additional things
+to these sed-scripts so they will be done during processing. The two
+scripts for each file (*~head~ and *~body~) will actually exist in the 
+filesystem but they get removed - create a subdirectory "DEBUG" to make
+them permanent if you want to look at them.
+</li>
+</ul>
+
