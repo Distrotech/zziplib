@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.9 2004-10-11 03:28:20 guidod Exp $
+# $Id: mksite.pl,v 1.10 2004-10-11 11:52:31 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -359,7 +359,7 @@ sub eval_MK_LIST # $str @list
 {
     my $result = $_[0]; shift @_;
     my $extra = "";
-    my $script = "\$_ = \$result;";
+    my $script = "\$_ = \$result; my \$Z;";
     $script .= join(";\n ", @_);
     $script .= "\n;\$result = \$_;\n";
     eval $script;
@@ -369,7 +369,7 @@ sub eval_MK_LIST # $str @list
 sub eval_MK_FILE  {
     my $FILENAME = $_[0]; shift @_;
     my $result = "";
-    my $script = "my \$FILE; my \$extra = ''; \n";
+    my $script = "my \$FILE; my \$extra = ''; my \$Z; \n";
     $script.= "for (source('$FILENAME')) { \n";
     $script.= join(";\n  ", @_);
     $script.= "\n; \$result .= \$_; ";
@@ -452,11 +452,11 @@ sub info2test_sed # \@ \@ # cut out all old-style <!--vars--> usages
 
 sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 {
-    my ($INP,$XXX) = @_;
+    my ($INP,$Z) = @_;
     $INP = \@{$INFO{$F}} if not $INP;
     my @OUT = ();
-    my $V8=" *([^ ][^ ]*) +(?:<^[<>]*>)*([^<>]*)";
-    my $V9=" *DC[.]([^ ][^ ]*) +(?:<^[<>]*>)*([^<>]*)";
+    my $V8=" *([^ ][^ ]*) +(.*)";
+    my $V9=" *DC[.]([^ ][^ ]*) +(.*)";
     my $N8=" *([^ ][^ ]*) ([$NN].*)";
     my $N9=" *DC[.]([^ ][^ ]*) ([$NN].*)";
     my $V0="([<]*)\\\$";
@@ -464,91 +464,92 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     my $V2="([^{<>}]*)";
     my $V3="([^<>]*)";
     my $SS="<"."<>".">"; # spacer so value="2004" dont make for s|\(...\)|\12004|
+    $Z="\$Z=";
     $updatevars = "no" if $commentvars  eq "no";   # duplicated from
     $expandvars = "no" if $commentvars  eq "no";   # option handling
     $simplevars = "no" if $commentvars  eq "no";   # tests below
     my @OUT = ();
     if ($expandvars ne "no") {
 	for (@{$INP}) {
-	if (/^=....=formatter /) { next; };
-	if (/^=name=$V9/){push @OUT, esc("s|<!--$V0$1\\?-->|- $2|;"); };
-	if (/^=Name=$V9/){push @OUT, esc("s|<!--$V0$1\\?-->|($2)|;"); };
-	if (/^=name=$V8/){push @OUT, esc("s|<!--$V0$1\\?-->|- $2|;"); };
-	if (/^=Name=$V8/){push @OUT, esc("s|<!--$V0$1\\?-->|($2)|;"); };
+    if (/^=....=formatter /) { next; };
+    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"};
+    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"};
+    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"};
+    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"};
         } 
     }
     if ($expandvars ne "no") {
 	for (@{$INP}) {
-	if (/^=....=formatter /) { next; };
-	if (/^=text=$V9/){push @OUT, esc("s|<!--$V1$1-->|\$1$SS$2|;"); };
-	if (/^=Text=$V9/){push @OUT, esc("s|<!--$V1$1-->|\$1$SS$2|;"); };
-	if (/^=name=$V9/){push @OUT, esc("s|<!--$V1$1\\?-->|\$1$SS$2|;"); };
-	if (/^=Name=$V9/){push @OUT, esc("s|<!--$V1$1\\?-->|\$1$SS$2|;"); };
-	if (/^=text=$V8/){push @OUT, esc("s|<!--$V1$1-->|\$1$SS$2|;"); };
-	if (/^=Text=$V8/){push @OUT, esc("s|<!--$V1$1-->|\$1$SS$2|;"); };
-	if (/^=name=$V8/){push @OUT, esc("s|<!--$V1$1\\?-->|\$1$SS$2|;"); };
-	if (/^=Name=$V8/){push @OUT, esc("s|<!--$V1$1\\?-->|\$1$SS$2|;"); };
+    if (/^=....=formatter /) { next; };
+    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
+    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
+    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
+    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
+    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
+    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"};
+    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
+    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"};
 	}
     }
     if ($simplevars ne "no" && $updatevars != "no") {
 	for (@$INP) {
-	if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
-	if (/^=text=$V9/){push @OUT, esc("s|<!--$V0$1:-->$Q|$2|;"); }
-	if (/^=Text=$V9/){push @OUT, esc("s|<!--$V0$1:-->$Q|$2|;"); }
-	if (/^=name=$V9/){push @OUT, esc("s|<!--$V0$1\\?:-->$Q|- $2|;"); }
-	if (/^=Name=$V9/){push @OUT, esc("s|<!--$V0$1\\?:-->$Q|($2)|;"); }
-	if (/^=text=$V8/){push @OUT, esc("s|<!--$V0$1:-->$Q|$2|;"); }
-	if (/^=Text=$V8/){push @OUT, esc("s|<!--$V0$1:-->$Q|$2|;"); }
-	if (/^=name=$V8/){push @OUT, esc("s|<!--$V0$1\\?:-->$Q|- $2|;"); }
-	if (/^=Name=$V8/){push @OUT, esc("s|<!--$V0$1\\?:-->$Q|($2)|;"); }
+    if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
+    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
+    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
+    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"};
+    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"};
+    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
+    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"};
+    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"};
+    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"};
 	}
     }
     if ($updatevars ne "no") {
 	for (@$INP) {
-	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-	if (/^=name=$V9/){push @OUT, esc("s|<!--$V0$1:\\?-->$Q|- $2|;"); }
-	if (/^=Name=$V9/){push @OUT, esc("s|<!--$V0$1:\\?-->$Q|($2)|;"); }
-	if (/^=name=$V8/){push @OUT, esc("s|<!--$V0$1:\\?-->$Q|- $2|;"); }
-	if (/^=Name=$V8/){push @OUT, esc("s|<!--$V0$1:\\?-->$Q|($2)|;"); }
+    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
+    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"};
+    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"};
+    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"};
+    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"};
 	}
     }
     if ($updatevars ne "no") {
 	for (@$INP) {
-	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-	if (/^=text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
-	if (/^=Text=$V9/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
-	if (/^=name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
-	if (/^=Name=$V9/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
-	if (/^=text=$V8/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
-	if (/^=Text=$V8/){push @OUT,esc("s|<!--$V1$1:\\=-->$Q|\$1$SS$2|;");}
-	if (/^=name=$V8/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
-	if (/^=Name=$V8/){push @OUT,esc("s|<!--$V1$1:\\?-->$Q|\$1$SS$2|;");}
+    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
+    if (/^=text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    if (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    if (/^=name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    if (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    if (/^=text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    if (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
+    if (/^=name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    if (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
 	}
     }
     if ($attribvars ne "no") {
 	for (@$INP) {
-	if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
-    if (/^=text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=Text=$V9/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=Name=$V9/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=Text=$V8/){push @OUT,esc("s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
-    if (/^=Name=$V8/){push @OUT,esc("s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS$2\$3>|;");}
+    if (/^=....=formatter /) { next; }; my $Q = "[^<>]*";
+    if (/^=text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    if (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
 	}
     }
     if ($simplevars ne "no") {
 	for (@$INP) {
-	if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
-	if (/^=text=$V9/){push @OUT, esc("s|<!--$1-->$Q|$2|;"); }
-	if (/^=Text=$V9/){push @OUT, esc("s|<!--$1-->$Q|$2|;"); }
-	if (/^=name=$V9/){push @OUT, esc("s|<!--$1\\?-->$Q| - $2|;"); }
-	if (/^=Name=$V9/){push @OUT, esc("s|<!--$1\\?-->$Q| ($2)|;"); }
-	if (/^=text=$V8/){push @OUT, esc("s|<!--$1-->$Q|$2|;"); }
-	if (/^=Text=$V8/){push @OUT, esc("s|<!--$1-->$Q|$2|;"); }
-	if (/^=name=$V8/){push @OUT, esc("s|<!--$1\\?-->$Q| - $2|;"); }
-	if (/^=Name=$V8/){push @OUT, esc("s|<!--$1\\?-->$Q| ($2)|;"); }
+    if (/^=....=formatter /) { next; }; my $Q = "[$AX]*";
+    if (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
+    if (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
+    if (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"};
+    if (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"};
+    if (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
+    if (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"};
+    if (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"};
+    if (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"};
 	}
     }
     # if value="2004" then generated sed might be "\\12004" which is bad
@@ -1977,5 +1978,6 @@ print "note: errornous simplevar detection can be suppressed with a magic\n";
 print "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now.\n";
 } }
 
+print "(\$selected still buggy)";
 ## rm ./$MK.*.tmp
 exit 0
