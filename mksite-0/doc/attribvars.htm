@@ -1,0 +1,47 @@
+<H3>attribvars = choosing attribute values</H3>
+
+<PRE><b>
+   &lt;!--mksite:attribvars--&gt; </b>
+   &lt;!--mksite:attribvars--&gt; 
+</PRE>
+<P>
+  The option can be selected in the sitefile, per default we do
+  update content prefixed with these comment variables.  
+</P>
+<PRE>
+   input: download &lt;a href="pkg-${varname:=current}.tar.bz2"&gt; !
+  output: download &lt;a href="pkg-value.tar.bz2"&gt; !
+ default: download &lt;a href="pkg-current.tar.bz2"&gt; !
+
+   input: download &lt;a href="pkg${varname:?}.tar.bz2"&gt; !
+  output: download &lt;a href="pkg-value.tar.bz2"&gt; !
+ default: download &lt;a href="pkg.tar.bz2"&gt; !
+</PRE>
+<P>
+   This is the preferred method of choosing attribute values
+   depending on variable settings. The value of the attribute
+   is illegal in the source htm file which is usually not a
+   problem. The expansion will either paste the value of the
+   selected variable, or otherwise the default value given
+   after the ":=" setting. The start and end stem from the
+   curly braces, expansion text should generally be short.
+</P>
+<P>
+   The variant expansions can be selected via "?" after the
+   colon instead of the "=". This syntax derives directly
+   from shell variable name expansion which knows the two
+   variants as well <code>${varname:=default}</code> and
+   <code>${varname:?default}</code>. A similar syntax was
+   picked up for the <a href="updatevars.html">updatevars</a>
+   expansion which update content attribute text intead of
+   choosing attribute values.
+</P>
+<P>
+   The variant expansion scheme is the same as for the
+   <a href="expandvars.html">expandvars</a> being hyphenated
+   for toplevel variables ("$title" and "$author") and 
+   parenthesed for secondary variables ("$modified" and
+   "$issued"). The specification of the variant formatting
+   stems from those and is not usually used with 
+   <a href="attribvars.html">attribvars</a>.
+</P>

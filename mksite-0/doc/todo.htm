@@ -1,0 +1,74 @@
+<H3> Features Left To Describe </H3>
+
+<P>
+   Most people do not read the source code. I have tried to make it
+   as readable as possible. But it is still shell code and many
+   have a hard time to get clue. And even that they do not change
+   the shell script they still want to make use of it. So that needs
+   us to describe all the features in all their detail.
+</P>
+<P>
+  Well, there is already a lot to say about the features already
+  available. I am still hoping for submissions though. From the
+  features left to be described:
+</P>
+<dl>
+<DT> sitemap styles </DT>
+<dd>
+   default is <code>&lt;mksite:listsitemapstyle&gt;</code> but may be
+   you want <code>&lt;mksite:multisitemapstyle&gt;</code>
+</dd>
+<DT> section styles </DT>
+<dd>
+   default is <code>&lt;mksite:listsectionstyle&gt;</code> but may be
+   you want <code>&lt;mksite:multisectionstyle&gt;</code>
+</dd>
+<DT> printerfriendly style </DT>
+<dd>
+   Use <code>&lt;mksite:printerfriendly&gt;</code> and get an alternative
+   represention. Tell how it is made.
+</dd>
+<DT> variable setting </DT>
+<dd>
+    Try <code>&lt;date&gt;2004-33-66&lt;/date&gt;</code>
+    and <code>&lt;DCMIType&gt;Software&lt;/DCMIType&gt;</code>
+    in the source htm text.
+</dd>
+<DT> alternatives </DT>
+<dd>
+   Mark <code>&lt;mksite:alternative:selectvar&nbsp;something&gt;</code> 
+   in the sitefile that cuts off the page with something. Enable it in
+   the page source file via
+   <code>&lt;mksite:alternative:selectvar&nbsp;something&gt;</code>.
+</dd>
+<DT> section hi:light </DT>
+<dd>
+   How highlighting the current section is achieved and what format the
+   line should have in the sitefile.
+</dd>
+<DT> topic hi:light </DT>
+<dd>
+   How highlighting the current topic is achieved and what format the
+   line should have in the sitefile.
+</dd>
+<DT> using multiple sitefiles </DT>
+<dd>
+   This website uses multiple sitefiles in the same directory. The
+   section intro page is actually the generated sitemap.
+</dd>
+<DT>content of staging files </DT>
+<dd>
+   During transformation quite some temporary files are created that
+   pass information from first to second stage. It is  good to inspect 
+   them for debugging. And one should know their content if there is 
+   a wish to add more entries to them.
+</dd>
+<DT>debug enable </DT>
+<dd>
+   Create a subdirectory DEBUG and see some temporary files to be
+   added in them - these are the ones used inside a stage for the
+   given file.  
+</dd>
+</DL>
+
+

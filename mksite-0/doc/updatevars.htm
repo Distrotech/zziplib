@@ -1,0 +1,49 @@
+<H3>updatevars = marking updateable content</H3>
+
+<PRE><b>
+   &lt;!--mksite:updatevars--&gt; </b>
+   &lt;!--mksite:noupdatevars--&gt; 
+</PRE>
+<P>
+  The option can be selected in the sitefile, per default we do
+  update content prefixed with these comment variables.  
+   <code>mksite:nocommentvars</code> disables this feature as well.
+</P>
+<PRE>
+   input: derived <code>&lt;!--$varname:=--&gt;</code> 2004/04
+  output: derived 2004-04-16
+ default: derived 2004/04
+
+   input: derived <code>&lt;!--$varname:?--&gt;</code> 2004/04
+  output: derived - 2004-0416
+  output: derived (2004-0416)
+</PRE>
+<P>
+   This is the preferred method of updating content in the htm
+   file. The comment itself is invisible while a default
+   representation is visible (usually in a similar formatting).
+   The expansion will cut away all text following the comment
+   variable up to the next markup or endofline. That text is
+   replaced with the value of the selected variable. If no 
+   variable of such a name exists then nothing is done and
+   the default value persists.
+</P>
+<P>
+   The variant expansions can be selected via "?" after the
+   colon instead of the "=". This syntax derives directly
+   from shell variable name expansion which knows the two
+   variants as well <code>${varname:=default}</code> and
+   <code>${varname:?default}</code>. A similar syntax was
+   picked up for the <a href="attribvars.html">attribvars</a>
+   expansion which update markup attribute text intead of
+   page content text.
+</P>
+<P>
+   The variant expansion scheme is the same as for the
+   <a href="expandvars.html">expandvars</a> being hyphenated
+   for toplevel variables ("$title" and "$author") and 
+   parenthesed for secondary variables ("$modified" and
+   "$issued"). The specification of the variant formatting
+   stems from those and is not usually used with 
+   <a href="updatevars.html">updatevars</a>.
+</P>

@@ -1,0 +1,41 @@
+<H3>expandvars = direct comment variables</H3>
+
+<PRE><b>
+   &lt;!--mksite:expandvars--&gt; </b>
+   &lt;!--mksite:noexpandvars--&gt; 
+</PRE>
+<P>
+  The option can be selected in the sitefile, per default we do
+  expand direct comment variables.  &lt;!--mksite:nocommentvars--&gt; 
+  disables this feature as well.
+</P>
+<PRE>
+   input: some <code>&lt;!--$varname--&gt;</code> text
+  output: some value text
+ default: some  text
+
+   input: section <code>&lt;!--$varname?--&gt;</code> !
+  output: section - text !
+  output: section (text) !
+</PRE>
+<P>
+   This is the preferred method of expanding variables. They are
+   invisible in the source htm file. They add some text to the
+   result. The variant expansions can be selected via "?" after
+   the variable name. The variant is usually (a) hyphenated for
+   toplevel variables or (b) parenthesed for secondary variables.
+</P>
+<P>
+   A toplevel variable is "DC.title" and "DC.author" that can be
+   selected as "$title" and "$author". The secondary variable 
+   are usually those of "DC.date", e.g. "DC.date.modified" and
+   "DC.date.issued" that can be selected as "$modified" and
+   "$issued".
+</P>
+<P>
+   The specification of variants stems from times when there was
+   no complex expansion of variables available that would allow
+   additional formatting within the comment box. Therefore the
+   most common formatting was done in the mksite.sh script. The
+   variant expansions have survived can still be used.
+</P>

@@ -16,6 +16,7 @@ test2.html : test2/*.htm mksite.sh
 test1 test2 site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
 	cd doc && sh ../mksite.sh site.htm
+	cd doc && sh ../mksite.sh features.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.html > $@
 	sleep 5 # done $@
