@@ -1,0 +1,81 @@
+<H4> Web Accessibility Sect/Subsect Hints </H4>
+
+<dl>
+<DT> max. 3 Levels Sects/Subsects </DT>
+<DD><P>
+   (a) The user will be lost quickly where to navigate next. To use
+   more than 3 levels is only beneficial if it closely matches a
+   hierarchie already made up with those levels (e.g. FTP view). 
+   For that however it is better to list in the "sitemap" simply
+   a "directory" to navigate into and use its own sitefile for
+   the subdirectory. Make it known with a slight variation that
+   the user has gone to different space - away from frontend
+   web presentation into a hierarchic download section. Same
+   applies to moving over to a forum / webchat space.
+</P><P>
+   (b) How do you think you can place all the levels in a single
+   navigation bar. The recommended way of mksite.sh is to use
+   horizontal rulers for each "sect1", to use an itemized line
+   for "sect2" and place below the item more "sect3" nodes
+   possibly many per line. That's compact enough so the user does
+   not get lost in the middle. Note that mksite.sh does not
+   encourage folder-expand/folder-close menu-handling but instead
+   strongly hints to use a sitefile not changing on every click
+   thereby making the "next-page" to jump away and up and down.
+   Otherwise one would need an explicit "next" button somewhere
+   to help with sequential reading and searching (the usual 
+   "browsing" action takes 3 seconds per page on average).
+</P>
+</DD>
+<DT> no more than 8 topic items per section </DT>
+<DD><P>
+   The human mind can only catch about 7 items at a time with
+   one look. Going beyond that confuses the human brain and
+   slows down information gathering (stress). On the other
+   hand it is usually not interesting to use less than 3
+   items per section, it would get overlooked quickly among
+   other sections. Therefore (a) add topic pages to section
+   as they fit (b) when a section overflows with 8-10 items
+   then split the section in two with each 3-6 topic items.
+</P>
+</DD>
+<DT> numbering for the third-level items </DT>
+<DD><P>
+   When a topic gets too long it is not a good idea to keep
+   everything on a single long page that the user has to
+   scroll down - searching for some interesting subitem.
+   Instead cut the long page into pieces and register as
+   its own html page with the sitefile. They all shold be
+   on the same topic anyway so let's register the page on
+   the sitefile with a very short hint only, possibly just
+   use numbers. And if not using number then use common
+   shorthands such as "intro" "related" "main" "links"
+   written in &lt;small&gt; letters on the sitefile 
+   navigation bar. 
+</P><P>
+   If there are too many splitpages then
+   make the first of its series (the subsection topic item
+   on level2) a frontpage with a href to each splitpage and 
+   short description of the content of that splitpage
+</P>
+</DD>
+<DT> sub-websites if it gets too big </DT>
+<DD><P>
+   The three levels make enough room for pages - a big website
+   for mksite.sh would be using 6 sections with an average of
+   6 topic per section and an average of 3 pages per topic.
+   That makes more than 100 pages. If a section gets too long
+   one can also make for multi-column layout (with some
+   global quicklinks) but do not be tempted to put too much
+   into such a column.
+</P><P>
+   Instead consider to split the website into multiple spaces
+   with each its own sitefile. That can be to put them into
+   directories of the main website (developer, user, etc) and
+   make a seperate sitefile for the main website that goes to
+   introduce the purpose of each area and linking into each
+   area then. The site map will only contain a single entry
+   per area and otherwise lists the items of the intro website.
+</P>
+</DD>
+</DL>
