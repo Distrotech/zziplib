@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.21 2005-01-29 16:50:55 guidod Exp $
+# $Id: mksite.pl,v 1.22 2005-01-29 20:26:11 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1156,7 +1156,7 @@ sub make_multisitemap
 			."<br><!--name--><!--date-->" };
     my $_tiny_="small><small><small" ; my $_tinyX_="small></small></small ";
     my $_tabb_="<br><$_tiny_> </$_tinyX_>" ; my $_bigg_="<big> </big>";
-    push @OUT, "<table width=\"100%\"><tr><td> ";
+    push @OUT, "<table width=\"100%\"><tr><td> ".$n;
     for (grep {/=[u]se.=/} @$INPUTS) {
 	my $x = $_;
 	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
@@ -1168,9 +1168,9 @@ sub make_multisitemap
 	$x =~ s|<long>||; $x =~ s|</long>||;
 	$x =~ s|<name |<$_tiny_><a |; $x =~ s|</name>||;
 	$x =~ s|<date>| |; $x =~ s|</date>|</a><br></$_tinyX_>|;
-	push @OUT, $x;
+	push @OUT, $x.$n;
     }
-    push @OUT, "</td><tr></table>";
+    push @OUT, "</td><tr></table>".$n;
     return @OUT;
 }
 
@@ -1182,7 +1182,7 @@ sub make_listsitemap
     my $_form_=sub{
 	"<!--\"$2\"--><!--use$1--><!--name--><!--date--><!--long-->"};
     my $_tabb_="<td>\&nbsp\;</td>";
-    push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">";
+    push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">".$n;
     for (grep {/=[u]se.=/} @$INPUTS) {
 	my $x = $_; 
 	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
@@ -1194,9 +1194,9 @@ sub make_listsitemap
         $x =~ s|<name |<td><a |; $x =~ s|</name>|</a></td>$_tabb_|;
         $x =~ s|<date>|<td><small>|; $x =~ s|</date>|</small></td>$_tabb_|;
         $x =~ s|<long>|<td><em>|; $x =~ s|</long>|</em></td></tr>|;
-        push @OUT, $x; 
+        push @OUT, $x.$n; 
     }
-    push @OUT, "</table>";
+    push @OUT, "</table>".$n;
     return @OUT;
 }
 
@@ -1794,7 +1794,7 @@ sub make_sitefile # "$F"
        @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
 ##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
    }
-   my @F_HEAD = (); my @F_FOOT = "";
+   my @F_HEAD = (); my @F_FOOT = ();
    push @F_HEAD, @MK_PUTS;
    push @F_HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
    push @F_HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
@@ -1807,8 +1807,8 @@ sub make_sitefile # "$F"
    }
 
    my $html = ""; # 
-   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD); chomp $html;
-   $html .= join("$n", @F_FOOT); $html.=$n;
+   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD);
+   $html .= join("", @F_FOOT);
    for (source($SITEFILE)) {
        /<\/body>/ or next;
        $html .= &eval_MK_LIST($_, @MK_VARS);
