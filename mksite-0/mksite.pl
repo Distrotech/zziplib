@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.5 2004-10-10 23:47:47 guidod Exp $
+# $Id: mksite.pl,v 1.6 2004-10-11 00:28:54 guidod Exp $
 
 use strict;
 use File::Basename qw(basename);
@@ -1598,6 +1598,7 @@ sub scan_sitefile # $F
 	DC_section ($F);
 	DX_text ("date.formatted", &timetoday());
 	if ($printerfriendly) {
+	    print "------------------->",fast_html_printerfile($F);
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
 	print "'$SOURCEFILE': $short (sitemap)\n";
@@ -1728,7 +1729,8 @@ sub make_sitefile # "$F"
    push @HEAD, @MK_PUTS;
    push @HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
    push @HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_META);";
-   push @HEAD, @MK_TAGS; push @HEAD, @MK_VARS;
+   push @HEAD, @MK_VARS; push @HEAD, @MK_TAGS; 
+   for (@MK_VARS) { if (/printerfriendly/) { print "=======>$_\n"; } }
    push @HEAD, "/<\\/body>/ and next;";                #cut lastline
    if ( $sitemaplayout eq "multi") {
        push @BODY,  &make_multisitemap();        # here we use ~body~ as

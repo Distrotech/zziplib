@@ -1,19 +1,48 @@
 all : index.html
 
+known = -e "/formatter/d"
+test : test1x test2x
+test1x : test1x.html
+	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
+	; if grep :alternative: $$i >/dev/null ; then : \
+	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
+	; diff -Bu0 $$i.orig $$i.made ; fi done ; rm $@/*.orig test1x/*.made
+test2x : test2x.html
+	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
+	; if grep :alternative: $$i >/dev/null ; then : \
+	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
+	; diff -Bu0 $$i.orig $$i.made ; fi done ; rm $@/*.orig test1x/*.made
+
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
 test1.html : test1/*.htm mksite.sh
 	cd test1 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1/\\1|" \
 	    test1/index.html > $@
-	sleep 5 # done $@
+	sleep 3 # done $@
 test2.html : test2/*.htm mksite.sh
 	cd test2 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \
 	    test2/index.html > $@
-	sleep 5 # done $@
+	sleep 3 # done $@
 
-test1 test2 site : .FORCE ; rm $@.html ; $(MAKE) $@.html
+test1x.html : test1/*.htm mksite.pl GNUmakefile
+	test ! -d test1x/ || rm -r test1x/
+	mkdir test1x && cp -a test1/*.htm test1x/
+	cd test1x && perl ../mksite.pl site.htm
+	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1x/\\1|" \
+	    test1x/index.html > $@
+	sleep 2 # done $@
+test2x.html : test2/*.htm mksite.pl GNUmakefile
+	test ! -d test2x/ || rm -r test2x/
+	mkdir test2x && cp -a test2/*.htm test2x/
+	- rm test2x/*.print.* ; mkdir test2x/DEBUG
+	cd test2x && perl ../mksite.pl site.htm
+	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2x/\\1|" \
+	    test2x/index.html > $@
+	sleep 2 # done $@
+
+test1 test2  site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
 	cd doc && sh ../mksite.sh site.htm
 	cd doc && sh ../mksite.sh features.htm
