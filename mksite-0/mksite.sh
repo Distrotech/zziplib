@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.4 2004-04-19 14:42:22 guidod Exp $
+# $Id: mksite.sh,v 1.5 2004-04-19 19:01:20 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -170,9 +170,13 @@ sed_longscript ()
          -f "$1~6~"  -f "$1~7~" -f "$1~8~" -f "$1~9~" "$2"
 }
 
-sed_anchor ()      # helper to escape chars special in /anchor/ regex
-{
-    echo "$1" | $SED -e "s|/|\\\\/|g" -e "s|\\[|\\\\[|g"
+sed_slash_key ()      # helper to escape chars special in /anchor/ regex
+{                     # currently escaping "/" "[" "]" "."
+    echo "$1" | $SED -e "s|[./[]|\\\\&|g" -e "s|\\]|\\\\&|g"
+}
+sed_piped_key ()      # helper to escape chars special in s|anchor|| regex
+{                     # currently escaping "|" "[" "]" "."
+    echo "$1" | $SED -e "s/[.|[]/\\\\&/g" -e "s/\\]/\\\\&/g"
 }
 
 back_path ()          # helper to get the series of "../" for a given path
@@ -384,7 +388,7 @@ DC_title ()
 DC_section () # not really a DC relation (shall we use isPartOf ?) 
 {             # each document should know its section father
    Q="$1" # source file
-   FF=`sed_anchor "$F"`
+   FF=`sed_slash_key "$F"`
    sectn=`$SED -e "/^=sect=$FF /!d" -e "s/^=sect=$FF //" -e q ./$MK.$INFO`
    if test ".$sectn" != "." ; then
       DC_meta relation.section "$sectn"
@@ -395,7 +399,7 @@ DC_selected () # not really a DC title (shall we use alternative ?)
 {
    # each document might want to highlight the currently selected item
    Q="$1" # source file
-   FF=`sed_anchor "$F"`
+   FF=`sed_slash_key "$F"`
    short=`$SED -e "/=use.=$FF /!d" -e "s/=use.=[^ ]* //" -e q ./$MK.$INFO`
    if test ".$short" != "." ; then
       DC_meta title.selected "$short"
@@ -424,7 +428,8 @@ siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
   _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
   _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
   _page_="s|<!--\"\\1\"-->.*<!--page-->|\\&<page>\\2</page>|"
-  $SED -e "s:=list=\\([^ ]*\\) \\(.*\\):$_list_:" \
+  $SED -e "s:&:\\\\&:g" \
+       -e "s:=list=\\([^ ]*\\) \\(.*\\):$_list_:" \
        -e "s:=date=\\([^ ]*\\) \\(.*\\):$_date_:" \
        -e "s:=long=\\([^ ]*\\) \\(.*\\):$_page_:" \
        -e "/^s|/!d" $INP > $OUT
@@ -593,7 +598,7 @@ fi ; else
    echo "<$F> - skipped"
 fi ;;
 */) echo "'$F' : directory - skipped"
-   echo "=list=$F `sed_anchor $F`" >> $MK.$INFO
+   echo "=list=$F `sed_slash_key $F`" >> $MK.$INFO
    echo "=long=$F (directory)"        >> $MK.$INFO
    ;;
 *) echo "?? -> '$F'"
@@ -683,8 +688,8 @@ if test -f "$SOURCEFILE" ; then
    info2meta $MK.meta.tmp          # add <meta name="DC.title"> values
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
    CURRENT_SECTION=`info_get_entry DC.relation.section`
-   SECTION=`sed_anchor "$CURRENT_SECTION"`
-   FF=`sed_anchor "$F"`
+   SECTION=`sed_slash_key "$CURRENT_SECTION"`
+   FF=`sed_slash_key "$F"`
    case "$sectionlayout" in
    multi) # sitefile navigation bar is split into sections
       $CAT ./$MK.puts.tmp                                          > $F.$HEAD 
