@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.44 2004-10-17 19:29:12 guidod Exp $
+# $Id: mksite.sh,v 1.45 2004-10-17 19:36:41 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -135,6 +135,7 @@ if test ".$opt_help" != "." ; then
     echo " --filelist : show list of target files as ectracted from $F"
     echo " --src-dir xx : if source files are not where mksite is executed"
     echo " --tmp-dir xx : use temp instead of local directory"
+    echo " --tmp : use automatic temp directory in ${TEMP-/tmp}/mksite.*"
     exit;
     echo " internal:"
     echo "--fileseparator=x : for building the internal filelist (default '?')"
@@ -154,6 +155,8 @@ echo "!! sorry, this shell '$SHELL' does not support shell functions"; exit 1
 fi
 
 tmp="." ; if test ".$opt_tmp_dir" != "." ; then tmp="$opt_tmp_dir" ; fi
+if test ".$opt_tmp_dir" = "." && test ".$opt_tmp" != "." ; then
+tmp="${TEMP-/tmp}/mksite.$$" ; fi
 
 # we use external files to store mappings - kind of relational tables
 MK_TAGS="$tmp/$MK.tags.tmp"
