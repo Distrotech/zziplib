@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.8 2004-04-20 16:03:00 guidod Exp $
+# $Id: mksite.sh,v 1.9 2004-04-20 17:09:44 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -593,6 +593,12 @@ make_printsitefile ()
 {
    OUTPUT="$1" ; test ".$OUTPUT" = "." && OUTPUT="$SITEFILE.print.html"
    INPUTS="$2" ; test ".$INPUTS" = "." && INPUTS="./$MK.$INFO"
+   _bold_="text-decoration : none ; font-weight : bold ; "
+   echo "   <style>"                                     > $MK.style.tmp
+   echo "     a:link    { $_bold_ color : #000060 ; }"  >> $MK.style.tmp
+   echo "     a:visited { $_bold_ color : #000040 ; }"  >> $MK.style.tmp
+   echo "     body      { background-color : white ; }" >> $MK.style.tmp
+   echo "   </style>"                                   >> $MK.style.tmp
    siteinfo2sitemap ./$MK.site.tmp # have <name><page><date> addon-sed
    _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--page-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
@@ -600,7 +606,7 @@ make_printsitefile ()
         -e "/<head>/p"   -e "/<head>/d" \
         -e "/<\/head>/p"   -e "/<\/head>/d" \
         -e "/<body>/p"   -e "/<body>/d" \
-        -e "d" $SITEFILE > $OUTPUT
+        -e "d" $SITEFILE | $SED -e "/<head>/r ./$MK.style.tmp" > $OUTPUT
   
    sep=" - "
    site_get_rootsections > ./tmp.sect1.txt
@@ -608,7 +614,7 @@ make_printsitefile ()
    test -d DEBUG && cat ./tmp.sect1.txt        >> DEBUG/printsitemap.txt
    $CATNULL >./tmp.sects.txt
    for r in `cat ./tmp.sect1.txt` ; do
-   echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>| " >> $OUTPUT
+   echo "<!--mksite:sect:\"$r\"--><!--mksite:sect1:A--><br>|$sep" >> $OUTPUT
    for s in `cat ./tmp.sect1.txt` ; do 
    rr=`sed_slash_key "$r"`  
    echo "<!--mksite:sect:\"$r\"--><a href=\"$s\"><!--\"$s\"--><!--name--></a>$sep" \
@@ -623,7 +629,7 @@ make_printsitefile ()
    test -d DEBUG && echo "# subsections $r"    >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./tmp.sect2.txt        >> DEBUG/printsitemap.txt
    for s in `cat ./tmp.sect2.txt` ; do test "$r" = "$s" && continue
-   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>|| " >> $OUTPUT
+   echo "<!--mksite:sect:\"$s\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
    for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
    ss=`sed_slash_key "$s"`  
    echo "<!--mksite:sect:\"$s\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
@@ -639,7 +645,7 @@ make_printsitefile ()
    test -d DEBUG && echo "# subsubsections $s" >> DEBUG/printsitemap.txt
    test -d DEBUG && cat ./tmp.sect3.txt        >> DEBUG/printsitemap.txt
    for t in `cat ./tmp.sect3.txt` ; do test "$s" = "$t" && continue
-   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>||| " >> $OUTPUT
+   echo "<!--mksite:sect:\"$t\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
    for u in `cat ./tmp.sect3.txt` ; do test "$s" = "$u" && continue
    tt=`sed_slash_key "$t"` 
    echo "<!--mksite:sect:\"$t\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
@@ -654,7 +660,7 @@ make_printsitefile ()
    _have_children_="0"
    for u in `cat ./tmp.sect3.txt` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
-   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>||| " >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$s\"--><!--mksite:sect3:A--><br>|||$sep" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$s\"--><a href=\"$u\"><!--\"$u\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
@@ -666,7 +672,7 @@ make_printsitefile ()
    _have_children_="0"
    for t in `cat ./tmp.sect2.txt` ; do test "$r" = "$t" && continue
    test "$_have_children_" = "0" && _have_children_="1" && \
-   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>|| " >> $OUTPUT
+   echo "<!--mksite:sect:*:\"$r\"--><!--mksite:sect2:A--><br>||$sep" >> $OUTPUT
    echo "<!--mksite:sect:*:\"$r\"--><a href=\"$t\"><!--\"$t\"--><!--name--></a>$sep" \
         | $SED -f ./$MK.site.tmp -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
          -e "s/<!--\"[^\"]*\"--><!--name-->//" >> $OUTPUT
