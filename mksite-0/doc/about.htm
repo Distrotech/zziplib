@@ -1,0 +1,68 @@
+
+<table><tr><td valign="bottom">
+<H3> About The Author and This Project </H3>
+
+<P>
+ I am a thirty-something engineer with twenty years of
+ programming experience (I had my first software job
+ at the age of 16, an accounting program). My degree
+ of Master in computer science is earned at the
+ <a href="http://www.informatik.hu-berlin.de/">Humboldt University</a>
+ in Berlin. Apart from that I am holding various smaller degrees
+ in sciences (electronics, chemistry), arts (economy, typography)
+ and languages (english, french). I am currently employed at 
+ <a href="http://www.tek.com">Tektronix</a> 
+ in the telecom <a href="http://www.tek.com/Measurement/signaling">
+ protocols simulation</a> group. I am looking to switch into
+ the biotech field which is a much more rapidly a changing environment
+ that fits better to my personality - the telecom sector is currently
+ moving rather slowly on the "evolution" path intead of bringing
+ all new "revolution"s.
+</P>
+</td><td>
+<img src="http://www.informatik.hu-berlin.de/~draheim/lexikos-2.jpg">
+</td></tr></table>
+
+<P>
+  The presented project of "mksite.sh" is the last variation in a long
+  series of website formatters ranging from as low as makefile snippets
+  over perl/python-based generation to full-fledged xslt layouting
+  including specialized xml data mining applications incorporating the
+  last of science innovations (e.g <a href="http://xmlg.sf.net">xml/g</a>).
+  The "mksite.sh" script has been cut down by intention but still
+  providing large parts of the functionality usually needed with 
+  documentation projects as far as I came across them.
+</P>
+<P>
+  Actually I am involved in many many projects around and many even opensource,
+  just <a href="http://google.de/search?q=guidod">google for "guidod"</a>
+  to get a few references. In many cases programmers keep on making up 
+  documentation very late in the process of their spare-time project. And
+  in even more cases it consists of a README.TXT and TODO file shipped along
+  with the sources. And in here it is not uncommon that these very basic
+  paragraphs are folded into websites with the same "plain" style -
+  including hardly any navigation help, cross reference or visual feedback.
+</P>
+<P>
+  Of course programmers did what they do best - they created themselves
+  little tools to do the formatting out of a simple input text into the
+  website presentation thereby making it easier about all that presentation
+  stuff. <a href="http://freshmeat">Freshmeat</a> lists more than a 1000
+  of such website formatters, some bigger some smaller. But they have
+  atleast one problem - they are written in the favourite programming
+  language of the developer that did need documentation for his project.
+  And so did&nbsp;I.
+</P>
+<P>
+  And now here we finally do it differently - a website formatter with
+  no third-party dependencies, interestingly being unique among the 1000
+  formatters listed at <a href="http://freshmeat">Freshmeat</a>. There's
+  nothing else like this done before. And its design is targetted so that
+  you do not need to read long documentation to get the hints needed for
+  instructing the tool to build the navigation items right - in its heart
+  the "mksite.sh" program still looks like:
+</P>
+<pre>
+        cat site.htm       &gt; index.html
+        cat index.htm     &gt;&gt; index.html
+</pre>
