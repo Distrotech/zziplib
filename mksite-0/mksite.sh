@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.20 2004-04-21 16:44:51 guidod Exp $
+# $Id: mksite.sh,v 1.21 2004-04-22 11:29:22 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -149,7 +149,7 @@ done
 # that meta ino in the *.htm browser view during editing but they
 # shall not get present in the final html page for publishing.
 DC_VARS="contributor date source language coverage identifier rights"
-DC_VARS="$DC_VARS relation creator subject description publisher "
+DC_VARS="$DC_VARS relation creator subject description publisher DCMIType"
 for P in $DC_VARS ; do # dublin core embedded
    echo "s|<$P>[^<>]*</$P>||g"              >>$MK.tags.tmp
 done
@@ -206,8 +206,11 @@ info2test ()          # cut out all old-style <!--vars--> usages
   INP="$2" ; test ".$INP" = "." && INP="./$F.$INFO"
   V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
   V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:=-->"
-   _y_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--\\\$\\\\1:?-->"
+   q="\\\$"
+   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:=-->"
+   _y_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:?-->"
+   _X_="WARNING: assumed tailvar <!--$q\\\\1:--> changed to <!--$q\\\\1:=-->"
+   _Y_="WARNING: assumed tailvar <!--$q\\\\1:--> changed to <!--$q\\\\1:?-->"
    echo "s/^/ /" > $OUT
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s%=text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
@@ -218,6 +221,16 @@ info2test ()          # cut out all old-style <!--vars--> usages
   -e "/=Text=/s%=Text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
   -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
   -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
+  -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  $SED -e "/=....=formatter /d" \
+  -e "/=text=/s%=text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
+  -e "/=Text=/s%=Text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
+  -e "/=name=/s%=name=$V9%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
+  -e "/=Name=/s%=Name=$V9%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
+  -e "/=text=/s%=text=$V8%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
+  -e "/=Text=/s%=Text=$V8%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
+  -e "/=name=/s%=name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
+  -e "/=Name=/s%=Name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
   echo "/^WARNING:/!d" >> $OUT
 }
@@ -231,6 +244,10 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   V1="\\\\([^<>]*\\\\)\\\\\\\$"
   V2="\\\\([^{<>}]*\\\\)"
   V3="\\\\([^<>]*\\\\)"
+  test ".$commentvars"  = ".no" && updatevars="no"   # duplicated from
+  test ".$commentvars"  = ".no" && expandvars="no"   # option handling
+  test ".$commentvars"  = ".no" && simplevars="no"   # tests below
+  test ".$expandvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
   -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1-->|\\\\1\\2|," \
@@ -241,6 +258,7 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1 - \\2|," \
   -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP > $OUT
+  test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
   -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:-->[$AX]*|\\\\1\\2|," \
@@ -251,6 +269,7 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   -e "/=name=/s,=name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 - \\2|," \
   -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1[?]:-->[$AX]*|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  test ".$updatevars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
   -e "/=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1\\2|," \
@@ -261,6 +280,7 @@ info2vars ()          # generate <!--$vars--> substition sed addon script
   -e "/=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 - \\2|," \
   -e "/=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1 (\\2) |," \
   -e "/^=/d" -e "s|&|\\\\&|g"  $INP >> $OUT
+  test ".$attribvars" != ".no" && \
   $SED -e "/=....=formatter /d" \
   -e "/=text=/s,=text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
   -e "/=Text=/s,=Text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1\\2\\\\3>|," \
@@ -877,7 +897,11 @@ FILELIST=`$SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" ./$MK.$INFO`
 printerfriendly=""
 sectionlayout="list"
 sitemaplayout="list"
-simplevars="warn"
+simplevars="warn"      # <!--varname-->default
+attribvars=" "         # <x ref="${varname:=default}">
+updatevars=" "         # <!--$varname:=-->default
+expandvars=" "         # <!--$varname-->
+commentvars=" "        # $updatevars && $expandsvars && $simplevars
 
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
 echo \
@@ -896,17 +920,32 @@ sectionlayout="multi"
 sitemaplayout="multi"
 fi
 x=`mksite_magic_option sectionlayout` ; case "$x" in
-"list"|"multi") sectionlayout="$x" ;; esac
-test -d DEBUG && echo "NOTE: sectionlayout='$sectionlayout' '$x'"
+       "list"|"multi") sectionlayout="$x" ;; esac
 x=`mksite_magic_option sitemaplayout` ; case "$x" in
-"list"|"multi") sitemaplayout="$x" ;; esac
-test -d DEBUG && echo "NOTE: sitemaplayout='$sitemaplayout' '$x'"
+       "list"|"multi") sitemaplayout="$x" ;; esac
 x=`mksite_magic_option simplevars` ; case "$x" in
-" "|"no"|"warn") simplevars="$x" ;; esac
-test -d DEBUG && echo "NOTE: simplevars='$simplevars' '$x'"
+      " "|"no"|"warn") simplevars="$x" ;; esac
+x=`mksite_magic_option attribvars` ; case "$x" in
+      " "|"no"|"warn") attribvars="$x" ;; esac
+x=`mksite_magic_option updatevars` ; case "$x" in
+      " "|"no"|"warn") updatevars="$x" ;; esac
+x=`mksite_magic_option expandvars` ; case "$x" in
+      " "|"no"|"warn") expandvars="$x" ;; esac
+x=`mksite_magic_option commentvars` ; case "$x" in
+      " "|"no"|"warn") commentvars="$x" ;; esac
 x=`mksite_magic_option printerfriendly` ; case "$x" in
-" "|".*"|"-*") printerfriendly="$x" ;; esac
+        " "|".*"|"-*") printerfriendly="$x" ;; esac
 test ".$opt_print" != "." && printerfriendly="$opt_print"
+test ".$commentvars"  = ".no" && updatevars="no"   # duplicated into
+test ".$commentvars"  = ".no" && expandvars="no"   # info2vars ()
+test ".$commentvars"  = ".no" && simplevars="no"   # function above
+
+test -d DEBUG && echo "NOTE: sectionlayout='$sectionlayout' '$x'"
+test -d DEBUG && echo "NOTE: sitemaplayout='$sitemaplayout' '$x'"
+test -d DEBUG && echo "NOTE: attribvars='$attribvars' '$x'"
+test -d DEBUG && echo "NOTE: updatevars='$updatevars' '$x'"
+test -d DEBUG && echo "NOTE: expandvars='$expandvars' '$x'"
+test -d DEBUG && echo "NOTE: commentvars='$commentvars' '$x'"
 test -d DEBUG && echo "NOTE: printerfriendly='$printerfriendly' '$x'"
 
 
