@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.26 2004-04-22 20:45:22 guidod Exp $
+# $Id: mksite.sh,v 1.27 2004-04-23 15:18:20 guidod Exp $
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f site.htm  && SITEFILE=site.htm
@@ -922,6 +922,10 @@ attribvars=" "         # <x ref="${varname:=default}">
 updatevars=" "         # <!--$varname:=-->default
 expandvars=" "         # <!--$varname-->
 commentvars=" "        # $updatevars && $expandsvars && $simplevars
+sectiontab=" "         # highlight ^<td class=...>...href="$section"
+currenttab=" "         # highlight ^<br>..<a href="$topic">
+headsection="no"
+tailsection="no"
 
 if $GREP "<!--multi-->"               $SITEFILE >$NULL ; then
 echo \
@@ -955,19 +959,27 @@ x=`mksite_magic_option commentvars` ; case "$x" in
       " "|"no"|"warn") commentvars="$x" ;; esac
 x=`mksite_magic_option printerfriendly` ; case "$x" in
         " "|".*"|"-*") printerfriendly="$x" ;; esac
+x=`mksite_magic_option sectiontab` ; case "$x" in
+      " "|"no"|"warn") sectiontab="$x" ;; esac
+x=`mksite_magic_option currenttab` ; case "$x" in
+      " "|"no"|"warn") currenttab="$x" ;; esac
 test ".$opt_print" != "." && printerfriendly="$opt_print"
 test ".$commentvars"  = ".no" && updatevars="no"   # duplicated into
 test ".$commentvars"  = ".no" && expandvars="no"   # info2vars ()
 test ".$commentvars"  = ".no" && simplevars="no"   # function above
 
-test -d DEBUG && echo "NOTE: sectionlayout='$sectionlayout' '$x'"
-test -d DEBUG && echo "NOTE: sitemaplayout='$sitemaplayout' '$x'"
-test -d DEBUG && echo "NOTE: attribvars='$attribvars' '$x'"
-test -d DEBUG && echo "NOTE: updatevars='$updatevars' '$x'"
-test -d DEBUG && echo "NOTE: expandvars='$expandvars' '$x'"
-test -d DEBUG && echo "NOTE: commentvars='$commentvars' '$x'"
-test -d DEBUG && echo "NOTE: printerfriendly='$printerfriendly' '$x'"
-
+test -d DEBUG && \
+echo "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout"
+test -d DEBUG && \
+echo "NOTE: '$simplevars'simplevars '$printerfriendly'printerfriendly"
+test -d DEBUG && \
+echo "NOTE: '$attribvars'attribvars '$updatevars'updatevars"
+test -d DEBUG && \
+echo "NOTE: '$expandvars'expandvars '$commentvars'commentvars "
+test -d DEBUG && \
+echo "NOTE: '$currenttab'currenttab '$sectiontab'sectiontab"
+test -d DEBUG && \
+echo "NOTE: '$headsection'headsection '$tailsection'tailsection"
 
 # ==========================================================================
 # originally this was a one-pass compiler but the more information
@@ -989,7 +1001,8 @@ if test "$SOURCEFILE" != "$F" ; then
    DC_meta subject sitemap
    DC_meta DCMIType Collection
    DC_VARS_Of $SOURCEFILE 
-   DC_modified $SOURCEFILE ; DC_date $SOURCEFILE 
+   DC_modified $SOURCEFILE ; DC_date $SOURCEFILE
+   DC_section "$F"
    test ".$printerfriendly" != "." && \
    DX_text date.formatted `$DATE_NOW +%Y-%m-%d`
    DX_text printerfriendly `moved_html_printerfile "$F"`
@@ -1078,9 +1091,13 @@ if test -f "$SOURCEFILE" ; then
    test ".$simplevars" = ".warn" && \
    $SED_LONGSCRIPT ./$MK.test.tmp $SOURCEFILE | tee -a ./$MK.olds.tmp
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
+   CURRENT_SECTION=`info_get_entry DC.relation.section`
+   SECTION=`sed_slash_key "$CURRENT_SECTION"`
    $CAT ./$MK.puts.tmp                                       > $F.$HEAD 
    echo "/^$SECTS.*<a href=\"$F\">/s|</a>|</a></b>|"        >> $F.$HEAD
    echo "/^$SECTS.*<a href=\"$F\">/s|<a href=|<b><a href=|" >> $F.$HEAD
+   test ".$sectiontab" != ".no" && \
+   echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |" >> $F.$HEAD
    echo "/<head>/r $MK.meta.tmp"                            >> $F.$HEAD
    $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD
    echo "/<\\/body>/d"                >> $F.$HEAD
@@ -1124,12 +1141,15 @@ if test -f "$SOURCEFILE" ; then
       # grep all pages with a =sect= relation to current $SECTION and
       # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
       # after that all the (still) numeric SECTNs are deactivated / killed.
+      for i in $SECTION $headsection $tailsection ; do
       $SED -e "/^=sect=[^ ]* $SECTION/!d" \
            -e "s, .*,\"\\\\)|<!--sectX-->\\\\1|,"  \
            -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," ./$MK.$INFO >> $F.$HEAD
+      done
       echo "s|^$SECTN[^ ]*\\(<a href=[^<>]*>\\).*|<!-- \\1 -->|"  >> $F.$HEAD
       echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          >> $F.$HEAD
       echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   >> $F.$HEAD
+      test ".$sectiontab" != ".no" && \
       echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    >> $F.$HEAD
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD #tag and vars
       echo "/<\\/body>/d"                >> $F.$HEAD #cut lastline
@@ -1139,6 +1159,7 @@ if test -f "$SOURCEFILE" ; then
       $CAT ./$MK.puts.tmp                                          > $F.$HEAD  
       echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          >> $F.$HEAD
       echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   >> $F.$HEAD
+      test ".$sectiontab" != ".no" && \
       echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    >> $F.$HEAD
       $CAT ./$MK.vars.tmp ./$MK.tags.tmp >> $F.$HEAD #tag and vars
       echo "/<\\/body>/d"                >> $F.$HEAD #cut lastline
