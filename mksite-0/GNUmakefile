@@ -27,6 +27,9 @@ test2x : test2x.html
 	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
 	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
 	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
+3 : 
+	touch test3/_.htm
+	$(MAKE) test3.html
 
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
@@ -39,6 +42,12 @@ test2.html : test2/*.htm mksite.sh
 	cd test2 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \
 	    test2/index.html > $@
+	sleep 3 # done $@
+test3.html : test3/*.htm test3/*.xml mksite.sh
+	rm -rf test3/DEBUG ; mkdir test3/DEBUG
+	cd test3 && sh ../mksite.sh site.htm
+	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3/\\1|" \
+	    test3/index.html > $@
 	sleep 3 # done $@
 
 test1x.html : test1/*.htm mksite.pl GNUmakefile

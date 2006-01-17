@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.28 2005-02-01 04:58:23 guidod Exp $
+# $Id: mksite.pl,v 1.29 2006-01-17 05:14:08 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -55,6 +55,11 @@ my $n = "\n";
 # LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 # export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                                # treat A-Z to include a-z
+
+my @HTMLTAGS = qw/p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code 
+    table tr td th b u i s q em strong strike cite big small sup sub tt
+    thead tbody center hr br nobr wbr span div img adress blockquote/;
+my @HTMLTAGS2 = qw/html head body title meta http-equiv style link/;
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -281,6 +286,8 @@ for my $P (qw/P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH
 }
 push @MK_TAGS, "s|<>|\\&nbsp\\;|g;";
 push @MK_TAGS, "s|<->|<WBR />\\;|g;";
+push @MK_TAGS, "s|<c>|<code>|g;";
+push @MK_TAGS, "s|</c>|</code>|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -1226,10 +1233,15 @@ sub html_sourcefile  # generally just cut away the trailing "l" (ell)
 {                       # making "page.html" argument into "page.htm" return
     my ($U,$Z) = @_;
     my $_SRCFILE_=$U; $_SRCFILE_ =~ s/l$//;
+    my $_XMLFILE_=$U; $_XMLFILE_ =~ s/\.html$/.xml/;
     if (-f $_SRCFILE_) { 
 	return $_SRCFILE_;
+    } elsif (-f $_XMLFILE_) { 
+	return $_XMLFILE_;
     } elsif (-f "$o{src_dir}/$_SRCFILE_") {
 	return "$o{src_dir}/$_SRCFILE_";
+    } elsif (-f "$o{src_dir}/$_XMLFILE_") {
+	return "$o{src_dir}/$_XMLFILE_";
     } else {
 	return ".//$_SRCFILE_";
     }
@@ -1463,6 +1475,206 @@ sub body_for_emailfooter
 	."$n"."</td><td align=\"right\">"
 	."$n"."$_dated_</td></tr></table>"
 	."$n";
+}
+
+# =================================================================== CSS
+# There was another project to support sitemap build from xml files.
+# The source format was using .xml with embedded references to .css
+# files for visual preview in a browser. An xml file with semantic
+# outlines is far better suited for quality documentation than any html
+# source. It happens that the xml/css support in browsers is still not
+# very portable - especially embedded css style blocks are a nightmare.
+# Instead we (a) grab all non-html xml markup tags (b) grab all referenced
+# css stylesheets (c) cut out css defs from [b] that are known by [a] and
+# (d) append those to the <style> tag in the output html file as well as
+# (e) reformatting the defs as well as markups from tags to tag classes.
+# Input xml/htm
+#  <?xml-stylesheet type="text/css" href="html.css" ?>           <!-- xml -->
+#  <link rel="stylesheet" type="text/css" href="sdocbook.css" /> <!-- xhtml -->
+#  <article><para>
+#  Using some <command>exe</command>
+#  </para></article>
+# Input css:
+#  article { .. ; display : block }
+#  para { .. ; display : block }
+#  command { .. ; display : inline }
+# Output html:
+#  <html><style type="text/css">
+#  div .article { .. }
+#  div .para { .. }
+#  span .command { .. }
+#  </style>
+#  <div class="article"><div class="para>
+#  Using some <span class="command">exe</span>
+#  </div></div>
+
+my %XMLTAGS = ();
+sub css_xmltags # $SOURCEFILE
+{
+    my $X=$SOURCEFILE;
+    my %R = ();
+    my $line;
+    if (open SOURCEFILE, "<$SOURCEFILE") {
+	foreach $line (<SOURCEFILE>) {
+	    $line =~ s|>[^<>]*<|><|g;
+	    $line =~ s|^[^<>]*<|<|;
+	    $line =~ s|>[^<>]*\$|>|;
+	    my $item;
+	    foreach $item (split /</, $line) {
+		$item =~ m:^/: and next;
+		$item =~ m:^\s*$: and next;
+		$item =~ s|>.*||;
+		chomp $item;
+		$R{$item} = "";
+	    }
+	}
+	close SOURCEFILE;
+    }
+    @{$XMLTAGS{$X}} = keys %R;
+}
+
+my %XMLSTYLESHEETS = ();
+sub css_xmlstyles # $SOURCEFILE
+{
+    my $X=$SOURCEFILE;
+    my %R = ();
+    my $text = "";
+    my $line = "";
+    if (open SOURCEFILE, "<$SOURCEFILE") {
+	foreach $line (<SOURCEFILE>) {
+	    $text .= $line;
+	    if ($text !~ m/<.xml-stylesheet/) { $text = ""; next; }
+	    if ($text !~ m/href=/) { next; }
+	    $text =~ s|^.*<.xml-stylesheet||;
+	    $text =~ s|^.*href=[\"\']||; $text =~ s|[\"\'].*||s;
+	    chomp $text;
+	    $R{$text} = "";
+	}
+	close SOURCEFILE;
+    }
+    @{$XMLSTYLESHEETS{$X}} = keys %R;
+    # print "<@{$XMLSTYLESHEETS{$X}}>";
+}
+
+my %XMLTAGSCSS = ();
+sub css_xmltags_css # $SOURCEFILE
+{
+    my $X=$SOURCEFILE;
+    my @S = $XMLTAGS{$X};
+    my @R = ();
+    my $xmlstylesheet;
+    foreach $xmlstylesheet (@{$XMLSTYLESHEETS{$X}}) {
+	if (-f $xmlstylesheet) {
+	    push @R, "/* $xmlstylesheet */";
+	    my $text = "";
+	    my $line = "";
+	    my $XMLSTYLESHEET = $xmlstylesheet;
+	    open XMLSTYLESHEET, "<$XMLSTYLESHEET" or next;
+	    foreach $line (<XMLSTYLESHEET>)
+	    {
+		$text .= $line;
+		if ($text =~ /^[^\{]*\}/s) { $text = ""; next; }
+		if ($text !~ /^[^\{]*\{.*\}/s) { next; }
+		$text =~ s|\r||g;
+		my $xmltag; my $found = 0;
+		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+		    if (grep {$_ eq $xmltag} qw/title section/) {
+			$found++ if $text =~ 
+			    /\b$xmltag\s*(?:,[^{},]*)*\{/s;
+			my $xmlparent;
+			foreach $xmlparent (@{$XMLTAGS{$X}}) {
+			    /^\w/ or next;
+			    $found++ if $text =~ 
+				/\b$xmlparent\s+$xmltag\s*(?:,[^{},]*)*\{/s;
+			}
+		    } else {
+			$found++ if $text =~ 
+			    /\b$xmltag\s*(?:,[^\{\},]*)*\{/s;
+		    }
+		}
+		if (not $found) { $text = ""; next; }
+		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+		    if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
+		    if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
+		    $line =~ s/^\b($xmltag\s*(?:,[^{},]*)*)\{/$1.$2/gs;
+		}
+		chomp $text;
+		push @R, $text; $text = ""; next;
+	    }	    
+	} else {
+	    warn "$xmlstylesheet : ERROR, no such stylesheet $xmlstylesheet";
+	}
+    }
+    @{$XMLTAGSCSS{$X}} = @R;
+    # print "<@{$XMLTAGSCSS{$X}}>";
+}
+
+my %XMLMAPPING = ();
+sub css_xmlmapping # $SOURCEFILE
+{
+    my $X=$SOURCEFILE;
+    my %R = ();
+    foreach (@{$XMLTAGSCSS{$X}}) {
+	my $span = "";
+	$span="li"      if /\bdisplay\s*:\s*list-item\b/;
+	$span="caption" if /\bdisplay\s*:\s*table-caption\b/;
+	$span="td"      if /\bdisplay\s*:\s*table-cell\b/;
+	$span="tr"      if /\bdisplay\s*:\s*table-row\b/;
+	$span="table"   if /\bdisplay\s*:\s*table\b/;
+	$span="div"     if /\bdisplay\s*:\s*block\b/;
+	$span="span"    if /\bdisplay\s*:\s*inline\b/;
+	$span="head"    if /\bdisplay\s*:\s*none\b/;
+	$span="ul"  if /\blist-style-type\s*:\s*disc\b/    and $span eq "div";
+	$span="ol"  if /\blist-style-type\s*:\s*decimal\b/ and $span eq "div";
+	$span="tt"  if /\bfont-family\s*:\s*monospace\b/   and $span eq "span";
+	$span="em"  if /\bfont-style\s*:\s*italic\b/       and $span eq "span";
+	$span="b"   if /\bfont-weight\s*:\s*bold\b/        and $span eq "span";
+	$span="pre" if /\bwhite-space\s*:\s*pre\b/         and $span eq "div";
+	my $xmltag;
+	for $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+	    if (/\.$xmltag\b/) { $R{$xmltag} = $span; }
+	}
+    }
+    %{$XMLMAPPING{$X}} = %R;
+}
+
+sub css_scan # $SOURCEFILE
+{
+    css_xmltags ();
+    css_xmlstyles ();
+    css_xmltags_css ();
+    css_xmlmapping ();
+}
+
+sub tags2span_sed # $SOURCEFILE > $++
+{
+    my $X=$SOURCEFILE;
+    my $xmltag;
+    my @R = ();
+    foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+	if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
+	if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
+	my $span = $XMLMAPPING{$X}{$xmltag};
+	$span = "span" if $span eq "";
+	push @R, "s|<$xmltag([\\n\\t >])|<$span class=\"$xmltag\"\$1|g;";
+	push @R, "s|</$xmltag([\\n\\t >])|</$span\$1|g;";
+    }
+    my $xmlstylesheet;
+    foreach $xmlstylesheet (@{$XMLSTYLESHEETS{$X}}) {
+	my $Q="[^<>]*href=[\'\"]${xmlstylesheet}[\'\"][^<>]*";
+	push @R, "s|<[?]xml-stylesheet$Q>||;";
+	push @R, "s|<link[^<>]* rel=['\"]*stylesheet['\"]$Q>||;";
+    }
+    return @R;
+}
+
+sub tags2meta_sed # $SOURCEFILE > $++
+{
+    my @R = ();
+    push @R, " <style type=\"text/css\"><!--";
+    push @R, map {s/(^|\n)/$1  /g;$_} @{$XMLTAGSCSS{$SOURCEFILE}};
+    push @R, " --></style>";
+    return @R;
 }
 
 # ==========================================================================
@@ -1741,6 +1953,7 @@ sub scan_htmlfile # "$F"
 	my $issue=&info_get_entry("issue");
 	&site_map_list_date ($F, "$edate");
 	&info_map_list_date ($F, "$edate");
+        css_scan();
 	print "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')$n";
     }else {
 	print "'$SOURCEFILE': does not exist$n";
@@ -1896,6 +2109,8 @@ sub make_htmlfile # "$F"
     return; }
     @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
+    push @MK_VARS, &tags2span_sed();
+    push @MK_META, &tags2meta_sed();
     if ( $simplevars eq "warn") {
         @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
 ##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi

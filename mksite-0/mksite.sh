@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.56 2005-01-31 03:54:01 guidod Exp $
+# $Id: mksite.sh,v 1.57 2006-01-17 05:14:08 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -71,6 +71,12 @@ fi
 LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                              # treat A-Z to include a-z
+
+HTMLTAGS=" p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code table tr td th"
+HTMLTAGS=" $HTMLTAGS b u i s q em strong strike cite big small sup sub tt"
+HTMLTAGS=" $HTMLTAGS thead tbody center hr br nobr wbr"
+HTMLTAGS=" $HTMLTAGS span div img adress blockquote"
+HTMLTAGS2=" html head body title meta http-equiv style link"
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -304,16 +310,16 @@ if test ! -d "$tmp" ; then mkpathdir "$tmp" ; tmp_dir_was_created="yes" ; fi
 # tag via "h;y;x" or something we do want to convert all the tags on
 # a single line of course.
 mknewfile "$MK_TAGS"
-for P in P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH \
-         B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY \
-         CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE
-do M=`echo "$P" | $SED -e "y/$UPPER/$LOWER/"`
+for M in `echo $HTMLTAGS`
+do P=`echo "$M" | $SED -e "y/$LOWER/$UPPER/"`
   echo "s|<$P>|<$M class=\"$P\">|g"         >> "$MK_TAGS"
   echo "s|<$P |<$M class=\"$P\" |g"         >> "$MK_TAGS"
   echo "s|</$P>|</$M>|g"                    >> "$MK_TAGS"
 done
   echo "s|<>|\\&nbsp\\;|g"                  >> "$MK_TAGS"
-  echo "s|<->|<WBR />\\;|g"                 >> "$MK_TAGS"
+  echo "s|<->|<WBR />|g"                    >> "$MK_TAGS"
+  echo "s|<c>|<code>|g"                     >> "$MK_TAGS"
+  echo "s|</c>|</code>|g"                   >> "$MK_TAGS"
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -1034,11 +1040,18 @@ print_extension ()
     
 html_sourcefile ()  # generally just cut away the trailing "l" (ell)
 {                   # making "page.html" argument into "page.htm" return
+                    # (as a new addtion the source may be in ".xml")
     _SRCFILE_=`echo "$1" | $SED -e "s/l\\$//"`
-    if test -f "$_SRCFILE_" ; then echo "$_SRCFILE_" # $++
+    _XMLFILE_=`echo "$1" | $SED -e "s/\\.html/.xml/"`
+    if test -f "$_SRCFILE_" 
+    then echo  "$_SRCFILE_" # $++
+    elif test -f "$_XMLFILE_" 
+    then echo    "$_XMLFILE_" # $++
     elif test -f "$opt_src_dir/$_SRCFILE_" 
-    then echo "$opt_src_dir/$_SRCFILE_" # $++
-    else echo ".//$_SRCFILE_" # $++
+    then echo    "$opt_src_dir/$_SRCFILE_" # $++
+    elif test -f "$opt_src_dir/$_XMLFILE_" 
+    then echo    "$opt_src_dir/$_XMLFILE_" # $++
+    else echo ".//$_SRCFILE_" # $++ (not found?)
     fi
 }
 html_printerfile_sourcefile () 
@@ -1240,6 +1253,200 @@ body_for_emailfooter ()
     echo "$_dated_</td></tr></table>"
 }
 
+# =================================================================== CSS
+# There was another project to support sitemap build from xml files.
+# The source format was using .xml with embedded references to .css
+# files for visual preview in a browser. An xml file with semantic
+# outlines is far better suited for quality documentation than any html
+# source. It happens that the xml/css support in browsers is still not
+# very portable - especially embedded css style blocks are a nightmare.
+# Instead we (a) grab all non-html xml markup tags (b) grab all referenced
+# css stylesheets (c) cut out css defs from [b] that are known by [a] and
+# (d) append those to the <style> tag in the output html file as well as
+# (e) reformatting the defs as well as markups from tags to tag classes.
+# Input xml/htm
+#  <?xml-stylesheet type="text/css" href="html.css" ?>           <!-- xml -->
+#  <link rel="stylesheet" type="text/css" href="sdocbook.css" /> <!-- xhtml -->
+#  <article><para>
+#  Using some <command>exe</command>
+#  </para></article>
+# Input css:
+#  article { .. ; display : block }
+#  para { .. ; display : block }
+#  command { .. ; display : inline }
+# Output html:
+#  <html><style type="text/css">
+#  div .article { .. }
+#  div .para { .. }
+#  span .command { .. }
+#  </style>
+#  <div class="article"><div class="para>
+#  Using some <span class="command">exe</span>
+#  </div></div>
+css_xmltags () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$SOURCEFILE"
+   cat "$S" | $SED -e "s|>[^<>]*<|><|g" -e "s|^[^<>]*<|<|" \
+                   -e "s|>[^<>]*\$|>|"  -e "s|<|\\n|g" \
+            | $SED -e "/^\\//d" -e "/^ *\$/d" -e "s|>.*||" \
+            | sort | uniq > "$tmp/$MK.$X.xmltags.tmp"
+}
+
+css_xmlstyles () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$SOURCEFILE"
+   cat "$S" | sed -e "/<.xml-stylesheet/!d" -e "/href/!N" -e "/href/!N" \
+               -e "s|^.*<.xml-stylesheet||" -e 's|^.*href="||' -e 's|".*||' \
+            | sort | uniq > "$tmp/$MK.$X.xmlstylesheets.tmp"
+}
+
+css_xmlstyles_sed () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$tmp/$MK.$X.xmltags.tmp"
+   R="$tmp/$MK.$X.xmltags.sed.tmp"
+   rm -f "$R"
+   {
+      for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
+      echo "s|\\r||g"
+      $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         if echo " title section " | grep " $xmltag " > /dev/null ; then
+            echo "/^ *$xmltag *[,\\n{]/bfound" >> "$R"
+            echo "/[,\\n] *$xmltag *[,\\n{]/bfound" >> "$R"
+            $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmlparent ; do
+               echo "/^ *$xmlparent  *$xmltag *[,\\n{]/bfound"
+               echo "/[ ,\\n] *$xmlparent  *$xmltag *[,\\n{]/bfound"
+            done }
+         else
+            echo "/^ *$xmltag *[ ,\\n{]/bfound"
+            echo "/[ ,\\n] *$xmltag *[ ,\\n{]/bfound"
+         fi
+      done }
+      echo "d" ; echo ":found" 
+      for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/!N" ; done
+      $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
+           continue # keep html tags
+         fi
+         echo "s/^\\( *\\)\\($xmltag *[ ,\\n{]\\)/\\1.\\2/g"
+         echo "s/\\([ ,\\n] *\\)\\($xmltag *[ ,\\n{]\\)/\\1.\\2/g"
+      done }          
+   } > "$R"
+}
+
+css_xmltags_css () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$tmp/$MK.$X.xmltags.sed.tmp"
+   R="$tmp/$MK.$X.xmltags.css.tmp"
+   {
+      cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+         if test -f "$xmlstylesheet" ; then
+            echo "/* $xmlstylesheet */"
+            cat "$xmlstylesheet" | $SED -f "$S"
+         else
+            echo "$xmlstylesheet : ERROR, no such stylesheet" 1>&2
+         fi
+      done }
+   } > "$R"
+}
+
+css_xmlmapping_sed () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$tmp/$MK.$X.xmltags.tmp"
+   R="$tmp/$MK.$X.xmlmapping.sed.tmp"
+   rm -f "$R"
+   {
+      for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
+      echo "s|\\r||g"
+      $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         echo "/^ *\\.$xmltag *[ ,\\n{]/bfound"
+         echo "/[ ,\\n] *\\.$xmltag *[,\\n{]/bfound"
+      done }
+      echo "d" ; echo ":found" 
+      for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/!N" ; done
+      echo "s/^/>>/"
+      echo "/[\\n ]display *: *list-item/s|^.*>>|li>>|"
+      echo "/[\\n ]display *: *table-caption/s|^.*>>|caption>>|"
+      echo "/[\\n ]display *: *table-cell/s|^.*>>|td>>|"
+      echo "/[\\n ]display *: *table-row/s|^.*>>|tr>>|"
+      echo "/[\\n ]display *: *table/s|^.*>>|table>>|"
+      echo "/[\\n ]display *: *block/s|^.*>>|div>>|"
+      echo "/[\\n ]display *: *inline/s|^.*>>|span>>|"
+      echo "/[\\n ]display *: *none/s|^.*>>|head>>|"
+      echo "/^div>>.*[\\n ]list-style-type *: *disc/s|^.*>>|ul>>|"
+      echo "/^div>>.*[\\n ]list-style-type *: *decimal/s|^.*>>|ol>>|"
+      echo "/^span>>.*[\\n ]font-family *: *monospace/s|^.*>>|tt>>|"
+      echo "/^span>>.*[\\n ]font-style *: *italic/s|^.*>>|em>>|"
+      echo "/^span>>.*[\\n ]font-weight *: *bold/s|^.*>>|b>>|"
+      echo "/^div>>.*[\\n ]white-space *: *pre/s|^.*>>|pre>>|"
+      $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         echo "s/^\\(.*\\)>> *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
+         echo "s/^\\(.*\\)>>.*[ ,\\n] *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
+      done }
+   } > "$R"
+}
+
+css_xmlmapping () # $SOURCEFILE
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   cat     "$tmp/$MK.$X.xmltags.css.tmp" | \
+   $SED -f "$tmp/$MK.$X.xmlmapping.sed.tmp" \
+         > "$tmp/$MK.$X.xmlmapping.tmp"
+}
+
+css_scan() # $SOURCEFILE
+{
+    css_xmltags
+    css_xmlstyles
+    css_xmlstyles_sed
+    css_xmltags_css
+    css_xmlmapping_sed
+    css_xmlmapping
+}
+
+tags2span_sed() # $SOURCEFILE > $++
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$tmp/$MK.$X.xmltags.tmp"
+   R="$tmp/$MK.$X.xmltags.css.tmp"
+   $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+      if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
+        continue # keep html tags
+      fi
+      _span_=`$SED -e "/ \\.$xmltag\$/!d" -e "s/ .*//" -e q \
+                  < "$tmp/$MK.$X.xmlmapping.tmp"`
+      test ".$_span_" = "." && _span_="span"
+      echo "s|<$xmltag\\([\\n\\t >]\\)|<$_span_ class=\"$xmltag\"\\1|g"
+      echo "s|</$xmltag\\([\\n\\t >]\\)|</$_span_\\1|g"
+   done }   
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+      if test -f "$xmlstylesheet" ; then
+         R="[^<>]*href=['"'"'"]$xmlstylesheet['"'"'"][^<>]*"
+         echo "s|<[?]xml-stylesheet$R>||"
+         echo "s|<link[^<>]* rel=['"'"'"]*stylesheet['"'"'" ]$R>||"
+      fi
+   done }
+}
+
+tags2meta_sed() # $SOURCEFILE > $++
+{
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   S="$tmp/$MK.$X.xmlstylesheets.tmp"
+   R="$tmp/$MK.$X.xmltags.css.tmp"
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+      if test -f "$xmlstylesheet" ; then
+         echo " <style type=\"text/css\"><!--"
+         $SED -e "s/^/  /" < "$R"
+         echo " --></style>"
+         break
+      fi
+   done }
+}
+
 # ==========================================================================
 #  
 #  During processing we will create a series of intermediate files that
@@ -1423,6 +1630,7 @@ echo_site_filelist()
 scan_sitefile () # $F
 {
  SOURCEFILE=`html_sourcefile "$F"`
+ test -d DEBUG && echo "'$SOURCEFILE': scanning -> sitefile"
  if test "$SOURCEFILE" != "$F" ; then
    dx_init "$F"
    dx_text today "`timetoday`"
@@ -1449,7 +1657,8 @@ scan_sitefile () # $F
 scan_htmlfile() # "$F"
 {
  SOURCEFILE=`html_sourcefile "$F"`                                    # SCAN :
- if test "$SOURCEFILE" != "$F" ; then :                               # HTML :
+ test -d DEBUG && echo "'$SOURCEFILE': scanning -> $F"                # HTML :
+ if test "$SOURCEFILE" != "$F" ; then :            
  if test -f "$SOURCEFILE" ; then make_fast "$F" > "$tmp/$F.$FAST"
    dx_init "$F"
    dx_text today "`timetoday`"
@@ -1474,6 +1683,7 @@ scan_htmlfile() # "$F"
    issue=`info_get_entry issue`
    site_map_list_date "$F" "$edate"
    info_map_list_date "$F" "$edate"
+   css_scan
    echo "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')"
  else
    echo "'$SOURCEFILE': does not exist"
@@ -1608,6 +1818,8 @@ make_htmlfile() # "$F"
    fi
    info2vars_sed > $MK_VARS           # have <!--$title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
+   tags2span_sed >>$MK_VARS
+   tags2meta_sed >>$MK_META
    if test ".$simplevars" = ".warn" ; then
    info2test_sed > $MK_TEST           # check <!--title--> vars old-style
    $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi

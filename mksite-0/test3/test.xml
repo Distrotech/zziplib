@@ -1,0 +1,12 @@
+<?xml-stylesheet type="text/css" href="sdocbook.css" ?>
+<article>
+<para>
+  <command> some text </command>
+</para>
+
+<para>
+  <command> more text </command>
+  <address> it is
+            here </address>
+</para>
+</article>
