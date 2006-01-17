@@ -2,7 +2,7 @@
 # this is the perl variant of the mksite script. It based directly on a
 # copy of mksite.sh which is derived from snippets that I was using to 
 # finish doc pages for website publishing. Using only sh/sed along with
-# files has a great disadvantage: it is very slow process atleast. The
+# files has a great disadvantage: it is a very slow process atleast. The
 # perl language in contrast has highly optimized string, replace, search
 # functions as well as data structures to store intermediate values. As
 # an advantage large parts of the syntax are similar to the sh/sed variant.
@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.29 2006-01-17 05:14:08 guidod Exp $
+# $Id: mksite.pl,v 1.30 2006-01-17 16:48:41 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -276,10 +276,8 @@ print "NOTE: '$headsection\'headsection '$tailsection\'tailsection$n"
 # tag via "h;y;x" or something we do want to convert all the tags on
 # a single line of course.
 @MK_TAGS=();
-for my $P (qw/P H1 H2 H3 H4 H5 H6 DL DD DT UL OL LI PRE CODE TABLE TR TD TH 
-	   B U I S Q EM STRONG STRIKE CITE BIG SMALL SUP SUB TT THEAD TBODY 
-	   CENTER HR BR NOBR WBR SPAN DIV IMG ADRESS BLOCKQUOTE/) {
-    my $M=lc($P);
+for my $M (@HTMLTAGS) {
+    my $P=uc($M);
     push @MK_TAGS, "s|<$P>|<$M class=\\\"$P\\\">|g;";
     push @MK_TAGS, "s|<$P |<$M class=\\\"$P\\\" |g;";
     push @MK_TAGS, "s|</$P>|</$M>|g;";
@@ -288,6 +286,7 @@ push @MK_TAGS, "s|<>|\\&nbsp\\;|g;";
 push @MK_TAGS, "s|<->|<WBR />\\;|g;";
 push @MK_TAGS, "s|<c>|<code>|g;";
 push @MK_TAGS, "s|</c>|</code>|g;";
+push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|<a href=\"$1\">$1</a>|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -1453,7 +1452,6 @@ sub select_in_printsitefile # arg = "page" : return to stdout >> $P.$HEAD
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect3
     push @OUT, "s/^<!--$_SECT\[*\]:\\\"$_section_\\\"-->//;";    # children
     $_selected_=&site_get_parentpage($_selected_);
-    if ($F =~ /testscript/) { print "($F)parent=$_selected_$n"; }
     $_section_=&sed_slash_key($_selected_);
     push @OUT, "s/^<!--$_SECT\\\"$_section_\\\"-->//;";        # sect2
     $_selected_=&site_get_parentpage($_selected_);
@@ -1553,7 +1551,6 @@ sub css_xmlstyles # $SOURCEFILE
 	close SOURCEFILE;
     }
     @{$XMLSTYLESHEETS{$X}} = keys %R;
-    # print "<@{$XMLSTYLESHEETS{$X}}>";
 }
 
 my %XMLTAGSCSS = ();
@@ -1580,23 +1577,24 @@ sub css_xmltags_css # $SOURCEFILE
 		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
 		    if (grep {$_ eq $xmltag} qw/title section/) {
 			$found++ if $text =~ 
-			    /\b$xmltag\s*(?:,[^{},]*)*\{/s;
+			    /\b$xmltag\s*(?:,[^{},]*)*\s*\{/s;
 			my $xmlparent;
 			foreach $xmlparent (@{$XMLTAGS{$X}}) {
 			    /^\w/ or next;
 			    $found++ if $text =~ 
-				/\b$xmlparent\s+$xmltag\s*(?:,[^{},]*)*\{/s;
+				/\b$xmlparent\s+$xmltag\s*(?:,[^{},]*)*\s*\{/s;
 			}
 		    } else {
 			$found++ if $text =~ 
 			    /\b$xmltag\s*(?:,[^\{\},]*)*\{/s;
 		    }
+		    last if $found;
 		}
 		if (not $found) { $text = ""; next; }
 		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
 		    if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
 		    if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
-		    $line =~ s/^\b($xmltag\s*(?:,[^{},]*)*)\{/$1.$2/gs;
+		    $text =~ s/(\b$xmltag\s*(?:,[^{},]*)*\s*\{)/.$1/gs;
 		}
 		chomp $text;
 		push @R, $text; $text = ""; next;
@@ -1606,7 +1604,6 @@ sub css_xmltags_css # $SOURCEFILE
 	}
     }
     @{$XMLTAGSCSS{$X}} = @R;
-    # print "<@{$XMLTAGSCSS{$X}}>";
 }
 
 my %XMLMAPPING = ();
@@ -1632,7 +1629,7 @@ sub css_xmlmapping # $SOURCEFILE
 	$span="pre" if /\bwhite-space\s*:\s*pre\b/         and $span eq "div";
 	my $xmltag;
 	for $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
-	    if (/\.$xmltag\b/) { $R{$xmltag} = $span; }
+	    if (/\.$xmltag\b/s) { $R{$xmltag} = $span; }
 	}
     }
     %{$XMLMAPPING{$X}} = %R;
@@ -1870,7 +1867,7 @@ sub make_sitemap_page
 	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
 	/=[u]se[12456789]=/ and next; 
 	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
-	push @MK_INFO, "$x $sect"; print "(",$_,")","$x $sect", $n;
+	push @MK_INFO, "$x $sect"; ## print "(",$_,")","$x $sect", $n;
     }
     # and for the root sections we register ".." as the parenting group
     for (grep {/=[u]se1=/} @MK_INFO) {
@@ -1898,6 +1895,7 @@ sub echo_site_filelist
 sub scan_sitefile # $F
 {
     $SOURCEFILE=&html_sourcefile($F);
+    -d "DEBUG" and print "'$SOURCEFILE': scanning -> sitefile$n";
     if ($SOURCEFILE ne $F) {
 	dx_init "$F";
 	dx_text ("today", &timetoday());
@@ -1926,7 +1924,8 @@ sub scan_htmlfile # "$F"
 {
     my ($FF,$Z) = @_;
     $SOURCEFILE=&html_sourcefile($F);                                  # SCAN :
-    if ($SOURCEFILE ne $F) {                                           # HTML :
+    -d "DEBUG" and print "'$SOURCEFILE': scanning -> $F$n";            # HTML :
+    if ($SOURCEFILE ne $F) {
     if ( -f $SOURCEFILE) {
 	@{$FAST{$F}} = &make_fast ($F);
 	dx_init "$F";
@@ -2109,8 +2108,8 @@ sub make_htmlfile # "$F"
     return; }
     @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
-    push @MK_VARS, &tags2span_sed();
-    push @MK_META, &tags2meta_sed();
+    push @MK_VARS, &tags2span_sed();       # extern text/css -> intern css classes
+    push @MK_META, &tags2meta_sed();       # extern text/css -> intern css classes
     if ( $simplevars eq "warn") {
         @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
 ##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.57 2006-01-17 05:14:08 guidod Exp $
+# $Id: mksite.sh,v 1.58 2006-01-17 16:48:41 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -320,6 +320,8 @@ done
   echo "s|<->|<WBR />|g"                    >> "$MK_TAGS"
   echo "s|<c>|<code>|g"                     >> "$MK_TAGS"
   echo "s|</c>|</code>|g"                   >> "$MK_TAGS"
+  echo "s|<a>\\([$az]://[^<>]*\\)</a>|<a href="'"'"\\1"'"'">\\1</a>|g" \
+                                            >> "$MK_TAGS"
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -1658,7 +1660,7 @@ scan_htmlfile() # "$F"
 {
  SOURCEFILE=`html_sourcefile "$F"`                                    # SCAN :
  test -d DEBUG && echo "'$SOURCEFILE': scanning -> $F"                # HTML :
- if test "$SOURCEFILE" != "$F" ; then :            
+ if test "$SOURCEFILE" != "$F" ; then :
  if test -f "$SOURCEFILE" ; then make_fast "$F" > "$tmp/$F.$FAST"
    dx_init "$F"
    dx_text today "`timetoday`"
@@ -1818,8 +1820,8 @@ make_htmlfile() # "$F"
    fi
    info2vars_sed > $MK_VARS           # have <!--$title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
-   tags2span_sed >>$MK_VARS
-   tags2meta_sed >>$MK_META
+   tags2span_sed >>$MK_VARS           # extern text/css -> intern css classes
+   tags2meta_sed >>$MK_META           # extern text/css -> intern css classes
    if test ".$simplevars" = ".warn" ; then
    info2test_sed > $MK_TEST           # check <!--title--> vars old-style
    $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi
