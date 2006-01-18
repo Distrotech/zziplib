@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.30 2006-01-17 16:48:41 guidod Exp $
+# $Id: mksite.pl,v 1.31 2006-01-18 00:42:34 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -286,6 +286,8 @@ push @MK_TAGS, "s|<>|\\&nbsp\\;|g;";
 push @MK_TAGS, "s|<->|<WBR />\\;|g;";
 push @MK_TAGS, "s|<c>|<code>|g;";
 push @MK_TAGS, "s|</c>|</code>|g;";
+push @MK_TAGS, "s|<section>||g;";
+push @MK_TAGS, "s|</section>||g;";
 push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|<a href=\"$1\">$1</a>|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
@@ -1576,6 +1578,7 @@ sub css_xmltags_css # $SOURCEFILE
 		my $xmltag; my $found = 0;
 		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
 		    if (grep {$_ eq $xmltag} qw/title section/) {
+			next if $xmltag eq "section";
 			$found++ if $text =~ 
 			    /\b$xmltag\s*(?:,[^{},]*)*\s*\{/s;
 			my $xmlparent;
@@ -1648,6 +1651,8 @@ sub tags2span_sed # $SOURCEFILE > $++
     my $X=$SOURCEFILE;
     my $xmltag;
     my @R = ();
+    push @R, "s|<section[^<>]*>||g;";
+    push @R, "s|</section[^<>]*>||g;";
     foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
 	if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
 	if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
@@ -1672,6 +1677,81 @@ sub tags2meta_sed # $SOURCEFILE > $++
     push @R, map {s/(^|\n)/$1  /g;$_} @{$XMLTAGSCSS{$SOURCEFILE}};
     push @R, " --></style>";
     return @R;
+}
+
+# ==========================================================================
+# dbk/docbook support is taking an xml input file converting any html    DBK
+# syntax into pure docbook tagging. Each file is being given a docbook
+# doctype so that an xml/docbook viewer can render it correctly - that
+# is needed atleast since docbook files do not embed stylesheet infos.
+# Most of the processing is related to remap html markup and some other
+# shortcut markup into correct docbook markup. The result is NOT checked
+# for being well-formed or even matching the docbook schema DTD at all.
+
+sub scan_dbk_rootnode
+{
+    my ($INF,$XXX) = @_;
+    $INF = \@{$INFO{$F}} if not $INF;
+    my $line = "";
+    for $line (source($SOURCEFILE)) {
+	next if $line !~ /<\w/;
+	$line =~ s/<(\w*).*/$1/s;
+	last;
+    }
+    push @{$INF}, "=root=$line";
+}
+
+sub get_dbk_rootnode
+{
+    my ($INF,$XXX) = @_;
+    $INF = \@{$INFO{$F}} if not $INF;
+    foreach my $line (grep /^=root=/, @{$INF}) {
+	$line =~ s/^=root=//; 
+	return $line;
+    }
+}
+
+sub dbk_sourcefile
+{
+    my ($X,$XXX) = @_;
+    my $SRCFILE=$X; $SRCFILE =~ s/\.docbook$/.dbk/;
+    my $XMLFILE=$SRCFILE; $XMLFILE =~ s/\.dbk$/.xml/;
+    $SRCFILE="///" if $X eq $SRCFILE;
+    $XMLFILE="///" if $X eq $XMLFILE;
+    return $SRCFILE if -f $SRCFILE;
+    return $XMLFILE if -f $XMLFILE;
+    return "$o{src_dir}/$SRCFILE" if -f "$o{src_dir}/$SRCFILE";
+    return "$o{src_dir}/$XMLFILE" if -f "$o{src_dir}/$XMLFILE";
+    return ".//$XMLFILE"; # $++ (not found?)
+}
+
+sub scan_dbkfile
+{
+    $SOURCEFILE= &dbk_sourcefile($F);
+    print "'$SOURCEFILE': scanning docbook -> '$F'", $n;
+    scan_dbk_rootnode();
+    my $rootnode=&get_dbk_rootnode();
+    print "'$SOURCEFILE': rootnode ('$rootnode')", $n;
+}
+
+sub make_dbkfile
+{
+    $SOURCEFILE= &dbk_sourcefile($F);
+    my $article= &get_dbk_rootnode();
+    $article="article" if $article eq "";
+    my $text = "";
+    $text .= '<!DOCTYPE '.$article.
+	' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"'.$n;
+    $text .= '    "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">'
+	.$n;
+    
+    for (source($SOURCEFILE)) {	
+	s|<h\d|<title|g;
+	s|</h\d|</title|g;
+	$text .= $_; 
+    }
+    open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
+    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
 }
 
 # ==========================================================================
@@ -2143,8 +2223,8 @@ sub make_htmlfile # "$F"
 	$html .= $_;
     }
     savelist(\@{$INFO{$F}});
-   open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
-   print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
+    open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
+    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
     savesource("$F.~head~", \@F_HEAD);
     savesource("$F.~body~", \@F_BODY);
  } else {
@@ -2242,6 +2322,8 @@ for (@FILELIST) {                                    #### 1. PASS
 #    ;;
     } elsif (/^(.*\.html)$/) {
 	&scan_htmlfile ("$F") ;;                      # ........... SCAN HTML
+    } elsif (/^(.*\.dbk)$/ or /^(.*\.docbook)$/) {
+	&scan_dbkfile ("$F") ;;
     } elsif (/^(.*\/)$/) {
 	print "'$F' : directory - skipped$n";
 	&site_map_list_title ("$F", &sed_slash_key($F));
@@ -2292,6 +2374,8 @@ for (@FILELIST) {                                          #### 2. PASS
   } elsif (/^(.*\.html)$/) {
       &make_htmlfile ("$F") ;;               # .................. HTML FILES
       &make_printerfriendly ("$F") if ($printerfriendly);
+  } elsif (/^(.*\.dbk)$/ or /^(.*\.docbook)$/) {
+      &make_dbkfile ("$F") ;;
   } elsif (/^(.*\/)$/) {
       print "'$F' : directory - skipped$n";
   } else {

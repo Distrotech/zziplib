@@ -27,9 +27,16 @@ test2x : test2x.html
 	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
 	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
 	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
+
+local= /vol/www/htdocs/guidod.homelinux.org/test/
 3 : 
 	touch test3/_.htm
 	$(MAKE) test3.html
+3x : 
+	touch test3/_.htm
+	$(MAKE) test3x.html
+33 : 3
+	cp test3/*.html test3/*.dbk $(local)/
 
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
@@ -64,6 +71,14 @@ test2x.html : test2/*.htm mksite.pl GNUmakefile
 	cd test2x && perl ../mksite.pl site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2x/\\1|" \
 	    test2x/index.html > $@
+	sleep 2 # done $@
+test3x.html : test3/*.htm mksite.pl GNUmakefile
+	test ! -d test3x/ || rm -r test3x/
+	mkdir test3x && cp -a test3/*.htm test3/*.xml test3/*.css test3x/
+	- rm test3x/*.print.* ; mkdir test3x/DEBUG
+	cd test3x && perl ../mksite.pl site.htm
+	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3x/\\1|" \
+	    test3x/index.html > $@
 	sleep 2 # done $@
 
 test1 test2  site : .FORCE ; rm $@.html ; $(MAKE) $@.html

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.58 2006-01-17 16:48:41 guidod Exp $
+# $Id: mksite.sh,v 1.59 2006-01-18 00:42:35 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -320,6 +320,8 @@ done
   echo "s|<->|<WBR />|g"                    >> "$MK_TAGS"
   echo "s|<c>|<code>|g"                     >> "$MK_TAGS"
   echo "s|</c>|</code>|g"                   >> "$MK_TAGS"
+  echo "s|<section>||g"                     >> "$MK_TAGS"
+  echo "s|</section>||g"                    >> "$MK_TAGS"
   echo "s|<a>\\([$az]://[^<>]*\\)</a>|<a href="'"'"\\1"'"'">\\1</a>|g" \
                                             >> "$MK_TAGS"
 # also make sure that some non-html entries are cleaned away that
@@ -1315,6 +1317,7 @@ css_xmlstyles_sed () # $SOURCEFILE
       echo "s|\\r||g"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
          if echo " title section " | grep " $xmltag " > /dev/null ; then
+	    test "$xmltag" = "section" && continue;
             echo "/^ *$xmltag *[,\\n{]/bfound" >> "$R"
             echo "/[,\\n] *$xmltag *[,\\n{]/bfound" >> "$R"
             $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmlparent ; do
@@ -1415,6 +1418,8 @@ tags2span_sed() # $SOURCEFILE > $++
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
    S="$tmp/$MK.$X.xmltags.tmp"
    R="$tmp/$MK.$X.xmltags.css.tmp"
+   echo "s|<section[^<>]*>||g"
+   echo "s|</section>||g"
    $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
       if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
         continue # keep html tags
@@ -1447,6 +1452,72 @@ tags2meta_sed() # $SOURCEFILE > $++
          break
       fi
    done }
+}
+
+# ==========================================================================
+# dbk/docbook support is taking an xml input file converting any html    DBK
+# syntax into pure docbook tagging. Each file is being given a docbook
+# doctype so that an xml/docbook viewer can render it correctly - that
+# is needed atleast since docbook files do not embed stylesheet infos.
+# Most of the processing is related to remap html markup and some other
+# shortcut markup into correct docbook markup. The result is NOT checked
+# for being well-formed or even matching the docbook schema DTD at all.
+
+scan_dbk_rootnode ()
+{
+  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
+  rootnode=`cat "$SOURCEFILE" | \
+            $SED -e "/<[$az$AZ]/!d" -e "s/<\\([$az$AZ]*\\).*/\\1/" -e q`  
+  echo "=root=$rootnode" >> "$INF"
+}
+
+get_dbk_rootnode ()
+{
+  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
+  $SED -e "/^=root=/!d" -e "s/^=root=//" -e q "$INF" # +
+}
+
+dbk_sourcefile ()  
+{
+    _SRCFILE_=`echo "$1" | $SED -e "s/\\.docbook\\$/.dbk/"`
+    _XMLFILE_=`echo "$_SRCFILE_" | $SED -e "s/\\.dbk\\$/.xml/"`
+    test "$1" = "$_SRCFILE_" && _SRCFILE_="///"
+    test "$1" = "$_XMLFILE_" && _XMLFILE_="///"
+    if test -f "$_SRCFILE_" 
+    then echo  "$_SRCFILE_" # $++
+    elif test -f "$_XMLFILE_" 
+    then echo    "$_XMLFILE_" # $++
+    elif test -f "$opt_src_dir/$_SRCFILE_" 
+    then echo    "$opt_src_dir/$_SRCFILE_" # $++
+    elif test -f "$opt_src_dir/$_XMLFILE_" 
+    then echo    "$opt_src_dir/$_XMLFILE_" # $++
+    else echo ".//$_XMLFILE_" # $++ (not found?)
+    fi
+}
+
+scan_dbkfile()
+{
+   SOURCEFILE=`dbk_sourcefile "$F"`
+   echo "'$SOURCEFILE': scanning docbook -> '$F'" 
+   scan_dbk_rootnode
+   rootnode=`get_dbk_rootnode`
+   echo "'$SOURCEFILE': rootnode ('$rootnode')" 
+}
+
+make_dbkfile()
+{
+   SOURCEFILE=`dbk_sourcefile "$F"`
+   article=`get_dbk_rootnode`
+   test ".$article" = "." && article="article"
+   echo '<!DOCTYPE '$article' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"' \
+        > "$F"
+   echo  '   "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">' \
+       >> "$F"
+   cat "$SOURCEFILE" | $SED \
+       -e "s|<h[$NN]|<title|g" \
+       -e "s|</h[$NN]|</title|g" \
+       >> "$F"
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
 }
 
 # ==========================================================================
@@ -1930,6 +2001,7 @@ ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
 #    echo "!! -> '$F' (skipping subdir index.html)"
 #    ;;
 *.html) scan_htmlfile "$F" ;;                      # ........... SCAN HTML
+*.dbk|*.docbook) scan_dbkfile "$F" ;;
 */) echo "'$F' : directory - skipped"
    site_map_list_title "$F" "`sed_slash_key $F`"
    site_map_long_title "$F" "(directory)"
@@ -1965,6 +2037,7 @@ ${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
 #   ;;
 *.html)  make_htmlfile "$F"                  # .................. HTML FILES
     if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
+*.dbk|*.docbook) make_dbkfile "$F" ;;
 */) echo "'$F' : directory - skipped"
     ;;
 *)  echo "?? -> '$F'"

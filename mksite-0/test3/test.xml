@@ -1,5 +1,7 @@
 <?xml-stylesheet type="text/css" href="sdocbook.css" ?>
 <article>
+<section>
+<h2>foo</h2>
 <para>
   <command> some text </command>
 </para>
@@ -9,4 +11,5 @@
   <address> it is
             here </address>
 </para>
+</section>
 </article>
