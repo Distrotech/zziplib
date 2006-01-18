@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.31 2006-01-18 00:42:34 guidod Exp $
+# $Id: mksite.pl,v 1.32 2006-01-18 16:24:50 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1523,6 +1523,7 @@ sub css_xmltags # $SOURCEFILE
 	    foreach $item (split /</, $line) {
 		$item =~ m:^/: and next;
 		$item =~ m:^\s*$: and next;
+		$item !~ m|>| and next;
 		$item =~ s|>.*||;
 		chomp $item;
 		$R{$item} = "";
@@ -1576,13 +1577,15 @@ sub css_xmltags_css # $SOURCEFILE
 		if ($text !~ /^[^\{]*\{.*\}/s) { next; }
 		$text =~ s|\r||g;
 		my $xmltag; my $found = 0;
-		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) {
+		    $xmltag =~ s| .*||;
 		    if (grep {$_ eq $xmltag} qw/title section/) {
 			next if $xmltag eq "section";
 			$found++ if $text =~ 
 			    /\b$xmltag\s*(?:,[^{},]*)*\s*\{/s;
 			my $xmlparent;
 			foreach $xmlparent (@{$XMLTAGS{$X}}) {
+			    $xmlparent =~ s| .*||;
 			    /^\w/ or next;
 			    $found++ if $text =~ 
 				/\b$xmlparent\s+$xmltag\s*(?:,[^{},]*)*\s*\{/s;
@@ -1595,6 +1598,7 @@ sub css_xmltags_css # $SOURCEFILE
 		}
 		if (not $found) { $text = ""; next; }
 		foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+		    $xmltag =~ s| .*||;
 		    if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
 		    if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
 		    $text =~ s/(\b$xmltag\s*(?:,[^{},]*)*\s*\{)/.$1/gs;
@@ -1623,7 +1627,7 @@ sub css_xmlmapping # $SOURCEFILE
 	$span="table"   if /\bdisplay\s*:\s*table\b/;
 	$span="div"     if /\bdisplay\s*:\s*block\b/;
 	$span="span"    if /\bdisplay\s*:\s*inline\b/;
-	$span="head"    if /\bdisplay\s*:\s*none\b/;
+	$span="small"    if /\bdisplay\s*:\s*none\b/;
 	$span="ul"  if /\blist-style-type\s*:\s*disc\b/    and $span eq "div";
 	$span="ol"  if /\blist-style-type\s*:\s*decimal\b/ and $span eq "div";
 	$span="tt"  if /\bfont-family\s*:\s*monospace\b/   and $span eq "span";
@@ -1632,7 +1636,12 @@ sub css_xmlmapping # $SOURCEFILE
 	$span="pre" if /\bwhite-space\s*:\s*pre\b/         and $span eq "div";
 	my $xmltag;
 	for $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
-	    if (/\.$xmltag\b/s) { $R{$xmltag} = $span; }
+	    $xmltag =~ s| .*||;
+	    if (/\.$xmltag\b/s) { 
+		$R{$xmltag} = $span;
+		$R{$xmltag} = "p" if $xmltag eq "para" and $span eq "div";
+		$R{$xmltag} = "a" if $xmltag eq "ulink" and $span eq "span";
+	    }
 	}
     }
     %{$XMLMAPPING{$X}} = %R;
@@ -1653,11 +1662,13 @@ sub tags2span_sed # $SOURCEFILE > $++
     my @R = ();
     push @R, "s|<section[^<>]*>||g;";
     push @R, "s|</section[^<>]*>||g;";
-    foreach $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+    for $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
+	$xmltag =~ s| .*||;
 	if (grep {$_ eq $xmltag} @HTMLTAGS) { next; }
 	if (grep {$_ eq $xmltag} @HTMLTAGS2) { next; }
 	my $span = $XMLMAPPING{$X}{$xmltag};
 	$span = "span" if $span eq "";
+	push @R, "s|<$xmltag([\\n\\t ][^<>]*)url=|<$span class=\"$xmltag\"\$1href=|g;";
 	push @R, "s|<$xmltag([\\n\\t >])|<$span class=\"$xmltag\"\$1|g;";
 	push @R, "s|</$xmltag([\\n\\t >])|</$span\$1|g;";
     }

@@ -10,6 +10,7 @@
   <command> more text </command>
   <address> it is
             here </address>
+  and a <ulink url="http://guidod.homelinux.org">weblink</ulink>
 </para>
 </section>
 </article>

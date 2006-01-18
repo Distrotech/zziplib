@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.59 2006-01-18 00:42:35 guidod Exp $
+# $Id: mksite.sh,v 1.60 2006-01-18 16:24:50 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1293,7 +1293,7 @@ css_xmltags () # $SOURCEFILE
    S="$SOURCEFILE"
    cat "$S" | $SED -e "s|>[^<>]*<|><|g" -e "s|^[^<>]*<|<|" \
                    -e "s|>[^<>]*\$|>|"  -e "s|<|\\n|g" \
-            | $SED -e "/^\\//d" -e "/^ *\$/d" -e "s|>.*||" \
+            | $SED -e "/^\\//d" -e "/^ *\$/d" -e "/>/!d" -e "s|>.*||" \
             | sort | uniq > "$tmp/$MK.$X.xmltags.tmp"
 }
 
@@ -1316,11 +1316,13 @@ css_xmlstyles_sed () # $SOURCEFILE
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
       echo "s|\\r||g"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+	 xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
          if echo " title section " | grep " $xmltag " > /dev/null ; then
 	    test "$xmltag" = "section" && continue;
             echo "/^ *$xmltag *[,\\n{]/bfound" >> "$R"
             echo "/[,\\n] *$xmltag *[,\\n{]/bfound" >> "$R"
             $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmlparent ; do
+	       xmlparent=`echo "$xmlparent" | sed -e "s/ .*//"`
                echo "/^ *$xmlparent  *$xmltag *[,\\n{]/bfound"
                echo "/[ ,\\n] *$xmlparent  *$xmltag *[,\\n{]/bfound"
             done }
@@ -1332,6 +1334,7 @@ css_xmlstyles_sed () # $SOURCEFILE
       echo "d" ; echo ":found" 
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/!N" ; done
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+	 xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
          if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
            continue # keep html tags
          fi
@@ -1368,6 +1371,7 @@ css_xmlmapping_sed () # $SOURCEFILE
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
       echo "s|\\r||g"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
          echo "/^ *\\.$xmltag *[ ,\\n{]/bfound"
          echo "/[ ,\\n] *\\.$xmltag *[,\\n{]/bfound"
       done }
@@ -1381,17 +1385,21 @@ css_xmlmapping_sed () # $SOURCEFILE
       echo "/[\\n ]display *: *table/s|^.*>>|table>>|"
       echo "/[\\n ]display *: *block/s|^.*>>|div>>|"
       echo "/[\\n ]display *: *inline/s|^.*>>|span>>|"
-      echo "/[\\n ]display *: *none/s|^.*>>|head>>|"
+      echo "/[\\n ]display *: *none/s|^.*>>|small>>|"
       echo "/^div>>.*[\\n ]list-style-type *: *disc/s|^.*>>|ul>>|"
       echo "/^div>>.*[\\n ]list-style-type *: *decimal/s|^.*>>|ol>>|"
       echo "/^span>>.*[\\n ]font-family *: *monospace/s|^.*>>|tt>>|"
       echo "/^span>>.*[\\n ]font-style *: *italic/s|^.*>>|em>>|"
       echo "/^span>>.*[\\n ]font-weight *: *bold/s|^.*>>|b>>|"
       echo "/^div>>.*[\\n ]white-space *: *pre/s|^.*>>|pre>>|"
+      echo "/^div>>.*[\\n ]margin-left *: *[$NN]/s|^.*>>|blockquote>>|"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+         xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
          echo "s/^\\(.*\\)>> *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
          echo "s/^\\(.*\\)>>.*[ ,\\n] *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
       done }
+      echo "s/^div \\.para\$/p .para/"
+      echo "s/^span \\.ulink\$/a .ulink/"
    } > "$R"
 }
 
@@ -1419,14 +1427,16 @@ tags2span_sed() # $SOURCEFILE > $++
    S="$tmp/$MK.$X.xmltags.tmp"
    R="$tmp/$MK.$X.xmltags.css.tmp"
    echo "s|<section[^<>]*>||g"
-   echo "s|</section>||g"
-   $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
+   echo "s|</section>||g" 
+   $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do # echo "xmltag=$xmltag" 1>&2
+      xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
       if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
         continue # keep html tags
       fi
       _span_=`$SED -e "/ \\.$xmltag\$/!d" -e "s/ .*//" -e q \
                   < "$tmp/$MK.$X.xmlmapping.tmp"`
       test ".$_span_" = "." && _span_="span"
+      echo "s|<$xmltag\\([\\n\\t ][^<>]*\\)url=|<$_span_ class=\"$xmltag\"\\1href=|g"
       echo "s|<$xmltag\\([\\n\\t >]\\)|<$_span_ class=\"$xmltag\"\\1|g"
       echo "s|</$xmltag\\([\\n\\t >]\\)|</$_span_\\1|g"
    done }   
