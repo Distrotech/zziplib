@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.32 2006-01-18 16:24:50 guidod Exp $
+# $Id: mksite.pl,v 1.33 2006-01-19 15:13:38 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -56,7 +56,7 @@ my $n = "\n";
 # export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                                # treat A-Z to include a-z
 
-my @HTMLTAGS = qw/p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code 
+my @HTMLTAGS = qw/a p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code 
     table tr td th b u i s q em strong strike cite big small sup sub tt
     thead tbody center hr br nobr wbr span div img adress blockquote/;
 my @HTMLTAGS2 = qw/html head body title meta http-equiv style link/;
@@ -144,6 +144,7 @@ if (not $SITEFILE) {
 # we use internal hashes to store mappings - kind of relational tables
 my @MK_TAGS= (); # "./$MK.tags.tmp"
 my @MK_VARS= (); # "./$MK.vars.tmp"
+my @MK_SPAN= (); # "./$MK.span.tmp"
 my @MK_META= (); # "./$MK.meta.tmp"
 my @MK_METT= (); # "./$MK.mett.tmp"
 my @MK_TEST= (); # "./$MK.test.tmp"
@@ -2199,7 +2200,7 @@ sub make_htmlfile # "$F"
     return; }
     @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
-    push @MK_VARS, &tags2span_sed();       # extern text/css -> intern css classes
+    @MK_SPAN = &tags2span_sed();       # extern text/css -> intern css classes
     push @MK_META, &tags2meta_sed();       # extern text/css -> intern css classes
     if ( $simplevars eq "warn") {
         @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
@@ -2212,11 +2213,11 @@ sub make_htmlfile # "$F"
     } else {
 	push @F_HEAD, &head_sed_listsection ($F, &info_get_entry_section());
     }
-    push @F_HEAD, @MK_VARS; push @F_HEAD, @MK_TAGS;         #tag and vars
+    push @F_HEAD, @MK_VARS; push @F_HEAD, @MK_TAGS; push @F_HEAD, @MK_SPAN;
     push @F_HEAD, "/<\\/body>/ and next;";                #cut lastline
     push @F_HEAD, "/<head>/ and $sed_add join(\"\\n\",\@MK_META);"; #add metatags
     push @F_BODY, "/<title>/ and next;";                  #not that line
-    push @F_BODY, @MK_VARS; push @F_BODY, @MK_TAGS;         #tag and vars
+    push @F_BODY, @MK_VARS; push @F_BODY, @MK_TAGS; push @F_BODY, @MK_SPAN;
     push @F_BODY, &bodymaker_for_sectioninfo();             #if sectioninfo
     push @F_BODY, &info2body_sed();                         #cut early
     push @F_HEAD, &info2head_sed();

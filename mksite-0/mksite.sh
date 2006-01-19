@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.60 2006-01-18 16:24:50 guidod Exp $
+# $Id: mksite.sh,v 1.61 2006-01-19 15:13:38 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -72,7 +72,7 @@ LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
                                              # treat A-Z to include a-z
 
-HTMLTAGS=" p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code table tr td th"
+HTMLTAGS=" a p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code table tr td th"
 HTMLTAGS=" $HTMLTAGS b u i s q em strong strike cite big small sup sub tt"
 HTMLTAGS=" $HTMLTAGS thead tbody center hr br nobr wbr"
 HTMLTAGS=" $HTMLTAGS span div img adress blockquote"
@@ -170,6 +170,7 @@ tmp="${TEMP-/tmp}/mksite.$$" ; fi
 # we use external files to store mappings - kind of relational tables
 MK_TAGS="$tmp/$MK.tags.tmp"
 MK_VARS="$tmp/$MK.vars.tmp"
+MK_SPAN="$tmp/$MK.span.tmp"
 MK_META="$tmp/$MK.meta.tmp"
 MK_METT="$tmp/$MK.mett.tmp"
 MK_TEST="$tmp/$MK.test.tmp"
@@ -1901,7 +1902,7 @@ make_htmlfile() # "$F"
    fi
    info2vars_sed > $MK_VARS           # have <!--$title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
-   tags2span_sed >>$MK_VARS           # extern text/css -> intern css classes
+   tags2span_sed > $MK_SPAN           # extern text/css -> intern css classes
    tags2meta_sed >>$MK_META           # extern text/css -> intern css classes
    if test ".$simplevars" = ".warn" ; then
    info2test_sed > $MK_TEST           # check <!--title--> vars old-style
@@ -1912,11 +1913,11 @@ make_htmlfile() # "$F"
    multi) head_sed_multisection "$F" "`info_get_entry_section`" >> "$F_HEAD" ;;
        *) head_sed_listsection  "$F" "`info_get_entry_section`" >> "$F_HEAD" ;;
    esac
-      $CAT "$MK_VARS" "$MK_TAGS"            >> "$F_HEAD" #tag and vars
+      $CAT "$MK_VARS" "$MK_TAGS" "$MK_SPAN" >> "$F_HEAD" #tag and vars
       echo "/<\\/body>/d"                   >> "$F_HEAD" #cut lastline
       echo "/<head>/r $MK_META"             >> "$F_HEAD" #add metatags
       echo "/<title>/d"                      > "$F_BODY" #not that line
-      $CAT "$MK_VARS" "$MK_TAGS"            >> "$F_BODY" #tag and vars
+      $CAT "$MK_VARS" "$MK_TAGS" "$MK_SPAN" >> "$F_BODY" #tag and vars
       bodymaker_for_sectioninfo             >> "$F_BODY" #if sectioninfo
       info2body_sed                         >> "$F_BODY" #cut early
       info2head_sed                         >> "$F_HEAD"
@@ -2057,7 +2058,7 @@ esac
    if test -d DEBUG && test -f "./$F" ; then
       FFFF=`echo "$F" | sed -e s,/,:,g`
       cp "$tmp/$F.$INFO" DEBUG/$FFFF.info.TMP
-      for P in tags vars meta page date list html sect info ; do
+      for P in tags vars span meta page date list html sect info ; do
       test -f $tmp/$MK.$P.tmp && cp $tmp/$MK.$P.tmp DEBUG/$FFFF.$P.tmp
       test -f $tmp/$MK.$P.TMP && cp $tmp/$MK.$P.TMP DEBUG/$FFFF.$P.TMP
       done
