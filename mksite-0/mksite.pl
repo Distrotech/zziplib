@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.33 2006-01-19 15:13:38 guidod Exp $
+# $Id: mksite.pl,v 1.34 2006-01-19 23:54:31 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -86,7 +86,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 		$o{variables} .= " ".$opt;
 	    }
 	    $opt="";;
-	} elsif (/^-.*-.*$/) {
+	} elsif (/^-.*.-.*$/) {
 	    $opt=$arg; $opt =~ s/-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
 		print STDERR "ERROR: invalid option $arg$n";
@@ -104,6 +104,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	    }
 	    $opt="" ;;
 	} else {
+	    print "<$arg>$n";
 	    if (not $o{main_file}) { $o{main_file} = $arg; } else {
 	    $o{files} .= $o{fileseparator} if $o{files};
 	    $o{files} .= $arg; };
@@ -123,7 +124,7 @@ $SITEFILE=$o{site_file} if $o{site_file} and -f $o{site_file};
 if ($o{help}) {
     $_=$SITEFILE;
     print "$0 [sitefile]$n";
-    print "  default sitefile = $_$n";
+    print "  default sitefile = $_  ($o{main_file}) ($o{files})$n";
     print "options:$n"
 	. " --filelist : show list of target files as ectracted from $_$n"
 	. " --src xx : if source files are not where mksite is executed$n";
@@ -289,7 +290,8 @@ push @MK_TAGS, "s|<c>|<code>|g;";
 push @MK_TAGS, "s|</c>|</code>|g;";
 push @MK_TAGS, "s|<section>||g;";
 push @MK_TAGS, "s|</section>||g;";
-push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|<a href=\"$1\">$1</a>|g;";
+my $_ulink_="<a href=\"\$1\" remap=\"url\">\$1</a>";
+push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|$_ulink_|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -1232,10 +1234,10 @@ sub print_extension
 }
     
 sub html_sourcefile  # generally just cut away the trailing "l" (ell)
-{                       # making "page.html" argument into "page.htm" return
+{                    # making "page.html" argument into "page.htm" return
     my ($U,$Z) = @_;
     my $_SRCFILE_=$U; $_SRCFILE_ =~ s/l$//;
-    my $_XMLFILE_=$U; $_XMLFILE_ =~ s/\.html$/.xml/;
+    my $_XMLFILE_=$U; $_XMLFILE_ =~ s/\.html$/.dbk/;
     if (-f $_SRCFILE_) { 
 	return $_SRCFILE_;
     } elsif (-f $_XMLFILE_) { 
@@ -1480,8 +1482,8 @@ sub body_for_emailfooter
 
 # =================================================================== CSS
 # There was another project to support sitemap build from xml files.
-# The source format was using .xml with embedded references to .css
-# files for visual preview in a browser. An xml file with semantic
+# The source format was using .dbk+xml with embedded references to .css
+# files for visual preview in a browser. An docbook xml file with semantic
 # outlines is far better suited for quality documentation than any html
 # source. It happens that the xml/css support in browsers is still not
 # very portable - especially embedded css style blocks are a nightmare.
@@ -1489,8 +1491,8 @@ sub body_for_emailfooter
 # css stylesheets (c) cut out css defs from [b] that are known by [a] and
 # (d) append those to the <style> tag in the output html file as well as
 # (e) reformatting the defs as well as markups from tags to tag classes.
-# Input xml/htm
-#  <?xml-stylesheet type="text/css" href="html.css" ?>           <!-- xml -->
+# Input dbk/htm
+#  <?xml-stylesheet type="text/css" href="html.css" ?>         <!-- dbk/xml -->
 #  <link rel="stylesheet" type="text/css" href="sdocbook.css" /> <!-- xhtml -->
 #  <article><para>
 #  Using some <command>exe</command>
@@ -1515,22 +1517,19 @@ sub css_xmltags # $SOURCEFILE
     my $X=$SOURCEFILE;
     my %R = ();
     my $line;
-    if (open SOURCEFILE, "<$SOURCEFILE") {
-	foreach $line (<SOURCEFILE>) {
-	    $line =~ s|>[^<>]*<|><|g;
-	    $line =~ s|^[^<>]*<|<|;
-	    $line =~ s|>[^<>]*\$|>|;
-	    my $item;
-	    foreach $item (split /</, $line) {
-		$item =~ m:^/: and next;
-		$item =~ m:^\s*$: and next;
-		$item !~ m|>| and next;
-		$item =~ s|>.*||;
-		chomp $item;
-		$R{$item} = "";
-	    }
+    foreach $line (source($SOURCEFILE)) {
+	$line =~ s|>[^<>]*<|><|g;
+	$line =~ s|^[^<>]*<|<|;
+	$line =~ s|>[^<>]*\$|>|;
+	my $item;
+	foreach $item (split /</, $line) {
+	    $item =~ m:^/: and next;
+	    $item =~ m:^\s*$: and next;
+	    $item !~ m|>| and next;
+	    $item =~ s|>.*||;
+	    chomp $item;
+	    $R{$item} = "";
 	}
-	close SOURCEFILE;
     }
     @{$XMLTAGS{$X}} = keys %R;
 }
@@ -1542,17 +1541,25 @@ sub css_xmlstyles # $SOURCEFILE
     my %R = ();
     my $text = "";
     my $line = "";
-    if (open SOURCEFILE, "<$SOURCEFILE") {
-	foreach $line (<SOURCEFILE>) {
-	    $text .= $line;
-	    if ($text !~ m/<.xml-stylesheet/) { $text = ""; next; }
-	    if ($text !~ m/href=/) { next; }
-	    $text =~ s|^.*<.xml-stylesheet||;
-	    $text =~ s|^.*href=[\"\']||; $text =~ s|[\"\'].*||s;
-	    chomp $text;
-	    $R{$text} = "";
-	}
-	close SOURCEFILE;
+    foreach $line (source($SOURCEFILE)) {
+	$text .= $line;
+	$text =~ s|<link  *rel=[\'\"]*stylesheet|<?xml-stylesheet |;
+	if ($text !~ m/<.xml-stylesheet/) { $text = ""; next; }
+	if ($text !~ m/href=/) { next; }
+	$text =~ s|^.*<.xml-stylesheet||;
+	$text =~ s|^.*href=[\"\']||; $text =~ s|[\"\'].*||s;
+	chomp $text;
+	$R{$text} = "";
+    }
+    foreach $line (source($SITEFILE)) {
+	$text .= $line;
+	$text =~ s|<link  *rel=[\'\"]*stylesheet|<?xml-stylesheet |;
+	if ($text !~ m/<.xml-stylesheet/) { $text = ""; next; }
+	if ($text !~ m/href=/) { next; }
+	$text =~ s|^.*<.xml-stylesheet||;
+	$text =~ s|^.*href=[\"\']||; $text =~ s|[\"\'].*||s;
+	chomp $text;
+	$R{$text} = "";
     }
     @{$XMLSTYLESHEETS{$X}} = keys %R;
 }
@@ -1661,6 +1668,8 @@ sub tags2span_sed # $SOURCEFILE > $++
     my $X=$SOURCEFILE;
     my $xmltag;
     my @R = ();
+    push @R, "s|<[?]xml-stylesheet[^<>]*[?]>||";
+    push @R, "s|<link  *rel=['\"]*stylesheet[^<>]*>||";
     push @R, "s|<section[^<>]*>||g;";
     push @R, "s|</section[^<>]*>||g;";
     for $xmltag (grep /^\w/, @{$XMLTAGS{$X}}) { 
@@ -1692,7 +1701,7 @@ sub tags2meta_sed # $SOURCEFILE > $++
 }
 
 # ==========================================================================
-# dbk/docbook support is taking an xml input file converting any html    DBK
+# xml/docbook support is taking an dbk input file converting any html    DBK
 # syntax into pure docbook tagging. Each file is being given a docbook
 # doctype so that an xml/docbook viewer can render it correctly - that
 # is needed atleast since docbook files do not embed stylesheet infos.
@@ -1700,70 +1709,90 @@ sub tags2meta_sed # $SOURCEFILE > $++
 # shortcut markup into correct docbook markup. The result is NOT checked
 # for being well-formed or even matching the docbook schema DTD at all.
 
-sub scan_dbk_rootnode
+sub scan_xml_rootnode
 {
     my ($INF,$XXX) = @_;
     $INF = \@{$INFO{$F}} if not $INF;
-    my $line = "";
-    for $line (source($SOURCEFILE)) {
-	next if $line !~ /<\w/;
+    for my $entry (source($SOURCEFILE)) {
+	my $line = $entry; next if $line !~ /<\w/;
 	$line =~ s/<(\w*).*/$1/s;
-	last;
+	push @{$INF}, "<!root $F>$line";
+	return;
     }
-    push @{$INF}, "=root=$line";
 }
 
-sub get_dbk_rootnode
+sub get_xml_rootnode
 {
     my ($INF,$XXX) = @_;
     $INF = \@{$INFO{$F}} if not $INF;
-    foreach my $line (grep /^=root=/, @{$INF}) {
-	$line =~ s/^=root=//; 
+    my $_file_ = sed_slash_key($F);
+    foreach my $entry (grep /^<!root $_file_>/, @{$INF}) {
+	my $line=$entry; $line =~ s|.*>||; 
 	return $line;
     }
 }
 
-sub dbk_sourcefile
+sub xml_sourcefile
 {
     my ($X,$XXX) = @_;
-    my $SRCFILE=$X; $SRCFILE =~ s/\.docbook$/.dbk/;
-    my $XMLFILE=$SRCFILE; $XMLFILE =~ s/\.dbk$/.xml/;
-    $SRCFILE="///" if $X eq $SRCFILE;
+    my $XMLFILE=$X; $XMLFILE =~ s/\.xml$/.dbk/;
+    my $SRCFILE=$X; $SRCFILE =~ s/\.xml$/.htm/;
     $XMLFILE="///" if $X eq $XMLFILE;
-    return $SRCFILE if -f $SRCFILE;
+    $SRCFILE="///" if $X eq $SRCFILE;
     return $XMLFILE if -f $XMLFILE;
-    return "$o{src_dir}/$SRCFILE" if -f "$o{src_dir}/$SRCFILE";
+    return $SRCFILE if -f $SRCFILE;
     return "$o{src_dir}/$XMLFILE" if -f "$o{src_dir}/$XMLFILE";
+    return "$o{src_dir}/$SRCFILE" if -f "$o{src_dir}/$SRCFILE";
     return ".//$XMLFILE"; # $++ (not found?)
 }
 
-sub scan_dbkfile
+sub scan_xmlfile
 {
-    $SOURCEFILE= &dbk_sourcefile($F);
-    print "'$SOURCEFILE': scanning docbook -> '$F'", $n;
-    scan_dbk_rootnode();
-    my $rootnode=&get_dbk_rootnode();
+    $SOURCEFILE= &xml_sourcefile($F);
+    print "'$SOURCEFILE': scanning xml -> '$F'", $n;
+    scan_xml_rootnode();
+    my $rootnode=&get_xml_rootnode(); $rootnode =~ s|^(h\d.*$)|$1 <?section?>|;
     print "'$SOURCEFILE': rootnode ('$rootnode')", $n;
 }
 
-sub make_dbkfile
+sub make_xmlfile
 {
-    $SOURCEFILE= &dbk_sourcefile($F);
-    my $article= &get_dbk_rootnode();
+    $SOURCEFILE= &xml_sourcefile($F);
+    my $X=$SOURCEFILE;
+    my $article= &get_xml_rootnode();
     $article="article" if $article eq "";
     my $text = "";
     $text .= '<!DOCTYPE '.$article.
 	' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"'.$n;
     $text .= '    "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">'
 	.$n;
-    
+    for my $stylesheet (@{$XMLSTYLESHEETS{$X}}) {
+	$text .= "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\"   ?>"
+	    .$n;
+    }
     for (source($SOURCEFILE)) {	
+	s|<[?]xml-stylesheet[^<>]*>||;
+	s|<link[^<>]* rel=[\'\"]*stylesheet[^<>]*>||;
 	s|<h\d|<title|g;
 	s|</h\d|</title|g;
+	s|(</title> *)([^<>]*\w[^<>]*)$|$1<sub>$2</sub>|;
+	s|(</title>.*)<sub>|$1<subtitle>|g;
+	s|(</title>.*)</sub>|$1</subtitle>|g;
+	s|(<section>[^<>]*)(<date>.*</date>[^<>]*)$|
+	    $1<sectioninfo>$2</sectioninfo>|gx;
+        s|<b>|<emphasis role=\"bold\">|g;
+        s|</b>|</emphasis>|g;
+        s|<[pP]>|<para>|g; 
+        s|</[pP]>|</para>|g; 
+        s|<pre>|<screen>|g; 
+        s|</pre>|</screen>|g; 
+        s|<a( [^<>]*)href=|ulink${1}url=|g;
+        s|</a>|</ulink>|g;
+	s| remap=\"url\">[^<>]*</ulink>| />|g;
 	$text .= $_; 
     }
     open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
-    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
+    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >> ",&ls_s($F),"$n";
 }
 
 # ==========================================================================
@@ -1919,6 +1948,7 @@ sub make_sitemap_list
 	s{^$_getX_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	s{^$_getY_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	/^=....=/ or next;
+	/^<!/ and next;
 	push @MK_INFO, $_;
     }
 }
@@ -2333,9 +2363,13 @@ for (@FILELIST) {                                    #### 1. PASS
 #    echo "!! -> '$F' (skipping subdir index.html)"
 #    ;;
     } elsif (/^(.*\.html)$/) {
-	&scan_htmlfile ("$F") ;;                      # ........... SCAN HTML
-    } elsif (/^(.*\.dbk)$/ or /^(.*\.docbook)$/) {
-	&scan_dbkfile ("$F") ;;
+	&scan_htmlfile ("$F");                        # ........... SCAN HTML
+	if ($o{xml}) {
+	    $F =~ s/\.html$/.xml/;
+	    &scan_xmlfile ("$F");
+	}
+    } elsif (/^(.*\.xml)$/) {
+	&scan_xmlfile ("$F") ;;
     } elsif (/^(.*\/)$/) {
 	print "'$F' : directory - skipped$n";
 	&site_map_list_title ("$F", &sed_slash_key($F));
@@ -2384,10 +2418,14 @@ for (@FILELIST) {                                          #### 2. PASS
 #   echo "!! -> '$F' (skipping subdir index.html)"
 #   ;;
   } elsif (/^(.*\.html)$/) {
-      &make_htmlfile ("$F") ;;               # .................. HTML FILES
+      &make_htmlfile ("$F") ;                # .................. HTML FILES
       &make_printerfriendly ("$F") if ($printerfriendly);
-  } elsif (/^(.*\.dbk)$/ or /^(.*\.docbook)$/) {
-      &make_dbkfile ("$F") ;;
+      if ($o{xml}) {
+	  $F =~ s/\.html$/.xml/;
+	  &make_xmlfile ("$F");
+      }
+  } elsif (/^(.*\.xml)$/) {
+      &make_xmlfile ("$F") ;;
   } elsif (/^(.*\/)$/) {
       print "'$F' : directory - skipped$n";
   } else {

@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.61 2006-01-19 15:13:38 guidod Exp $
+# $Id: mksite.sh,v 1.62 2006-01-19 23:54:31 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -102,7 +102,7 @@ do if test ".$opt" != "." ; then
 	    opt_variables="$opt_variables $opt"
          fi
          opt="" ;;
-      -*-*)   
+      -*?-*)   
          opt=`echo "$arg" | $SED -e "s/-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
          if test ".$opt" = "." ; then
             echo "ERROR: invalid option $arg" >&2
@@ -323,8 +323,8 @@ done
   echo "s|</c>|</code>|g"                   >> "$MK_TAGS"
   echo "s|<section>||g"                     >> "$MK_TAGS"
   echo "s|</section>||g"                    >> "$MK_TAGS"
-  echo "s|<a>\\([$az]://[^<>]*\\)</a>|<a href="'"'"\\1"'"'">\\1</a>|g" \
-                                            >> "$MK_TAGS"
+  _ulink_="<a href=\"\\1\" remap=\"url\">\\1</a>"
+  echo "s|<a>\\([$az]://[^<>]*\\)</a>|$_ulink_|g" >> "$MK_TAGS"
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -438,7 +438,7 @@ info2test_sed ()          # cut out all old-style <!--vars--> usages
   -e "/=Text=/s%=Text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
   -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
   -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
-  -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   $SED -e "/^=....=formatter /d" \
   -e "/=text=/s%=text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
   -e "/=Text=/s%=Text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
@@ -448,7 +448,7 @@ info2test_sed ()          # cut out all old-style <!--vars--> usages
   -e "/=Text=/s%=Text=$V8%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
   -e "/=name=/s%=name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
   -e "/=Name=/s%=Name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
-  -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   echo "/^WARNING:/!d" # $++
 }
 
@@ -473,7 +473,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Name=/s,=Name=$V9,s|<!--$V0\\1[?]-->|(\\2)|," \
       -e "/^=name=/s,=name=$V8,s|<!--$V0\\1[?]-->|- \\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1[?]-->|(\\2)|," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$expandvars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
@@ -484,7 +484,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Text=/s,=Text=$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
       -e "/^=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\2|," \
@@ -495,14 +495,14 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Text=/s,=Text=$V8,s|<!--$V0\\1:-->[$AX]*|\\2|," \
       -e "/^=name=/s,=name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|- \\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1[?]:-->[$AX]*| (\\2) |," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=name=/s,=name=$V9,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
       -e "/^=Name=/s,=Name=$V9,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
       -e "/^=name=/s,=name=$V8,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
-  -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
@@ -513,7 +513,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$attribvars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
@@ -524,7 +524,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Text=/s,=Text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^=Name=/s,=Name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$simplevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^=text=/s,=text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
@@ -535,7 +535,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^=Text=/s,=Text=$V8,s|<!--\\1-->[$AX]*|\\2|," \
       -e "/^=name=/s,=name=$V8,s|<!--\\1[?]-->[$AX]*| - \\2|," \
       -e "/^=Name=/s,=Name=$V8,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
-      -e "/^=/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   # if value="2004" then generated sed might be "\\12004" which is bad
   # instead we generate an edited value of "\\1$SS$value" and cut out
   # the spacer now after expanding the variable values:
@@ -570,7 +570,7 @@ info2meta_sed ()         # generate <meta name..> text portion
   -e "/=meta=/s,=meta=$V8, <meta $INFO_META_NAME />," \
   -e "/<meta name=\"[^\"]*\" content=\"\" /d" \
   -e "/<meta http-equiv=\"[^\"]*\" content=\"\" /d" \
-  -e "/^=/d" $INP # $++
+  -e "/^=/d" -e "/^<!/d" $INP # $++
 }
 
 info_get_entry () # get the first <!--vars--> value known so far
@@ -1045,9 +1045,9 @@ print_extension ()
     
 html_sourcefile ()  # generally just cut away the trailing "l" (ell)
 {                   # making "page.html" argument into "page.htm" return
-                    # (as a new addtion the source may be in ".xml")
+                    # (as a new addtion the source may be in ".dbk" xml)
     _SRCFILE_=`echo "$1" | $SED -e "s/l\\$//"`
-    _XMLFILE_=`echo "$1" | $SED -e "s/\\.html/.xml/"`
+    _XMLFILE_=`echo "$1" | $SED -e "s/\\.html/.dbk/"`
     if test -f "$_SRCFILE_" 
     then echo  "$_SRCFILE_" # $++
     elif test -f "$_XMLFILE_" 
@@ -1260,8 +1260,8 @@ body_for_emailfooter ()
 
 # =================================================================== CSS
 # There was another project to support sitemap build from xml files.
-# The source format was using .xml with embedded references to .css
-# files for visual preview in a browser. An xml file with semantic
+# The source format was using .dbk+xml with embedded references to .css
+# files for visual preview in a browser. An docbook xml file with semantic
 # outlines is far better suited for quality documentation than any html
 # source. It happens that the xml/css support in browsers is still not
 # very portable - especially embedded css style blocks are a nightmare.
@@ -1269,8 +1269,8 @@ body_for_emailfooter ()
 # css stylesheets (c) cut out css defs from [b] that are known by [a] and
 # (d) append those to the <style> tag in the output html file as well as
 # (e) reformatting the defs as well as markups from tags to tag classes.
-# Input xml/htm
-#  <?xml-stylesheet type="text/css" href="html.css" ?>           <!-- xml -->
+# Input dbk/htm
+#  <?xml-stylesheet type="text/css" href="html.css" ?>         <!-- dbk/xml -->
 #  <link rel="stylesheet" type="text/css" href="sdocbook.css" /> <!-- xhtml -->
 #  <article><para>
 #  Using some <command>exe</command>
@@ -1302,9 +1302,12 @@ css_xmlstyles () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
    S="$SOURCEFILE"
-   cat "$S" | sed -e "/<.xml-stylesheet/!d" -e "/href/!N" -e "/href/!N" \
-               -e "s|^.*<.xml-stylesheet||" -e 's|^.*href="||' -e 's|".*||' \
-            | sort | uniq > "$tmp/$MK.$X.xmlstylesheets.tmp"
+   cat "$S" "$SITEFILE" \
+       | sed \
+       -e "s|<link  *rel=['\"]*stylesheet|<?xml-stylesheet |" \
+       -e "/<.xml-stylesheet/!d" -e "/href/!N" -e "/href/!N" \
+       -e "s|^.*<.xml-stylesheet||" -e 's|^.*href="||' -e 's|".*||' \
+       | sort | uniq > "$tmp/$MK.$X.xmlstylesheets.tmp"
 }
 
 css_xmlstyles_sed () # $SOURCEFILE
@@ -1427,6 +1430,8 @@ tags2span_sed() # $SOURCEFILE > $++
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
    S="$tmp/$MK.$X.xmltags.tmp"
    R="$tmp/$MK.$X.xmltags.css.tmp"
+   echo "s|<[?]xml-stylesheet[^<>]*[?]>||"
+   echo "s|<link  *rel=['\"]*stylesheet[^<>]*>||"
    echo "s|<section[^<>]*>||g"
    echo "s|</section>||g" 
    $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do # echo "xmltag=$xmltag" 1>&2
@@ -1466,7 +1471,7 @@ tags2meta_sed() # $SOURCEFILE > $++
 }
 
 # ==========================================================================
-# dbk/docbook support is taking an xml input file converting any html    DBK
+# xml/docbook support is taking an dbk input file converting any html    DBK
 # syntax into pure docbook tagging. Each file is being given a docbook
 # doctype so that an xml/docbook viewer can render it correctly - that
 # is needed atleast since docbook files do not embed stylesheet infos.
@@ -1474,61 +1479,83 @@ tags2meta_sed() # $SOURCEFILE > $++
 # shortcut markup into correct docbook markup. The result is NOT checked
 # for being well-formed or even matching the docbook schema DTD at all.
 
-scan_dbk_rootnode ()
+scan_xml_rootnode ()
 {
   INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
   rootnode=`cat "$SOURCEFILE" | \
-            $SED -e "/<[$az$AZ]/!d" -e "s/<\\([$az$AZ]*\\).*/\\1/" -e q`  
-  echo "=root=$rootnode" >> "$INF"
+     $SED -e "/<[$AZ$az$NN]/!d" -e "s/<\\([$AZ$az$NN]*\\).*/\\1/" -e q`  
+  echo "<!root $F>$rootnode" >> "$INF"
 }
 
-get_dbk_rootnode ()
+get_xml_rootnode ()
 {
   INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
-  $SED -e "/^=root=/!d" -e "s/^=root=//" -e q "$INF" # +
+  _file_=`sed_slash_key "$F"`
+  $SED -e "/^<!root $_file_>/!d" -e "s|^.*>||" -e q "$INF" # +
 }
 
-dbk_sourcefile ()  
+xml_sourcefile ()  
 {
-    _SRCFILE_=`echo "$1" | $SED -e "s/\\.docbook\\$/.dbk/"`
-    _XMLFILE_=`echo "$_SRCFILE_" | $SED -e "s/\\.dbk\\$/.xml/"`
-    test "$1" = "$_SRCFILE_" && _SRCFILE_="///"
+    _XMLFILE_=`echo "$1" | $SED -e "s/\\.xml\\$/.dbk/"`
+    _SRCFILE_=`echo "$1" | $SED -e "s/\\.xml\\$/.htm/"`
     test "$1" = "$_XMLFILE_" && _XMLFILE_="///"
-    if test -f "$_SRCFILE_" 
-    then echo  "$_SRCFILE_" # $++
-    elif test -f "$_XMLFILE_" 
+    test "$1" = "$_SRCFILE_" && _SRCFILE_="///"
+    if test -f "$_XMLFILE_" 
     then echo    "$_XMLFILE_" # $++
-    elif test -f "$opt_src_dir/$_SRCFILE_" 
-    then echo    "$opt_src_dir/$_SRCFILE_" # $++
+    elif test -f "$_SRCFILE_" 
+    then echo  "$_SRCFILE_" # $++
     elif test -f "$opt_src_dir/$_XMLFILE_" 
     then echo    "$opt_src_dir/$_XMLFILE_" # $++
+    elif test -f "$opt_src_dir/$_SRCFILE_" 
+    then echo    "$opt_src_dir/$_SRCFILE_" # $++
     else echo ".//$_XMLFILE_" # $++ (not found?)
     fi
 }
 
-scan_dbkfile()
+scan_xmlfile()
 {
-   SOURCEFILE=`dbk_sourcefile "$F"`
-   echo "'$SOURCEFILE': scanning docbook -> '$F'" 
-   scan_dbk_rootnode
-   rootnode=`get_dbk_rootnode`
+   SOURCEFILE=`xml_sourcefile "$F"`
+   echo "'$SOURCEFILE': scanning xml -> '$F'" 
+   scan_xml_rootnode
+   rootnode=`get_xml_rootnode | sed -e "/^h[$NN]/s|\$| <?section?>|"`
    echo "'$SOURCEFILE': rootnode ('$rootnode')" 
 }
 
-make_dbkfile()
+make_xmlfile()
 {
-   SOURCEFILE=`dbk_sourcefile "$F"`
-   article=`get_dbk_rootnode`
+   SOURCEFILE=`xml_sourcefile "$F"`
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   article=`get_xml_rootnode`
    test ".$article" = "." && article="article"
    echo '<!DOCTYPE '$article' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"' \
         > "$F"
    echo  '   "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">' \
        >> "$F"
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read stylesheet ; do
+       echo "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\" ?>" \
+           >> "$F"
+   done }
+   __secinfo="\\1<sectioninfo>\\2</sectioninfo>"
    cat "$SOURCEFILE" | $SED \
-       -e "s|<h[$NN]|<title|g" \
-       -e "s|</h[$NN]|</title|g" \
+      -e "s|<[?]xml-stylesheet[^<>]*>||" \
+      -e "s|<link[^<>]* rel=['\"]*stylesheet[^<>]*>||" \
+      -e "s|<h[$NN]|<title|g" \
+      -e "s|</h[$NN]|</title|g" \
+      -e "s|\\(</title> *\\)\\([^<>]*[$AZ$az][^<>]*\\)$|\\1<sub>\\2</sub>|g" \
+      -e "s|\\(</title>.*\\)<sub>|\\1<subtitle>|g" \
+      -e "s|\\(</title>.*\\)</sub>|\\1</subtitle>|g" \
+      -e "s|\\(<section>[^<>]*\\)\\(<date>.*</date>[^<>]*\\)\$|$__secinfo|g" \
+      -e "s|<b>|<emphasis role=\"bold\">|g" \
+      -e "s|</b>|</emphasis>|g" \
+      -e "s|<[pP]>|<para>|g" \
+      -e "s|</[pP]>|</para>|g" \
+      -e "s|<pre>|<screen>|g" \
+      -e "s|</pre>|</screen>|g" \
+      -e "s|<a\\( [^<>]*\\)href=|ulink\\1url=|g" \
+      -e "s|</a>|</ulink>|g" \
+      -e "s| remap=\"url\">[^<>]*</ulink>| />|g" \
        >> "$F"
-   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` "->" `ls -s $F`
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` ">>" `ls -s $F`
 }
 
 # ==========================================================================
@@ -1660,7 +1687,7 @@ make_sitemap_list()
 	-e "s|^$_getW_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "s|^$_getX_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "s|^$_getY_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "/^=....=/!d"    "$SITEFILE" > "$MK_INFO"
+	-e "/^=....=/!d" -e "/^<!/d"   "$SITEFILE" > "$MK_INFO"
 }
 
 make_sitemap_sect() 
@@ -2011,8 +2038,12 @@ ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 
 #    echo "!! -> '$F' (skipping subdir index.html)"
 #    ;;
-*.html) scan_htmlfile "$F" ;;                      # ........... SCAN HTML
-*.dbk|*.docbook) scan_dbkfile "$F" ;;
+*.html) scan_htmlfile "$F"                         # ........... SCAN HTML
+   if test ".$opt_xml" != "." ; then
+        F=`echo "$F" | sed -e "s/\\.html$/.xml/"`
+        scan_xmlfile "$F"
+   fi ;;
+*.xml)  scan_xmlfile "$F" ;;
 */) echo "'$F' : directory - skipped"
    site_map_list_title "$F" "`sed_slash_key $F`"
    site_map_long_title "$F" "(directory)"
@@ -2047,8 +2078,12 @@ ${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
 #   echo "!! -> '$F' (skipping subdir index.html)"
 #   ;;
 *.html)  make_htmlfile "$F"                  # .................. HTML FILES
-    if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
-*.dbk|*.docbook) make_dbkfile "$F" ;;
+    test ".$printerfriendly" != "." && make_printerfriendly "$F"
+    if test ".$opt_xml" != "." ; then _old_F_="$F"
+         F=`echo "$F" | sed -e "s/\\.html$/.xml/"`
+         make_xmlfile "$F"      ;F="$_old_F_"
+    fi ;;
+*.xml)   make_xmlfile "$F" ;;
 */) echo "'$F' : directory - skipped"
     ;;
 *)  echo "?? -> '$F'"

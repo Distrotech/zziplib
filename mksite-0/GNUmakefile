@@ -36,7 +36,7 @@ local= /vol/www/htdocs/guidod.homelinux.org/test/
 	touch test3/_.htm
 	$(MAKE) test3x.html
 33 : 3
-	cp test3/*.html test3/*.dbk $(local)/
+	cp test3/*.html test3/*.xml $(local)/
 
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
@@ -50,7 +50,7 @@ test2.html : test2/*.htm mksite.sh
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \
 	    test2/index.html > $@
 	sleep 3 # done $@
-test3.html : test3/*.htm test3/*.xml mksite.sh
+test3.html : test3/*.htm test3/*.dbk mksite.sh
 	rm -rf test3/DEBUG ; mkdir test3/DEBUG
 	cd test3 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3/\\1|" \
@@ -72,9 +72,9 @@ test2x.html : test2/*.htm mksite.pl GNUmakefile
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2x/\\1|" \
 	    test2x/index.html > $@
 	sleep 2 # done $@
-test3x.html : test3/*.htm mksite.pl GNUmakefile
+test3x.html : test3/*.htm test3/*.dbk mksite.pl GNUmakefile
 	test ! -d test3x/ || rm -r test3x/
-	mkdir test3x && cp -a test3/*.htm test3/*.xml test3/*.css test3x/
+	mkdir test3x && cp -a test3/*.htm test3/*.dbk test3/*.css test3x/
 	- rm test3x/*.print.* ; mkdir test3x/DEBUG
 	cd test3x && perl ../mksite.pl site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3x/\\1|" \
