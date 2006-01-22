@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.62 2006-01-19 23:54:31 guidod Exp $
+# $Id: mksite.sh,v 1.63 2006-01-22 05:47:28 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1537,23 +1537,102 @@ make_xmlfile()
    done }
    __secinfo="\\1<sectioninfo>\\2</sectioninfo>"
    cat "$SOURCEFILE" | $SED \
-      -e "s|<[?]xml-stylesheet[^<>]*>||" \
-      -e "s|<link[^<>]* rel=['\"]*stylesheet[^<>]*>||" \
-      -e "s|<h[$NN]|<title|g" \
-      -e "s|</h[$NN]|</title|g" \
-      -e "s|\\(</title> *\\)\\([^<>]*[$AZ$az][^<>]*\\)$|\\1<sub>\\2</sub>|g" \
-      -e "s|\\(</title>.*\\)<sub>|\\1<subtitle>|g" \
-      -e "s|\\(</title>.*\\)</sub>|\\1</subtitle>|g" \
-      -e "s|\\(<section>[^<>]*\\)\\(<date>.*</date>[^<>]*\\)\$|$__secinfo|g" \
-      -e "s|<b>|<emphasis role=\"bold\">|g" \
-      -e "s|</b>|</emphasis>|g" \
-      -e "s|<[pP]>|<para>|g" \
-      -e "s|</[pP]>|</para>|g" \
-      -e "s|<pre>|<screen>|g" \
-      -e "s|</pre>|</screen>|g" \
-      -e "s|<a\\( [^<>]*\\)href=|ulink\\1url=|g" \
-      -e "s|</a>|</ulink>|g" \
-      -e "s| remap=\"url\">[^<>]*</ulink>| />|g" \
+	-e "s!<>!\&nbsp\;!g" \
+	-e "s!\\(&\\)\\(&\\)!\\1amp;\\2amp;!g" \
+	-e "s!\\(<[^<>]*\\)\\(width\\)\\(=\\)\\([$NN]*\%*\\)!\\1\\2\\3\"\\4\"!g" \
+	-e "s!\\(<[^<>]*\\)\\(cellpadding\\)\\(=\\)\\([$NN]*\%*\\)!\\1\\2\\3\"\\4\"!g" \
+	-e "s!\\(<[^<>]*\\)\\(border\\)\\(=\\)\\([$NN]*\%*\\)!\\1\\2\\3\"\\4\"!g" \
+	-e "s!<[?]xml-stylesheet[^<>]*>!!" \
+	-e "s!<link[^<>]* rel=[\'\"]*stylesheet[^<>]*>!!" \
+	-e "s!<[hH][$NN]!<title!g" \
+	-e "s!</[hH][$NN]!</title!g" \
+	-e "s!\\(</title> *\\)\\([^<>]*[$AZ$az$NN][^<>\r\n]*\\)\$!\\1<sub>\\2</sub>!" \
+	-e "s!\\(</title>.*\\)<sub>!\\1<subtitle>!g" \
+	-e "s!\\(</title>.*\\)</sub>!\\1</subtitle>!g" \
+	-e "s!\\(<section>[^<>]*\\)\\(<date>.*</date>[^<>]*\\)\$!\\1<sectioninfo>\\2</sectioninfo>!g" \
+        -e "s!<em>!<emphasis>!g" \
+        -e "s!</em>!</emphasis>!g" \
+        -e "s!<i>!<emphasis>!g" \
+        -e "s!</i>!</emphasis>!g" \
+        -e "s!<b>!<emphasis role=\"bold\">!g" \
+        -e "s!</b>!</emphasis>!g" \
+        -e "s!<u>!<emphasis role=\"underline\">!g" \
+        -e "s!</u>!</emphasis>!g" \
+        -e "s!<big>!<emphasis role=\"strong\">!g" \
+        -e "s!</big>!</emphasis>!g" \
+        -e "s!<\\(strike\\)>!<emphasis role=\"strikethrough\">!g" \
+        -e "s!<\\(s\\)>!<emphasis role=\"strikethrough\">!g" \
+        -e "s!</\\(strike\\)>!</emphasis>!g" \
+        -e "s!</\\(s\\)>!</emphasis>!g" \
+        -e "s!<center>!<blockquote><para>!g" \
+        -e "s!</center>!</para></blockquote>!g" \
+        -e "s!<p align=\\(\"[$AZ$az$NN]*\"\\)>!<para role=\\1>!g" \
+        -e "s!<[pP]>!<para>!g" \
+        -e "s!</[pP]>!</para>!g" \
+        -e "s!<\\(pre\\)>!<screen>!g" \
+        -e "s!<\\(PRE\\)>!<screen>!g" \
+        -e "s!</\\(pre\\)>!</screen>!g" \
+        -e "s!</\\(PRE\\)>!</screen>!g" \
+        -e "s!<a\\( [^<>]*\\)name=\\([^<>]*\\)/>!<anchor \\1id=\\2/>!g" \
+        -e "s!<a\\( [^<>]*\\)name=\\([^<>]*\\)>!<anchor \\1id=\\2/>!g" \
+        -e "s!<a\\( [^<>]*\\)href=!<ulink\\1url=!g" \
+        -e "s!</a>!</ulink>!g" \
+	-e "s! remap=\"url\">[^<>]*</ulink>! />!g" \
+	-e "s!<\\(/*\\)span\\([ 	][^<>]*\\)>!<\\1phrase\\2>!g" \
+	-e "s!<\\(/*\\)span>!<\\1phrase>!g" \
+	-e "s!<small\\([ 	][^<>]*\\)>!<phrase role=\"small\"\\1>!g" \
+	-e "s!<small>!<phrase role=\"small\">!g" \
+	-e "s!</small>!</phrase>!g" \
+	-e "s!<\\(/*\\)\\(sup\\)>!<\\1superscript>!g" \
+	-e "s!<\\(/*\\)\\(sub\\)>!<\\1subscript>!g" \
+	-e "s!\\(<\\)\\(li\\)\\(><\\)!\\1listitem\\3!g" \
+	-e "s!\\(></\\)\\(li\\)\\(>\\)!\\1listitem\\3!g" \
+	-e "s!\\(<\\)\\(li\\)\\(>\\)!\\1listitem\\3<para>!g" \
+	-e "s!\\(</\\)\\(li\\)\\(>\\)!</para>\\1listitem\\3!g" \
+	-e "s!\\(</*\\)\\(ul\\)>!\\1itemizedlist>!g" \
+	-e "s!\\(</*\\)\\(ol\\)>!\\1orderedlist>!g" \
+	-e "s!\\(</*\\)\\(dl\\)>!\\1variablelist>!g" \
+	-e "s!<\\(/*\\)DT>!<\\1dt>!g" \
+	-e "s!<\\(/*\\)DD>!<\\1dd>!g" \
+	-e "s!<\\(/*\\)DL>!<\\1dl>!g" \
+	-e "s!<BLOCKQUOTE>!<blockquote><para>!g" \
+	-e "s!</BLOCKQUOTE>!</para></blockquote>!g" \
+	-e "s!<\\(/*\\)dl>!<\\1variablelist>!g" \
+	-e "s!<dt\\( [^<>]*\\)>!<varlistentry\\1><term>!g" \
+	-e "s!<dt>!<varlistentry><term>!g" \
+	-e "s!</dt>!</term>!g" \
+	-e "s!<dd\\( [^<>]*\\)><!<listitem\\1><!g" \
+	-e "s!<dd><!<listitem><!g" \
+	-e "s!></dd>!></listitem></varlistentry>!g" \
+	-e "s!<dd\\( [^<>]*\\)>!<listitem\\1><para>!g" \
+	-e "s!<dd>!<listitem><para>!g" \
+	-e "s!</dd>!</para></listitem></varlistentry>!g" \
+	-e "s!<table[^<>]*><tr><td>\\(<table[^<>]*>\\)!\\1!" \
+	-e "s!\\(</table>\\)</td></tr></table>!\\1!" \
+	-e "s!<table\\( [^<>]*\\)>!<informaltable\\1><tgroup cols=\"2\"><tbody>!g" \
+	-e "s!<table>!<informaltable><tgroup cols=\"2\"><tbody>!g" \
+	-e "s!</table>!</tbody></tgroup></informaltable>!g" \
+	-e "s!\\(</*\\)tr\\([ 	][^<>]*\\)>!\\1row\\2>!g" \
+	-e "s!\\(</*\\)tr>!\\1row>!g" \
+	-e "s!\\(</*\\)td\\([ 	][^<>]*\\)>!\\1entry\\2>!g" \
+	-e "s!\\(</*\\)td>!\\1entry>!g" \
+	-e "s!\\(<informaltable[^<>]*[ 	]width=\"100\%\"\\)!\\1 pgwide=\"1\"!g" \
+	-e "s!\\(<tgroup[<>]*[ 	]cols=\"2\">\\)\\(<tbody>\\)!\\1<colspec colwidth=\"1*\" /><colspec colwidth=\"1*\" />\\2!g" \
+	-e "s!\\(<entry[^<>]*[ 	]\\)width=\\(\"[$NN]*\%*\"\\)!\\1remap=\\2!g" \
+	-e "s!<nobr>\\([\'\`]*\\)<tt>!<cmdsynopsis><command>\\1!g" \
+	-e "s!</tt>\\([\'\`]*\\)</nobr>!\\1</command></cmdsynopsis>!g" \
+	-e "s!<nobr><\\(code\\)>\\([\`\"\']\\)!<cmdsynopsis><command>\\2!g" \
+	-e "s!<\\(code\\)><nobr>\\([\`\"\']\\)!<cmdsynopsis><command>\\2!g" \
+	-e "s!\\([\`\"\']\\)</\\(code\\)></nobr>!\\1</command></cmdsynopsis>!g" \
+	-e "s!\\([\`\"\']\\)</nobr></\\(code\\)>!\\1</command></cmdsynopsis>!g" \
+	-e "s!<nobr><\\(tt\\)>\\([\`\"\']\\)!<cmdsynopsis><command>\\2!g" \
+	-e "s!<\\(tt\\)><nobr>\\([\`\"\']\\)!<cmdsynopsis><command>\\2!g" \
+	-e "s!\\([\`\"\']\\)</\\(tt\\)></nobr>!\\1</command></cmdsynopsis>!g" \
+	-e "s!\\([\`\"\']\\)</nobr></\\(tt\\)>!\\1</command></cmdsynopsis>!g" \
+	-e "s!\\(</*\\)tt>!\\1constant>!g" \
+	-e "s!\\(</*\\)code>!\\1literal>!g" \
+	-e "s!<br>!<br />!g" \
+	-e "s!<br */>!<screen role=\"linebreak\">\n</screen>!g" \
        >> "$F"
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` ">>" `ls -s $F`
 }

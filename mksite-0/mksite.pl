@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.34 2006-01-19 23:54:31 guidod Exp $
+# $Id: mksite.pl,v 1.35 2006-01-22 05:47:27 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1762,33 +1762,100 @@ sub make_xmlfile
     my $article= &get_xml_rootnode();
     $article="article" if $article eq "";
     my $text = "";
+#    $text .= '<!DOCTYPE '.$article.
+#	' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"'.$n;
+#   $text .= '    "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">'
     $text .= '<!DOCTYPE '.$article.
-	' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"'.$n;
-    $text .= '    "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">'
+	' PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"'.$n;
+    $text .= '    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">'
 	.$n;
     for my $stylesheet (@{$XMLSTYLESHEETS{$X}}) {
 	$text .= "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\"   ?>"
 	    .$n;
     }
     for (source($SOURCEFILE)) {	
-	s|<[?]xml-stylesheet[^<>]*>||;
-	s|<link[^<>]* rel=[\'\"]*stylesheet[^<>]*>||;
-	s|<h\d|<title|g;
-	s|</h\d|</title|g;
-	s|(</title> *)([^<>]*\w[^<>]*)$|$1<sub>$2</sub>|;
-	s|(</title>.*)<sub>|$1<subtitle>|g;
-	s|(</title>.*)</sub>|$1</subtitle>|g;
-	s|(<section>[^<>]*)(<date>.*</date>[^<>]*)$|
-	    $1<sectioninfo>$2</sectioninfo>|gx;
-        s|<b>|<emphasis role=\"bold\">|g;
-        s|</b>|</emphasis>|g;
-        s|<[pP]>|<para>|g; 
-        s|</[pP]>|</para>|g; 
-        s|<pre>|<screen>|g; 
-        s|</pre>|</screen>|g; 
-        s|<a( [^<>]*)href=|ulink${1}url=|g;
-        s|</a>|</ulink>|g;
-	s| remap=\"url\">[^<>]*</ulink>| />|g;
+	s!<>!\&nbsp\;!g;
+	s!(&)(&)!${1}amp;${2}amp;!g;
+	s!(<[^<>]*)(width)(=)(\d+\%*)!$1$2$3\"$4\"!g;
+	s!(<[^<>]*)(cellpadding)(=)(\d+\%*)!$1$2$3\"$4\"!g;
+	s!(<[^<>]*)(border)(=)(\d+\%*)!$1$2$3\"$4\"!g;
+	s!<[?]xml-stylesheet[^<>]*>!!;
+	s!<link[^<>]* rel=[\'\"]*stylesheet[^<>]*>!!;
+	s!<[hH]\d!<title!g;
+	s!</[hH]\d!</title!g;
+	s!(</title> *)([^<>]*\w[^<>\r\n]*)$!$1<sub>$2</sub>!;
+	s!(</title>.*)<sub>!$1<subtitle>!g;
+	s!(</title>.*)</sub>!$1</subtitle>!g;
+	s!(<section>[^<>]*)(<date>.*</date>[^<>]*)$
+	    !$1<sectioninfo>$2</sectioninfo>!gx;
+        s!<em>!<emphasis>!g;
+        s!</em>!</emphasis>!g;
+        s!<i>!<emphasis>!g;
+        s!</i>!</emphasis>!g;
+        s!<b>!<emphasis role=\"bold\">!g;
+        s!</b>!</emphasis>!g;
+        s!<u>!<emphasis role=\"underline\">!g;
+        s!</u>!</emphasis>!g;
+        s!<big>!<emphasis role=\"strong\">!g;
+        s!</big>!</emphasis>!g;
+        s!<(s|strike)>!<emphasis role=\"strikethrough\">!g;
+        s!</(s|strike)>!</emphasis>!g;
+        s!<center>!<blockquote><para>!g; 
+        s!</center>!</para></blockquote>!g; 
+        s!<p align=(\"\w*\")>!<para role=${1}>!g; 
+        s!<[pP]>!<para>!g; 
+        s!</[pP]>!</para>!g; 
+        s!<(pre|PRE)>!<screen>!g; 
+        s!</(pre|PRE)>!</screen>!g; 
+        s!<a( [^<>]*)name=([^<>]*)/>!<anchor ${1}id=${2}/>!g;
+        s!<a( [^<>]*)name=([^<>]*)>!<anchor ${1}id=${2}/>!g;
+        s!<a( [^<>]*)href=!<ulink${1}url=!g;
+        s!</a>!</ulink>!g;
+	s! remap=\"url\">[^<>]*</ulink>! />!g;
+	s!<(/?)span(\s[^<>]*)?>!<${1}phrase${2}>!g;
+	s!<small(\s[^<>]*)?>!<phrase role=\"small\"${1}>!g;
+	s!</small(\s[^<>]*)?>!</phrase${1}>!g;
+	s!<(/?)(sup)>!<${1}superscript>!g;
+	s!<(/?)(sub)>!<${1}subscript>!g;
+	s!(<)(li)(><)!${1}listitem${3}!g;
+	s!(></)(li)(>)!${1}listitem${3}!g;
+	s!(<)(li)(>)!${1}listitem${3}<para>!g;
+	s!(</)(li)(>)!</para>${1}listitem${3}!g;
+	s!(</?)(ul)>!${1}itemizedlist>!g;
+	s!(</?)(ol)>!${1}orderedlist>!g;
+	s!(</?)(dl)>!${1}variablelist>!g;
+	s!<(/?)DT>!<${1}dt>!g;
+	s!<(/?)DD>!<${1}dd>!g;
+	s!<(/?)DL>!<${1}dl>!g;
+	s!<BLOCKQUOTE>!<blockquote><para>!g;
+	s!</BLOCKQUOTE>!</para></blockquote>!g;
+	s!<(/?)dl>!<${1}variablelist>!g;	
+	s!<dt\b([^<>]*)>!<varlistentry${1}><term>!g;
+	s!</dt\b([^<>]*)>!</term>!g;
+	s!<dd\b([^<>]*)><!<listitem${1}><!g;
+	s!></dd\b([^<>]*)>!></listitem></varlistentry>!g;
+	s!<dd\b([^<>]*)>!<listitem${1}><para>!g;
+	s!</dd\b([^<>]*)>!</para></listitem></varlistentry>!g;
+	s!<table[^<>]*><tr><td>(<table[^<>]*>)!$1!;
+	s!(</table>)</td></tr></table>!$1!;
+	s!<table\b([^<>]*)>!<informaltable${1}><tgroup cols=\"2\"><tbody>!g;
+	s!</table\b([^<>]*)>!</tbody></tgroup></informaltable>!g;
+	s!(</?)tr(\s[^<>]*)?>!${1}row${2}>!g;
+	s!(</?)td(\s[^<>]*)?>!${1}entry${2}>!g;
+	s!(<informaltable[^<>]*\swidth=\"100\%\")!$1 pgwide=\"1\"!g;
+	s!(<tgroup[<>]*\scols=\"2\">)(<tbody>)
+	    !$1<colspec colwidth=\"1*\" /><colspec colwidth=\"1*\" />$2!gx;
+	s!(<entry[^<>]*\s)width=(\"\d*\%*\")!${1}remap=${2}!g;
+	s!<nobr>([\'\`]*)<tt>!<cmdsynopsis><command>$1!g;
+	s!</tt>([\'\`]*)</nobr>!$1</command></cmdsynopsis>!g;
+	s!<nobr><(tt|code)>([\`\"\'])!<cmdsynopsis><command>$2!g;
+	s!<(tt|code)><nobr>([\`\"\'])!<cmdsynopsis><command>$2!g;
+	s!([\`\"\'])</(tt|code)></nobr>!$1</command></cmdsynopsis>!g;
+	s!([\`\"\'])</nobr></(tt|code)>!$1</command></cmdsynopsis>!g;
+	s!(</?)tt>!${1}constant>!g;
+	s!(</?)code>!${1}literal>!g;
+	s!<br>!<br />!g;
+	s!<br */>!<screen role=\"linebreak\">\n</screen>!g;
 	$text .= $_; 
     }
     open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
