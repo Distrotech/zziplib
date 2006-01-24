@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.63 2006-01-22 05:47:28 guidod Exp $
+# $Id: mksite.sh,v 1.64 2006-01-24 00:55:20 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1288,6 +1288,16 @@ body_for_emailfooter ()
 #  <div class="article"><div class="para>
 #  Using some <span class="command">exe</span>
 #  </div></div>
+
+css_sourcefile ()
+{
+    if test -f "$1" ; then echo "$1"
+    elif test -f "$opt_src_dir/$1" ; then echo "$opt_src_dir/$1"
+    elif echo "$1" | grep "^/" > /dev/null ; then echo "$1"
+    else echo "./$1"
+    fi
+}
+
 css_xmltags () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
@@ -1355,9 +1365,10 @@ css_xmltags_css () # $SOURCEFILE
    R="$tmp/$MK.$X.xmltags.css.tmp"
    {
       cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
-         if test -f "$xmlstylesheet" ; then
+         stylesheet=`css_sourcefile "$xmlstylesheet"`
+         if test -f "$stylesheet" ; then
             echo "/* $xmlstylesheet */"
-            cat "$xmlstylesheet" | $SED -f "$S"
+            cat "$stylesheet" | $SED -f "$S"
          else
             echo "$xmlstylesheet : ERROR, no such stylesheet" 1>&2
          fi
@@ -1760,7 +1771,7 @@ _getY_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*<[^<>]*>[^<>]*"
 make_sitemap_list()
 {
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
-    $SED -f $MK_GETS           -e "/^<!--sect[$NN]-->/!d" \
+    $SED -f "$MK_GETS"           -e "/^<!--sect[$NN]-->/!d" \
 	-e "s|^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|^$_getW_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \

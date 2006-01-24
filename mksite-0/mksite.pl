@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.35 2006-01-22 05:47:27 guidod Exp $
+# $Id: mksite.pl,v 1.36 2006-01-24 00:55:20 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -127,7 +127,9 @@ if ($o{help}) {
     print "  default sitefile = $_  ($o{main_file}) ($o{files})$n";
     print "options:$n"
 	. " --filelist : show list of target files as ectracted from $_$n"
-	. " --src xx : if source files are not where mksite is executed$n";
+	. " --src-dir xx : if source files are not where mksite is executed$n"
+	. " --tmp-dir xx : use temp instead of local directory$n"
+	. " --tmp : use automatic temp directory in \$TEMP/mksite.*$n";
     exit;
     print " internal:$n"
 	."--fileseparator=x : for building the internal filelist (def. '?')$n"
@@ -278,12 +280,12 @@ print "NOTE: '$headsection\'headsection '$tailsection\'tailsection$n"
 # tag via "h;y;x" or something we do want to convert all the tags on
 # a single line of course.
 @MK_TAGS=();
-for my $M (@HTMLTAGS) {
-    my $P=uc($M);
+{ my ($M,$P); for $M (@HTMLTAGS) {
+    $P=uc($M);
     push @MK_TAGS, "s|<$P>|<$M class=\\\"$P\\\">|g;";
     push @MK_TAGS, "s|<$P |<$M class=\\\"$P\\\" |g;";
     push @MK_TAGS, "s|</$P>|</$M>|g;";
-}
+}}
 push @MK_TAGS, "s|<>|\\&nbsp\\;|g;";
 push @MK_TAGS, "s|<->|<WBR />\\;|g;";
 push @MK_TAGS, "s|<c>|<code>|g;";
@@ -304,12 +306,12 @@ my @_EQUIVS =
     ("refresh", "expires", "content-type", "cache-control", 
      "redirect", "charset", # mapped to refresh / content-type
      "content-language", "content-script-type", "content-style-type");
-for my $P (@DC_VARS) { # dublin core embedded
+{ my $P; for $P (@DC_VARS) { # dublin core embedded
     push @MK_TAGS, "s|<$P>[^<>]*</$P>||g;";
-}
-for my $P (@_EQUIVS) {
+}}
+{ my $P; for $P (@_EQUIVS) {
     push @MK_TAGS, "s|<$P>[^<>]*</$P>||g;";
-}
+}}
 push @MK_TAGS, "s|<!--sect[$AZ$NN]-->||g;";
 push @MK_TAGS, "s|<!--[$AX]*[?]-->||g;";
 push @MK_TAGS, "s|<!--\\\$[$AX]*[?]:-->||g;";
@@ -1511,6 +1513,15 @@ sub body_for_emailfooter
 #  Using some <span class="command">exe</span>
 #  </div></div>
 
+sub css_sourcefile
+{
+    my ($X,$XXX) = @_;
+    return $X if -f $X;
+    return "$o{src_dir}/$X" if -f "$o{src_dir}/$X";
+    return "$X" if "$X" =~ m:^/:;
+    return "./$X";
+}
+
 my %XMLTAGS = ();
 sub css_xmltags # $SOURCEFILE
 {
@@ -1572,13 +1583,14 @@ sub css_xmltags_css # $SOURCEFILE
     my @R = ();
     my $xmlstylesheet;
     foreach $xmlstylesheet (@{$XMLSTYLESHEETS{$X}}) {
-	if (-f $xmlstylesheet) {
+	my $stylesheet = css_sourcefile($xmlstylesheet);
+	if (-f $stylesheet) {
 	    push @R, "/* $xmlstylesheet */";
 	    my $text = "";
 	    my $line = "";
-	    my $XMLSTYLESHEET = $xmlstylesheet;
-	    open XMLSTYLESHEET, "<$XMLSTYLESHEET" or next;
-	    foreach $line (<XMLSTYLESHEET>)
+	    my $STYLESHEET = $stylesheet;
+	    open STYLESHEET, "<$STYLESHEET" or next;
+	    foreach $line (<STYLESHEET>)
 	    {
 		$text .= $line;
 		if ($text =~ /^[^\{]*\}/s) { $text = ""; next; }
