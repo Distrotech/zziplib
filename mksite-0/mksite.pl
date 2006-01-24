@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.36 2006-01-24 00:55:20 guidod Exp $
+# $Id: mksite.pl,v 1.37 2006-01-24 01:48:48 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -292,6 +292,7 @@ push @MK_TAGS, "s|<c>|<code>|g;";
 push @MK_TAGS, "s|</c>|</code>|g;";
 push @MK_TAGS, "s|<section>||g;";
 push @MK_TAGS, "s|</section>||g;";
+push @MK_TAGS, "s|<(a [^<>]*) />|<\$1></a>|g";
 my $_ulink_="<a href=\"\$1\" remap=\"url\">\$1</a>";
 push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|$_ulink_|g;";
 # also make sure that some non-html entries are cleaned away that
