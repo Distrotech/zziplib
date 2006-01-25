@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.37 2006-01-24 01:48:48 guidod Exp $
+# $Id: mksite.pl,v 1.38 2006-01-25 03:44:51 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -294,7 +294,7 @@ push @MK_TAGS, "s|<section>||g;";
 push @MK_TAGS, "s|</section>||g;";
 push @MK_TAGS, "s|<(a [^<>]*) />|<\$1></a>|g";
 my $_ulink_="<a href=\"\$1\" remap=\"url\">\$1</a>";
-push @MK_TAGS, "s|<a>\\([$az]://[^<>]*\\)</a>|$_ulink_|g;";
+push @MK_TAGS, "s|<a>(\\w+://[^<>]*)</a>|$_ulink_|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
