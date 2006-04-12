@@ -15,18 +15,26 @@ DISTFILES = GNUmakefile README.TXT COPYING.ZLIB $(PACKAGE).spec \
             mksite.txt mksite.sh mksite.pl \
             doc/*.htm doc/*.gif test*/*.htm 
 
+diff =  diff
 diffs = diff -U1
-known = -e "/formatter/d"
+ignore = formatter
+known = -e "/$(ignore)/d"
 
 test : test1x test2x
 test1x : test1x.html
-	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
-	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
+	@ for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
+	; echo "    $(diff) orig=$$orig made=$$i" \
+	; sed $(known) $$orig >$$i.orig     \
+	; sed $(known) $$i    >$$i.made \
+	; $(diffs) $$i.orig $$i.made ; done \
+	; rm $@/*.orig test1x/*.made 
 test2x : test2x.html
-	for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; sed $(known) $$orig >$$i.orig     ; sed $(known) $$i     >$$i.made \
-	; $(diffs) $$i.orig $$i.made ; done ; rm $@/*.orig test1x/*.made
+	@ for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
+	; echo "    $(diff) orig=$$orig made=$$i" \
+	; sed $(known) $$orig >$$i.orig     \
+	; sed $(known) $$i    >$$i.made \
+	; $(diffs) $$i.orig $$i.made ; done \
+	; rm $@/*.orig test1x/*.made 
 
 local= /vol/www/htdocs/guidod.homelinux.org/test/
 3 : 
@@ -58,23 +66,24 @@ test3.html : test3/*.htm test3/*.dbk mksite.sh
 	sleep 3 # done $@
 
 test1x.html : test1/*.htm mksite.pl GNUmakefile
-	test ! -d test1x/ || rm -r test1x/
-	mkdir test1x && cp -a test1/*.htm test1x/
+	test ! -d test1x/ || rm -r test1x/* ; mkdir test1x ; test -d test1x
+	cp -a test1/*.htm test1x/ 
+	mkdir test1x/DEBUG
 	cd test1x && perl ../mksite.pl site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1x/\\1|" \
 	    test1x/index.html > $@
 	sleep 2 # done $@
 test2x.html : test2/*.htm mksite.pl GNUmakefile
-	test ! -d test2x/ || rm -r test2x/
-	mkdir test2x && cp -a test2/*.htm test2x/
+	test ! -d test2x/ || rm -r test2x/* ; mkdir test2x ; test -d test2x
+	cp -a test2/*.htm test2x/
 	- rm test2x/*.print.* ; mkdir test2x/DEBUG
 	cd test2x && perl ../mksite.pl site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2x/\\1|" \
 	    test2x/index.html > $@
 	sleep 2 # done $@
 test3x.html : test3/*.htm test3/*.dbk mksite.pl GNUmakefile
-	test ! -d test3x/ || rm -r test3x/
-	mkdir test3x && cp -a test3/*.htm test3/*.dbk test3/*.css test3x/
+	test ! -d test3x/ || rm -r test3x/* ; mkdir test3x ; test -d test3x
+	cp -a test3/*.htm test3/*.dbk test3/*.css test3x/
 	- rm test3x/*.print.* ; mkdir test3x/DEBUG
 	cd test3x && perl ../mksite.pl site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3x/\\1|" \

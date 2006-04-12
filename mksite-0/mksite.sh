@@ -20,13 +20,19 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.66 2006-01-25 03:44:51 guidod Exp $
+# $Id: mksite.sh,v 1.67 2006-04-12 00:32:37 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
   emulate sh
   NULLCMD=:
 fi
+
+sed_debug ()
+{
+    echo "sed" "$@" >&2
+    sed "$@"
+}
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -41,7 +47,7 @@ DATE_R="date -r" # gnu date has it / solaris date not
 STAT_R="stat"    # gnu linux
 LS_L="ls -l"     # linux uses one less char than solaris
 
-INFO="~~"     # extension for meta data files
+DATA="~~"     # extension for meta data files
 HEAD="~head~" # extension for head sed script
 BODY="~body~" # extension for body sed script
 FOOT="~foot~" # append to body text (non sed)
@@ -51,6 +57,8 @@ NULL="/dev/null"                             # to divert stdout/stderr
 CATNULL="$CAT $NULL"                         # to create 0-byte files
 SED_LONGSCRIPT="$SED -f"
 
+Q='q class='
+QX='/q'
 LOWER="abcdefghijklmnopqrstuvwxyz"
 UPPER="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 az="$LOWER"                                  # some old sed tools can not
@@ -168,22 +176,21 @@ if test ".$opt_tmp_dir" = "." && test ".$opt_tmp" != "." ; then
 tmp="${TEMP-/tmp}/mksite.$$" ; fi
 
 # we use external files to store mappings - kind of relational tables
-MK_TAGS="$tmp/$MK.tags.tmp"
-MK_VARS="$tmp/$MK.vars.tmp"
-MK_SPAN="$tmp/$MK.span.tmp"
-MK_META="$tmp/$MK.meta.tmp"
-MK_METT="$tmp/$MK.mett.tmp"
-MK_TEST="$tmp/$MK.test.tmp"
-MK_FAST="$tmp/$MK.fast.tmp"
-MK_GETS="$tmp/$MK.gets.tmp"
-MK_PUTS="$tmp/$MK.puts.tmp"
-MK_OLDS="$tmp/$MK.olds.tmp"
-MK_SITE="$tmp/$MK.site.tmp"
-MK_SECT1="$tmp/$MK.sect1.tmp"
-MK_SECT2="$tmp/$MK.sect2.tmp"
-MK_SECT3="$tmp/$MK.sect3.tmp"
-MK_STYLE="$tmp/$MK.style.tmp"
-MK_INFO="$tmp/$MK.$INFO"
+MK_TAGS="$tmp/$MK.tags.tmp.sed"
+MK_VARS="$tmp/$MK.vars.tmp.sed"
+MK_SPAN="$tmp/$MK.span.tmp.sed"
+MK_META="$tmp/$MK.meta.tmp.htm"
+MK_METT="$tmp/$MK.mett.tmp.htm"
+MK_TEST="$tmp/$MK.test.tmp.htm"
+MK_FAST="$tmp/$MK.fast.tmp.sed"
+MK_GETS="$tmp/$MK.gets.tmp.sed"
+MK_PUTS="$tmp/$MK.puts.tmp.sed"
+MK_SITE="$tmp/$MK.site.tmp.sed"
+MK_SECT1="$tmp/$MK.sect1.tmp.sed"
+MK_SECT2="$tmp/$MK.sect2.tmp.sed"
+MK_SECT3="$tmp/$MK.sect3.tmp.sed"
+MK_STYLE="$tmp/$MK.style.tmp.sed"
+MK_DATA="$tmp/$MK.$DATA.htm"
 
 # ========================================================================
 # ========================================================================
@@ -193,11 +200,10 @@ MK_INFO="$tmp/$MK.$INFO"
 printerfriendly=""
 sectionlayout="list"
 sitemaplayout="list"
-simplevars="warn"      # <!--varname-->default
 attribvars=" "         # <x ref="${varname:=default}">
 updatevars=" "         # <!--$varname:=-->default
 expandvars=" "         # <!--$varname-->
-commentvars=" "        # $updatevars && $expandsvars && $simplevars
+commentvars=" "        # $updatevars && $expandsvars
 sectiontab=" "         # highlight ^<td class=...>...href="$section"
 currenttab=" "         # highlight ^<br>..<a href="$topic">
 headsection="no"
@@ -239,8 +245,6 @@ x=`mksite_magic_option sectionlayout` ; case "$x" in
        "list"|"multi") sectionlayout="$x" ;; esac
 x=`mksite_magic_option sitemaplayout` ; case "$x" in
        "list"|"multi") sitemaplayout="$x" ;; esac
-x=`mksite_magic_option simplevars` ; case "$x" in
-      " "|"no"|"warn") simplevars="$x" ;; esac
 x=`mksite_magic_option attribvars` ; case "$x" in
       " "|"no"|"warn") attribvars="$x" ;; esac
 x=`mksite_magic_option updatevars` ; case "$x" in
@@ -263,12 +267,9 @@ x=`mksite_magic_option emailfooter`
 test ".$opt_print" != "." && printerfriendly="$opt_print"
 test ".$commentvars"  = ".no" && updatevars="no"   # duplicated into
 test ".$commentvars"  = ".no" && expandvars="no"   # info2vars_sed ()
-test ".$commentvars"  = ".no" && simplevars="no"   # function above
 
 test -d DEBUG && \
 echo "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout"
-test -d DEBUG && \
-echo "NOTE: '$simplevars'simplevars '$printerfriendly'printerfriendly"
 test -d DEBUG && \
 echo "NOTE: '$attribvars'attribvars '$updatevars'updatevars"
 test -d DEBUG && \
@@ -400,13 +401,18 @@ sed_longscript ()
          -f "$1~6~"  -f "$1~7~" -f "$1~8~" -f "$1~9~" "$2"
 }
 
+sed_escape_key () 
+{
+    $SED -e "s|\\.|\\\\&|g" -e "s|\\[|\\\\&|g" -e "s|\\]|\\\\&|g" "$@"
+}
+
 sed_slash_key ()      # helper to escape chars special in /anchor/ regex
 {                     # currently escaping "/" "[" "]" "."
-    echo "$1" | $SED -e "s|[./[-]|\\\\&|g" -e "s|\\]|\\\\&|g"
+    echo "$1" | sed_escape_key -e "s|/|\\\\&|g"
 }
 sed_piped_key ()      # helper to escape chars special in s|anchor|| regex
 {                     # currently escaping "|" "[" "]" "."
-    echo "$1" | $SED -e "s/[.|[-]/\\\\&/g" -e "s/\\]/\\\\&/g"
+    echo "$1" | sed_escape_key -e "s/|/\\\\&/g"
 }
 
 back_path ()          # helper to get the series of "../" for a given path
@@ -419,47 +425,13 @@ dir_name ()
     echo "$1" | $SED -e "s:/[^/][^/]*\$::"
 }
 
-info2test_sed ()          # cut out all old-style <!--vars--> usages
-{
-  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
-  V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-   q="\\\$"
-   _x_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:=-->"
-   _y_="WARNING: assumed simplevar <!--\\\\1--> changed to <!--$q\\\\1:?-->"
-   _X_="WARNING: assumed tailvar <!--$q\\\\1:--> changed to <!--$q\\\\1:=-->"
-   _Y_="WARNING: assumed tailvar <!--$q\\\\1:--> changed to <!--$q\\\\1:?-->"
-   echo "s/^/ /" # $++
-  $SED -e "/^=....=formatter /d" \
-  -e "/=text=/s%=text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=Text=/s%=Text=$V9%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V9%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
-  -e "/=Name=/s%=Name=$V9%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
-  -e "/=text=/s%=text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=Text=/s%=Text=$V8%s|.*<!--\\\\(\\1\\\\)-->.*|$_x_|%" \
-  -e "/=name=/s%=name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
-  -e "/=Name=/s%=Name=$V8%s|.*<!--\\\\(\\1\\\\)[?]-->.*|$_y_|%" \
-  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
-  $SED -e "/^=....=formatter /d" \
-  -e "/=text=/s%=text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
-  -e "/=Text=/s%=Text=$V9%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
-  -e "/=name=/s%=name=$V9%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
-  -e "/=Name=/s%=Name=$V9%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
-  -e "/=text=/s%=text=$V8%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
-  -e "/=Text=/s%=Text=$V8%s|.*<!--$q\\\\(\\1\\\\):-->.*|$_X_|%" \
-  -e "/=name=/s%=name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
-  -e "/=Name=/s%=Name=$V8%s|.*<!--$q\\\\(\\1\\\\)[?]:-->.*|$_Y_|%" \
-  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
-  echo "/^WARNING:/!d" # $++
-}
-
 info2vars_sed ()          # generate <!--$vars--> substition sed addon script
 {
-  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
-  V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-  N8=" *\\([^ ][^ ]*\\) \\([$NN].*\\)"
-  N9=" *DC[.]\\([^ ][^ ]*\\) \\([$NN].*\\)"
+  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$DATA"
+  V8=" *\\([^ ][^ ]*\\) \\(.*\\)<$QX>"
+  V9=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)<$QX>"
+  N8=" *\\([^ ][^ ]*\\) \\([$NN].*\\)<$QX>"
+  N9=" *DC[.]\\([^ ][^ ]*\\) \\([$NN].*\\)<$QX>"
   V0="\\\\([<]*\\\\)\\\\\\\$"
   V1="\\\\([^<>]*\\\\)\\\\\\\$"
   V2="\\\\([^{<>}]*\\\\)"
@@ -467,76 +439,53 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
   SS="<""<>"">" # spacer so value="2004" does not make for s|\(...\)|\12004|
   test ".$commentvars"  = ".no" && updatevars="no"   # duplicated from
   test ".$commentvars"  = ".no" && expandvars="no"   # option handling
-  test ".$commentvars"  = ".no" && simplevars="no"   # tests below
   test ".$expandvars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
-      -e "/^=name=/s,=name=$V9,s|<!--$V0\\1[?]-->|- \\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--$V0\\1[?]-->|(\\2)|," \
-      -e "/^=name=/s,=name=$V8,s|<!--$V0\\1[?]-->|- \\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1[?]-->|(\\2)|," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V0\\1[?]-->|- \\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1[?]-->|(\\2)|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V0\\1[?]-->|- \\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1[?]-->|(\\2)|," \
+      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$expandvars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
-      -e "/^=text=/s,=text=$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
-      -e "/^=Text=/s,=Text=$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
-      -e "/^=name=/s,=name=$V9,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^=text=/s,=text=$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
-      -e "/^=Text=/s,=Text=$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
-      -e "/^=name=/s,=name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
-  test ".$simplevars" != ".no" && test ".$updatevars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
-      -e "/^=text=/s,=text=$V9,s|<!--$V0\\1:-->[$AX]*|\\2|," \
-      -e "/^=Text=/s,=Text=$V9,s|<!--$V0\\1:-->[$AX]*|\\2|," \
-      -e "/^=name=/s,=name=$V9,s|<!--$V0\\1[?]:-->[$AX]*|- \\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--$V0\\1[?]:-->[$AX]*| (\\2) |," \
-      -e "/^=text=/s,=text=$V8,s|<!--$V0\\1:-->[$AX]*|\\2|," \
-      -e "/^=Text=/s,=Text=$V8,s|<!--$V0\\1:-->[$AX]*|\\2|," \
-      -e "/^=name=/s,=name=$V8,s|<!--$V0\\1[?]:-->[$AX]*|- \\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1[?]:-->[$AX]*| (\\2) |," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'text'>/s,<$Q'text'>$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
+      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
-      -e "/^=name=/s,=name=$V9,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
-      -e "/^=name=/s,=name=$V8,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
-  -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
+      -e "/^<$Q/d"  -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
-      -e "/^=text=/s,=text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=Text=/s,=Text=$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=name=/s,=name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=text=/s,=text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=Text=/s,=Text=$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=name=/s,=name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'text'>/s,<$Q'text'>$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
+      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$attribvars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
-      -e "/^=text=/s,=text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=Text=/s,=Text=$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=name=/s,=name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=Name=/s,=Name=$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=text=/s,=text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=Text=/s,=Text=$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=name=/s,=name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=Name=/s,=Name=$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
-  test ".$simplevars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
-      -e "/^=text=/s,=text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
-      -e "/^=Text=/s,=Text=$V9,s|<!--\\1-->[$AX]*|\\2|," \
-      -e "/^=name=/s,=name=$V9,s|<!--\\1[?]-->[$AX]*| - \\2|," \
-      -e "/^=Name=/s,=Name=$V9,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
-      -e "/^=text=/s,=text=$V8,s|<!--\\1-->[$AX]*|\\2|," \
-      -e "/^=Text=/s,=Text=$V8,s|<!--\\1-->[$AX]*|\\2|," \
-      -e "/^=name=/s,=name=$V8,s|<!--\\1[?]-->[$AX]*| - \\2|," \
-      -e "/^=Name=/s,=Name=$V8,s|<!--\\1[?]-->[$AX]*| (\\2) |," \
-      -e "/^=/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'text'>/s,<$Q'text'>$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
+      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   # if value="2004" then generated sed might be "\\12004" which is bad
   # instead we generate an edited value of "\\1$SS$value" and cut out
   # the spacer now after expanding the variable values:
@@ -546,53 +495,54 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
 info2meta_sed ()         # generate <meta name..> text portion
 {
   # http://www.metatab.de/meta_tags/DC_type.htm
-  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
-  V6=" *HTTP[.]\\([^ ][^ ]*\\) \\(.*\\)"
-  V7=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)"
-  V8=" *\\([^ ][^ ]*\\) \\(.*\\)"
-  INFO_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
-  INFO_META_DCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
-  INFO_META_NAME_TZ="name=\"\\1\" content=\"\\2 `timezone`\"" 
-  INFO_META_NAME="name=\"\\1\" content=\"\\2\""
-  INFO_META_HTTP="http-equiv=\"\\1\" content=\"\\2\""
+  INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$DATA"
+  V6=" *HTTP[.]\\([^ ][^ ]*\\) \\(.*\\)<$QX>"
+  V7=" *DC[.]\\([^ ][^ ]*\\) \\(.*\\)<$QX>"
+  V8=" *\\([^ ][^ ]*\\) \\(.*\\)<$QX>"
+  DATA_META_TYPE_SCHEME="name=\"DC.type\" content=\"\\2\" scheme=\"\\1\""
+  DATA_META_DCMI="name=\"\\1\" content=\"\\2\" scheme=\"DCMIType\""
+  DATA_META_NAME_TZ="name=\"\\1\" content=\"\\2 `timezone`\"" 
+  DATA_META_NAME="name=\"\\1\" content=\"\\2\""
+  DATA_META_HTTP="http-equiv=\"\\1\" content=\"\\2\""
   $SED -e "/=....=today /d" \
-  -e "/=meta=HTTP[.]/s,=meta=$V6, <meta $INFO_META_HTTP />," \
-  -e "/=meta=DC[.]DCMIType /s,=meta=$V7, <meta $INFO_META_TYPE_SCHEME />," \
-  -e "/=meta=DC[.]type Collection$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Dataset$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Event$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Image$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Service$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Software$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Sound$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]type Text$/s,=meta=$V8, <meta $INFO_META_DCMI />," \
-  -e "/=meta=DC[.]date[.].*[+]/s,=meta=$V8, <meta $INFO_META_NAME />," \
-  -e "/=meta=DC[.]date[.].*[:]/s,=meta=$V8, <meta $INFO_META_NAME_TZ />," \
-  -e "/=meta=/s,=meta=$V8, <meta $INFO_META_NAME />," \
+  -e "/<$Q'meta'>HTTP[.]/s,<$Q'meta'>$V6, <meta $DATA_META_HTTP />," \
+  -e "/<$Q'meta'>DC[.]DCMIType /s,<$Q'meta'>$V7, <meta $DATA_META_TYPE_SCHEME />," \
+  -e "/<$Q'meta'>DC[.]type Collection$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Dataset$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Event$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Image$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Service$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Software$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Sound$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]type Text$/s,<$Q'meta'>$V8, <meta $DATA_META_DCMI />," \
+  -e "/<$Q'meta'>DC[.]date[.].*[+]/s,<$Q'meta'>$V8, <meta $DATA_META_NAME />," \
+  -e "/<$Q'meta'>DC[.]date[.].*[:]/s,<$Q'meta'>$V8, <meta $DATA_META_NAME_TZ />," \
+  -e "/<$Q'meta'>/s,<$Q'meta'>$V8, <meta $DATA_META_NAME />," \
   -e "/<meta name=\"[^\"]*\" content=\"\" /d" \
   -e "/<meta http-equiv=\"[^\"]*\" content=\"\" /d" \
-  -e "/^=/d" -e "/^<!/d" $INP # $++
+  -e "/^<$Q/d" -e "/^<!/d" $INP # $++
 }
 
 info_get_entry () # get the first <!--vars--> value known so far
 {
   TXT="$1" ; test ".$TXT" = "." && TXT="sect"
-  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
-  $SED -e "/=text=$TXT /!d" -e "s/=text=$TXT //" -e "q" $INP # $++
+  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$DATA"
+  $SED -e "/<$Q'text'>$TXT /!d" \
+       -e "s|<$Q'text'>$TXT ||" -e "s|<$QX>||" -e "q" $INP # $++
 }
 
 info1grep () # test for a <!--vars--> substition to be already present
 {
   TXT="$1" ; test ".$TXT" = "." && TXT="sect"
-  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$INFO"
-  $GREP "^=text=$TXT " $INP >$NULL
+  INP="$2" ; test ".$INP" = "." && INP="$tmp/$F.$DATA"
+  $GREP "^<$Q'text'>$TXT " $INP >$NULL
   return $?
 }
 
 dx_init()
 {
     mkpathdir "$tmp"
-    dx_meta formatter `basename $opt_formatter` > "$tmp/$F.$INFO"
+    dx_meta formatter `basename $opt_formatter` > "$tmp/$F.$DATA"
     for opt in $opt_variables ; do case "$opt" in # commandline --def=value
       *_*) op_=`echo "$opt" | sed -e "y/_/-/"`    # makes for <!--$def-->
            dx_meta "$op_" `eval echo "\\\$opt_$opt"` ;; 
@@ -602,7 +552,7 @@ dx_init()
 
 dx_line ()
 {
-    echo "$1$2 "`trimmm "$3"` >> "$tmp/$F.$INFO"
+    echo "<$Q$1>$2 "`trimmm "$3"`"<$QX>" >> "$tmp/$F.$DATA"
 }
 
 DX_line ()
@@ -613,7 +563,7 @@ DX_line ()
 
 dx_text ()
 {
-    dx_line "=text=" "$1" "$2"
+    dx_line "'text'" "$1" "$2"
 }
 
 DX_text ()   # add a <!--vars--> substition includings format variants
@@ -622,13 +572,13 @@ DX_text ()   # add a <!--vars--> substition includings format variants
   if test ".$N" != "." ; then
     if test ".$T" != "." ; then
       text=`echo "$T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      dx_line "=text=" "$N" "$T"
-      dx_line "=name=" "$N" "$text"
+      dx_line "'text'" "$N" "$T"
+      dx_line "'name'" "$N" "$text"
       varname=`echo "$N" | $SED -e 's/.*[.]//'`    # cut out front part
       if test ".$N" != ".$varname" ; then 
       text=`echo "$varname $T" | $SED -e "y/$UPPER/$LOWER/" -e "s/<[^<>]*>//g"`
-      dx_line "=Text=" "$varname" "$T"
-      dx_line "=Name=" "$varname" "$text"
+      dx_line "'Text'" "$varname" "$T"
+      dx_line "'Name'" "$varname" "$text"
       fi
     fi
   fi
@@ -636,25 +586,25 @@ DX_text ()   # add a <!--vars--> substition includings format variants
 
 dx_meta ()
 {
-    DX_line "=meta=" "$1" "$2"
+    DX_line "'meta'" "$1" "$2"
 }
 
 DX_meta ()  # add simple meta entry and its <!--vars--> subsitution
 {
-    DX_line "=meta=" "$1" "$2"
+    DX_line "'meta'" "$1" "$2"
     DX_text "$1" "$2"
 }
 
 DC_meta ()   # add new DC.meta entry plus two <!--vars--> substitutions
 {
-    DX_line "=meta=" "DC.$1" "$2"
+    DX_line "'meta'" "DC.$1" "$2"
     DX_text "DC.$1" "$2"
     DX_text "$1" "$2"
 }
 
 HTTP_meta ()   # add new HTTP.meta entry plus two <!--vars--> substitutions
 {
-    DX_line "=meta=" "HTTP.$1" "$2"
+    DX_line "'meta'" "HTTP.$1" "$2"
     DX_text "HTTP.$1" "$2"
     DX_text "$1" "$2"
 }
@@ -715,18 +665,18 @@ DC_publisher ()        # make sure there is this DC.publisher meta tag
 
 DC_modified ()         # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
-   Q="$1" # target file
+   ZZ="$1" # target file
    if info1grep DC.date.modified ; then :
    else
       _42_chars="........................................."
       cut_42_55="s/^$_42_chars\\(.............\\).*/\\1/" # i.e.`cut -b 42-55`
-      text=`$STAT_R $Q 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
+      text=`$STAT_R $ZZ 2>$NULL | $SED -e '/odify:/!d' -e 's|.*fy:||' -e q`
       text=`echo "$text" | $SED -e "s/:..[.][$NN]*//"`
       text=`trimm "$text"`
       test ".$text" = "." && \
-      text=`$DATE_R "$Q" +%Y-%m-%d 2>$NULL`   # GNU sed
+      text=`$DATE_R "$ZZ" +%Y-%m-%d 2>$NULL`   # GNU sed
       test ".$text" = "." && 
-      text=`$LS_L "$Q" | $SED -e "$cut_42_55" -e "s/^ *//g" -e "q"`
+      text=`$LS_L "$ZZ" | $SED -e "$cut_42_55" -e "s/^ *//g" -e "q"`
       text=`echo "$text" | $SED -e "s/[$NN]*:.*//"` # cut way seconds
       DC_meta date.modified `trimm "$text"`
    fi
@@ -734,26 +684,26 @@ DC_modified ()         # make sure there is a DC.date.modified meta tag
 
 DC_date ()             # make sure there is this DC.date meta tag
 {                      # choose from one of the available DC.date.* specials
-   Q="$1" # source file
+   ZZ="$1" # source file
    if info1grep DC.date 
    then DX_text issue "dated `info_get_entry DC.date`"
         DX_text updated     "`info_get_entry DC.date`"
    else text=""
       for kind in available issued modified created ; do
         text=`info_get_entry DC.date.$kind` 
-      # test ".$text" != "." && echo "$kind = date = $text ($Q)"
+      # test ".$text" != "." && echo "$kind = date = $text ($ZZ)"
         test ".$text" != "." && break
       done
       if test ".$text" = "." ; then
         M="date"
-        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $Q`
+        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $ZZ`
 	part=`trimm "$part"`
         text=`echo "$part" | $SED -e "s|^[$AA]*:||"`
 	text=`trimm "$text"`
       fi
       if test ".$text" = "." ; then 
         M="!--date:*=*--" # takeover updateable variable...
-        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</.*||" -e q $Q`
+        part=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</.*||" -e q $ZZ`
 	part=`trimm "$part"`
         text=`echo "$part" | $SED -e "s|^[$AA]*:||" -e "s|\\&.*||"`
 	text=`trimm "$text"`
@@ -782,18 +732,18 @@ DC_title ()
 {
    # choose a title for the document, either an explicit title-tag
    # or one of the section headers in the document or fallback to filename
-   Q="$1" # target file
+   ZZ="$1" # target file
    if info1grep DC.title ; then :
    else
       for M in TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6 ; do
-        text=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $Q`
+        text=`$SED -e "/<$M>/!d" -e "s|.*<$M>||" -e "s|</$M>.*||" -e q $ZZ`
 	text=`trimm "$text"` ; test ".$text" != "." && break
         MM="$M [^<>]*"
-        text=`$SED -e "/<$MM>/!d" -e "s|.*<$MM>||" -e "s|</$M>.*||" -e q $Q`
+        text=`$SED -e "/<$MM>/!d" -e "s|.*<$MM>||" -e "s|</$M>.*||" -e q $ZZ`
 	text=`trimm "$text"` ; test ".$text" != "." && break
       done
       if test ".text" = "." ; then
-	text=`basename $Q .html`
+	text=`basename $ZZ .html`
         text=`basename $text .htm | $SED -e 'y/_/ /' -e "s/\\$/ info/"`
       fi
       term=`echo "$text" | $SED -e 's/.*[(]//' -e 's/[)].*//'`
@@ -809,7 +759,9 @@ DC_title ()
 site_get_section () # return parent section page of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=sect=$_F_ /!d" -e "s/^=sect=$_F_ //" -e q "$MK_INFO" # $++
+   $SED -e "/^<$Q'sect'>$_F_ /!d" \
+        -e "s|^<$Q'sect'>$_F_ ||" -e "s|<$QX>||" \
+        -e q "$MK_DATA" # $++
 }
 
 DC_section () # not really a DC relation (shall we use isPartOf ?) 
@@ -828,7 +780,9 @@ info_get_entry_section()
 site_get_selected ()  # return section of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/=use.=$_F_ /!d" -e "s/=use.=[^ ]* //" -e q "$MK_INFO" # $++
+   $SED -e "/<$Q'use.'>$_F_ /!d" \
+        -e "s|<$Q'use.'>[^ ]* ||" -e "s|<$QX>||" \
+        -e q "$MK_DATA" # $++
 }
 
 DC_selected () # not really a DC title (shall we use alternative ?)
@@ -847,27 +801,33 @@ info_get_entry_selected ()
 
 site_get_rootsections () # return all sections from root of nav tree
 {
-   $SED -e "/=use1=/!d" -e "s/=use.=\\([^ ]*\\) .*/\\1/" "$MK_INFO" # $++
+   $SED -e "/^<$Q'use1'>/!d" \
+        -e "s|^<$Q'use.'>\\([^ ]*\\) .*|\\1|" "$MK_DATA" # $++
 }
 
 site_get_sectionpages () # return all children pages in the given section
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=sect=[^ ]* $_F_\$/!d" -e "s/^=sect=//" \
-        -e "s/ .*//" "$MK_INFO" # $++
+   $SED -e "/^<$Q'sect'>[^ ]* $_F_<[^<>]*>\$/!d" \
+        -e "s|^<$Q'sect'>||" -e "s|<$QX>||" \
+        -e "s/ .*//" "$MK_DATA" # $++
 }
 
 site_get_subpages () # return all page children of given page
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=node=[^ ]* $_F_\$/!d" -e "s/^=node=//" -e "s/ .*//" "$MK_INFO"
+   $SED -e "/^<$Q'node'>[^ ]* $_F_<[^<>]*>\$/!d" \
+        -e "s|^<$Q'node'>||" -e "s|<$QX>||" \
+        -e "s/ .*//" "$MK_DATA"
    # $++
 }
 
 site_get_parentpage () # return parent page for given page (".." for sections)
 {
    _F_=`sed_slash_key "$1"`
-   $SED -e "/^=node=$_F_ /!d" -e "s/^=node=[^ ]* //" -e "q" "$MK_INFO"  # $++
+   $SED -e "/^<$Q'node'>$_F_ /!d" \
+        -e "s|^<$Q'node'>[^ ]* ||" -e "s|<$QX>||" \
+        -e "q" "$MK_DATA"  # $++
 }
 
 DX_alternative ()        # detect wether page asks for alternative style
@@ -940,61 +900,62 @@ make_fast () # experimental - make a FAST file that can be applied
     fi
 }
 
-# ============================================================== SITE MAP INFO
+# ============================================================== SITE MAP DATA
 # each entry needs atleast a list-title, a long-title, and a list-date
 # these are the basic information to be printed in the sitemap file
 # where it is bound the hierarchy of sect/subsect of the entries.
 
 site_map_list_title() # $file $text
 {
-    echo "=list=$1 $2" >> "$MK_INFO"
+    echo "<$Q'list'>$1 $2<$QX>" >> "$MK_DATA"
 }
 info_map_list_title() # $file $text
 {
-    echo "=list=$2" >> "$tmp/$1.$INFO"
+    echo "<$Q'list'>$2<$QX>" >> "$tmp/$1.$DATA"
 }
 site_map_long_title() # $file $text
 {
-    echo "=long=$1 $2" >> "$MK_INFO"
+    echo "<$Q'long'>$1 $2<$QX>" >> "$MK_DATA"
 }
 info_map_long_title() # $file $text
 {
-    echo "=long=$2" >> "$tmp/$1.$INFO"
+    echo "<$Q'long'>$2<$QX>" >> "$tmp/$1.$DATA"
 }
 site_map_list_date() # $file $text
 {
-    echo "=date=$1 $2" >> "$MK_INFO"
+    echo "<$Q'date'>$1 $2<$QX>" >> "$MK_DATA"
 }
 info_map_list_date() # $file $text
 {
-    echo "=date=$2" >> "$tmp/$1.$INFO"
+    echo "<$Q'date'>$2<$QX>" >> "$tmp/$1.$DATA"
 }
 
 siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
 {                    # the resulting script will act on each item/line
                      # containing <!--"filename"--> and expand any following
                      # reference of <!--name--> or <!--date--> or <!--long-->
-  INP="$1" ; test ".$INP" = "." && INP="$MK_INFO"
+  INP="$1" ; test ".$INP" = "." && INP="$MK_DATA"
   _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
   _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
   _long_="s|<!--\"\\1\"-->.*<!--long-->|\\&<long>\\2</long>|"
   $SED -e "s:&:\\\\&:g" \
-       -e "s:=list=\\([^ ]*\\) \\(.*\\):$_list_:" \
-       -e "s:=date=\\([^ ]*\\) \\(.*\\):$_date_:" \
-       -e "s:=long=\\([^ ]*\\) \\(.*\\):$_long_:" \
+       -e "s:<$Q'list'>\\([^ ]*\\) \\(.*\\)<$QX>:$_list_:" \
+       -e "s:<$Q'date'>\\([^ ]*\\) \\(.*\\)<$QX>:$_date_:" \
+       -e "s:<$Q'long'>\\([^ ]*\\) \\(.*\\)<$QX>:$_long_:" \
        -e "/^s|/!d" $INP # $++
 }
 
 make_multisitemap ()
 {  # each category gets its own column along with the usual entries
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
   _form_="<!--\"\\2\"--><!--use\\1--><!--long--><!--end\\1-->"
   _form_="$_form_<br><!--name--><!--date-->"
   _tiny_="small><small><small" ; _tinyX_="small></small></small "
   _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
   echo "<table width=\"100%\"><tr><td> " # $++
-  $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
+  $SED -e "/^<$Q'use.'>/!d" \
+       -e "s|^<$Q'use\\(.\\)'>\\([^ ]*\\) .*|$_form_|" \
        -f "$MK_SITE" -e "/<name/!d" \
        -e "s|<!--use1-->|</td><td valign=\"top\"><b>|" \
        -e "s|<!--end1-->|</b>|"  \
@@ -1009,12 +970,13 @@ make_multisitemap ()
 
 make_listsitemap ()
 {   # traditional - the body contains a list with date and title extras
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
    _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
    _tabb_="<td>\\&nbsp\\;</td>" 
    echo "<table cellspacing=\"0\" cellpadding=\"0\">" # $++
-   $SED -e "/=use.=/!d" -e "s|=use\\(.\\)=\\([^ ]*\\) .*|$_form_|" \
+   $SED -e "/^<$Q'use.'>/!d" \
+        -e "s|^<$Q'use\\(.\\)'>\\([^ ]*\\) .*|$_form_|" \
         -f "$MK_SITE" -e "/<name/!d" \
         -e "s|<!--use\\(1\\)-->|<tr class=\"listsitemap\\1\"><td>*</td>|" \
         -e "s|<!--use\\(2\\)-->|<tr class=\"listsitemap\\1\"><td>-</td>|" \
@@ -1026,8 +988,8 @@ make_listsitemap ()
         -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
         -e "s|<long>|<td><em>|" -e "s|</long>|</em></td></tr>|" \
         $INPUTS             # $++
-   for xx in `grep "=use.=name:sitemap:" $INPUTS` ; do
-       xx=`echo $xx | sed -e "s/=use.=name:sitemap://"`
+   for xx in `grep "^<$Q'use.'>name:sitemap:" $INPUTS` ; do
+       xx=`echo $xx | sed -e "s/^<$Q'use.'>name:sitemap://" -e "s|<$QX>||"` 
        if test -f "$xx" ; then
 	   grep "<tr.class=\"listsitemap[$NN]\">" $xx # $++
        fi
@@ -1166,10 +1128,14 @@ make_subpage_entry ()
 make_printsitefile ()
 {
    # building the printsitefile looks big but its really a loop over sects
-   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_INFO"
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
-   make_printsitefile_head $SITEFILE # $++
+   if test -d DEBUG &&  test -f "$MK_SITE" 
+       then FFFF=`echo "$F" | sed -e "s,/,:,g"`
+       cp "$MK_DATA" "DEBUG/$FFFF.SITE.tmp.sed"
+   fi
 
+   make_printsitefile_head $SITEFILE # $++
    sep=" - "
    _sect1="<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep"
    _sect2="<a href=\"#.\" title=\"topics\">$printsitefile_img_2</a> ||$sep"
@@ -1306,7 +1272,7 @@ css_xmltags () # $SOURCEFILE
    cat "$S" | $SED -e "s|>[^<>]*<|><|g" -e "s|^[^<>]*<|<|" \
                    -e "s|>[^<>]*\$|>|"  -e "s|<|\\n|g" \
             | $SED -e "/^\\//d" -e "/^ *\$/d" -e "/>/!d" -e "s|>.*||" \
-            | sort | uniq > "$tmp/$MK.$X.xmltags.tmp"
+            | sort | uniq > "$tmp/$MK.$X.xmltags.tmp.txt"
 }
 
 css_xmlstyles () # $SOURCEFILE
@@ -1318,32 +1284,34 @@ css_xmlstyles () # $SOURCEFILE
        -e "s|<link  *rel=['\"]*stylesheet|<?xml-stylesheet |" \
        -e "/<.xml-stylesheet/!d" -e "/href/!N" -e "/href/!N" \
        -e "s|^.*<.xml-stylesheet||" -e 's|^.*href="||' -e 's|".*||' \
-       | sort | uniq > "$tmp/$MK.$X.xmlstylesheets.tmp"
+       | sort | uniq > "$tmp/$MK.$X.xmlstylesheets.tmp.txt"
 }
 
 css_xmlstyles_sed () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   S="$tmp/$MK.$X.xmltags.tmp"
-   R="$tmp/$MK.$X.xmltags.sed.tmp"
+   S="$tmp/$MK.$X.xmltags.tmp.txt"
+   R="$tmp/$MK.$X.xmltags.tmp.sed"
    rm -f "$R"
    {
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
       echo "s|\\r||g"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
 	 xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
+         _xmltag=`sed_slash_key "$xmltag"`
          if echo " title section " | grep " $xmltag " > /dev/null ; then
 	    test "$xmltag" = "section" && continue;
-            echo "/^ *$xmltag *[,\\n{]/bfound" >> "$R"
-            echo "/[,\\n] *$xmltag *[,\\n{]/bfound" >> "$R"
+            echo "/^ *$_xmltag *[,\\n{]/bfound" >> "$R"
+            echo "/[,\\n] *$_xmltag *[,\\n{]/bfound" >> "$R"
             $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmlparent ; do
 	       xmlparent=`echo "$xmlparent" | sed -e "s/ .*//"`
-               echo "/^ *$xmlparent  *$xmltag *[,\\n{]/bfound"
-               echo "/[ ,\\n] *$xmlparent  *$xmltag *[,\\n{]/bfound"
+               _xmlparent=`sed_slash_key "$xmlparent"`
+               echo "/^ *$_xmlparent  *$_xmltag *[,\\n{]/bfound"
+               echo "/[ ,\\n] *$_xmlparent  *$_xmltag *[,\\n{]/bfound"
             done }
          else
-            echo "/^ *$xmltag *[ ,\\n{]/bfound"
-            echo "/[ ,\\n] *$xmltag *[ ,\\n{]/bfound"
+            echo "/^ *$_xmltag *[ ,\\n{]/bfound"
+            echo "/[ ,\\n] *$_xmltag *[ ,\\n{]/bfound"
          fi
       done }
       echo "d" ; echo ":found" 
@@ -1353,8 +1321,8 @@ css_xmlstyles_sed () # $SOURCEFILE
          if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
            continue # keep html tags
          fi
-         echo "s/^\\( *\\)\\($xmltag *[ ,\\n{]\\)/\\1.\\2/g"
-         echo "s/\\([ ,\\n] *\\)\\($xmltag *[ ,\\n{]\\)/\\1.\\2/g"
+         echo "s|^\\( *\\)\\($xmltag *[ ,\\n{]\\)|\\1.\\2|g"
+         echo "s|\\([ ,\\n] *\\)\\($xmltag *[ ,\\n{]\\)|\\1.\\2|g"
       done }          
    } > "$R"
 }
@@ -1362,10 +1330,10 @@ css_xmlstyles_sed () # $SOURCEFILE
 css_xmltags_css () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   S="$tmp/$MK.$X.xmltags.sed.tmp"
-   R="$tmp/$MK.$X.xmltags.css.tmp"
+   S="$tmp/$MK.$X.xmltags.tmp.sed"
+   R="$tmp/$MK.$X.xmltags.tmp.css"
    {
-      cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+      cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read xmlstylesheet ; do
          stylesheet=`css_sourcefile "$xmlstylesheet"`
          if test -f "$stylesheet" ; then
             echo "/* $xmlstylesheet */"
@@ -1380,14 +1348,15 @@ css_xmltags_css () # $SOURCEFILE
 css_xmlmapping_sed () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   S="$tmp/$MK.$X.xmltags.tmp"
-   R="$tmp/$MK.$X.xmlmapping.sed.tmp"
+   S="$tmp/$MK.$X.xmltags.tmp.txt"
+   R="$tmp/$MK.$X.xmlmapping.tmp.sed"
    rm -f "$R"
    {
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/d" ; echo "/{/!N" ; done
       echo "s|\\r||g"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
          xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
+	 xmltag=`sed_slash_key "$xmltag"`
          echo "/^ *\\.$xmltag *[ ,\\n{]/bfound"
          echo "/[ ,\\n] *\\.$xmltag *[,\\n{]/bfound"
       done }
@@ -1411,8 +1380,8 @@ css_xmlmapping_sed () # $SOURCEFILE
       echo "/^div>>.*[\\n ]margin-left *: *[$NN]/s|^.*>>|blockquote>>|"
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
          xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
-         echo "s/^\\(.*\\)>> *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
-         echo "s/^\\(.*\\)>>.*[ ,\\n] *\\.$xmltag *[ ,\\n{].*/\\1 .$xmltag/"
+         echo "s|^\\(.*\\)>> *\\.$xmltag *[ ,\\n{].*|\\1 .$xmltag|"
+         echo "s|^\\(.*\\)>>.*[ ,\\n] *\\.$xmltag *[ ,\\n{].*|\\1 .$xmltag|"
       done }
       echo "s/^div \\.para\$/p .para/"
       echo "s/^span \\.ulink\$/a .ulink/"
@@ -1422,9 +1391,9 @@ css_xmlmapping_sed () # $SOURCEFILE
 css_xmlmapping () # $SOURCEFILE
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   cat     "$tmp/$MK.$X.xmltags.css.tmp" | \
-   $SED -f "$tmp/$MK.$X.xmlmapping.sed.tmp" \
-         > "$tmp/$MK.$X.xmlmapping.tmp"
+   cat     "$tmp/$MK.$X.xmltags.tmp.css" | \
+   $SED -f "$tmp/$MK.$X.xmlmapping.tmp.sed" \
+         > "$tmp/$MK.$X.xmlmapping.tmp.txt"
 }
 
 css_scan() # $SOURCEFILE
@@ -1440,8 +1409,8 @@ css_scan() # $SOURCEFILE
 tags2span_sed() # $SOURCEFILE > $++
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   S="$tmp/$MK.$X.xmltags.tmp"
-   R="$tmp/$MK.$X.xmltags.css.tmp"
+   S="$tmp/$MK.$X.xmltags.tmp.txt"
+   R="$tmp/$MK.$X.xmltags.tmp.css"
    echo "s|<[?]xml-stylesheet[^<>]*[?]>||"
    echo "s|<link  *rel=['\"]*stylesheet[^<>]*>||"
    echo "s|<section[^<>]*>||g"
@@ -1451,14 +1420,16 @@ tags2span_sed() # $SOURCEFILE > $++
       if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
         continue # keep html tags
       fi
-      _span_=`$SED -e "/ \\.$xmltag\$/!d" -e "s/ .*//" -e q \
-                  < "$tmp/$MK.$X.xmlmapping.tmp"`
+      _xmltag=`sed_slash_key "$xmltag"`
+      _span_=`$SED -e "/ \\.$_xmltag\$/!d" -e "s/ .*//" -e q \
+                  < "$tmp/$MK.$X.xmlmapping.tmp.txt"`
       test ".$_span_" = "." && _span_="span"
+      _xmltag=`sed_piped_key "$xmltag"`
       echo "s|<$xmltag\\([\\n\\t ][^<>]*\\)url=|<$_span_ class=\"$xmltag\"\\1href=|g"
       echo "s|<$xmltag\\([\\n\\t >]\\)|<$_span_ class=\"$xmltag\"\\1|g"
       echo "s|</$xmltag\\([\\n\\t >]\\)|</$_span_\\1|g"
    done }   
-   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read xmlstylesheet ; do
       if test -f "$xmlstylesheet" ; then
          R="[^<>]*href=['"'"'"]$xmlstylesheet['"'"'"][^<>]*"
          echo "s|<[?]xml-stylesheet$R>||"
@@ -1470,9 +1441,9 @@ tags2span_sed() # $SOURCEFILE > $++
 tags2meta_sed() # $SOURCEFILE > $++
 {
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
-   S="$tmp/$MK.$X.xmlstylesheets.tmp"
-   R="$tmp/$MK.$X.xmltags.css.tmp"
-   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read xmlstylesheet ; do
+   S="$tmp/$MK.$X.xmlstylesheets.tmp.txt"
+   R="$tmp/$MK.$X.xmltags.tmp.css"
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read xmlstylesheet ; do
       if test -f "$xmlstylesheet" ; then
          echo " <style type=\"text/css\"><!--"
          $SED -e "s/^/  /" < "$R"
@@ -1493,7 +1464,7 @@ tags2meta_sed() # $SOURCEFILE > $++
 
 scan_xml_rootnode ()
 {
-  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
+  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$DATA"
   rootnode=`cat "$SOURCEFILE" | \
      $SED -e "/<[$AZ$az$NN]/!d" -e "s/<\\([$AZ$az$NN]*\\).*/\\1/" -e q`  
   echo "<!root $F>$rootnode" >> "$INF"
@@ -1501,7 +1472,7 @@ scan_xml_rootnode ()
 
 get_xml_rootnode ()
 {
-  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$INFO"
+  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$DATA"
   _file_=`sed_slash_key "$F"`
   $SED -e "/^<!root $_file_>/!d" -e "s|^.*>||" -e q "$INF" # +
 }
@@ -1543,7 +1514,7 @@ make_xmlfile()
         > "$F"
    echo  '   "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">' \
        >> "$F"
-   cat "$tmp/$MK.$X.xmlstylesheets.tmp" | { while read stylesheet ; do
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read stylesheet ; do
        echo "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\" ?>" \
            >> "$F"
    done }
@@ -1689,6 +1660,8 @@ echo_br_EM_PP ()
     echo "/^$S$2$3*<a href=/s/^/$4/"
     echo "/^$2<>$3*<a href=/s/^/$4/"
     echo "/^$2$S$3*<a href=/s/^/$4/"
+    echo "/^$2$3*<><a href=/s/^/$4/"
+    echo "/^$2$3*$S<a href=/s/^/$4/"
 }    
 
 echo_HR_PP ()
@@ -1758,16 +1731,19 @@ make_sitemap_init()
     echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> "$MK_GETS"
     echo_sp_PP                      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
     echo_sp_sp                      "$q3"    "<!--sect9-->"     >> "$MK_GETS"
+    echo_sp_sp    "<br>"                     "<!--sect9-->"     >> "$MK_GETS"
     $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
 }
 
-_uses_="=use\\1=\\2 \\3" ; _name_="=use\\1=name:\\2 \\3" ; 
-_getW_="<!--sect\\([$NN]\\)-->"
-_getX_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*"
-_getY_="<!--sect\\([$NN]\\)--><[^<>]*>[^<>]*<[^<>]*>[^<>]*"
+_uses_="<$Q'use\\1'>\\2 \\3<$QX>" 
+_name_="<$Q'use\\1'>name:\\2 \\3<$QX>" ; 
+_getW_="<!--sect\\([$NN]\\)-->[^<>]*"
+_getX_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*"
+_getY_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*"
+_getZ_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*"
 
 make_sitemap_list()
 {
@@ -1775,51 +1751,67 @@ make_sitemap_list()
     $SED -f "$MK_GETS"           -e "/^<!--sect[$NN]-->/!d" \
 	-e "s|^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
+	-e "s|^$_getZ_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|^$_getW_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "s|^$_getX_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "s|^$_getY_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "/^=....=/!d" -e "/^<!/d"   "$SITEFILE" > "$MK_INFO"
+	-e "s|^$_getZ_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
+	-e "/^<$Q/!d" -e "/^<!/d"   "$SITEFILE" > "$MK_DATA"
 }
 
 make_sitemap_sect() 
 {
-    # scan used pages and store prime section group relation =sect= and =node=
-    # (A) each "use1" creates "=sect=href+ href1" for all following non-"use1"
-    # (B) each "use1" creates "=node=href2 href1" for all following "use2"
-    $SED -e "/=use.=/!d" \
-	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "s/=use.=\\([^ ]*\\) .*/=sect=\\1/" \
-	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
-    $SED -e "/=use.=/!d" \
-	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use[13456789]=/d" \
-	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
-	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
+    # scan used pages and store prime section group relation 'sect' and 'node'
+    # (A) each "use1" creates "'sect'>href+ href1" for all following non-"use1"
+    # (B) each "use1" creates "'node'>href2 href1" for all following "use2"
+    $SED -e "/^<$Q'use.'>/!d" \
+         -e "/^<$Q'use1'>/{" \
+           -e "h" -e "s|^<$Q'use1'>\\([^ ]*\\) .*|\\1|" \
+           -e "x" -e "}" \
+         -e "s|^<$Q'use.'>\\([^ ]*\\) .*|<$Q'sect'>\\1|" \
+         -e G -e "s|\\n| |" -e "s|\$|<$QX>|" "$MK_DATA" >> "$MK_DATA"
+    $SED -e "/^<$Q'use.'>/!d" \
+         -e "/^<$Q'use1'>/{" \
+           -e "h" -e "s|^<$Q'use1'>\\([^ ]*\\) .*|\\1|" \
+           -e "x" -e "}" \
+         -e "/^<$Q'use[13456789]'>/d" \
+         -e "s|<$Q'use.'>\\([^ ]*\\) .*|<$Q'node'>\\1|" \
+         -e G -e "s|\\n| |" -e "s|\$|<$QX>|" "$MK_DATA" >> "$MK_DATA"
 }
 
 make_sitemap_page()
 {
-    # scan used pages and store secondary group relation =page= and =node=
-    # the parenting =node= for use3 is usually a use2 (or use1 if none there)
-    $SED -e "/=use.=/!d" \
-	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use[1]=/d" \
-	-e "s/=use.=\\([^ ]*\\) .*/=page=\\1/" \
-	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
-    $SED -e "/=use.=/!d" \
-	-e "/=use1=/{" -e "h" -e "s:=use1=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use2=/{" -e "h" -e "s:=use2=\\([^ ]*\\) .*:\\1:" -e "x" -e "}" \
-	-e "/=use[12456789]=/d" \
-	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1/" \
-	-e G -e "s:\\n: :" "$MK_INFO" >> "$MK_INFO"
+    # scan used pages and store secondary group relation 'page' and 'node'
+    # the parenting 'node' for use3 is usually a use2 (or use1 if none there)
+    $SED -e "/^<$Q'use.'>/!d" \
+         -e "/^<$Q'use1'>/{" \
+            -e "h" -e "s|^<$Q'use1'>\\([^ ]*\\) .*|\\1|" \
+            -e "x" -e "}" \
+         -e "/^<$Q'use2'>/{" \
+            -e "h" -e "s|^<$Q'use2'>\\([^ ]*\\) .*|\\1|" \
+            -e "x" -e "}" \
+         -e "/^<$Q'use1'>/d" \
+         -e "s|^<$Q'use.'>\\([^ ]*\\) .*|<$Q'page'>\\1<$QX>|" \
+         -e G -e "s|\\n| |" "$MK_DATA" >> "$MK_DATA"
+    $SED -e "/^<$Q'use.'>/!d" \
+         -e "/^<$Q'use1'>/{" \
+            -e "h" -e "s|^<$Q'use1'>\\([^ ]*\\) .*|\\1|" \
+            -e "x" -e "}" \
+         -e "/^<$Q'use2'>/{" \
+            -e "h" -e "s|^<$Q'use2'>\\([^ ]*\\) .*|\\1|" \
+            -e "x" -e "}" \
+         -e "/^<$Q'use[12456789]'>/d" \
+         -e "s|^<$Q'use.'>\\([^ ]*\\) .*|<$Q'node'>\\1<$QX>|" \
+         -e G -e "s|\\n| |" "$MK_DATA" >> "$MK_DATA"
     # and for the root sections we register ".." as the parenting group
-    $SED -e "/=use1=/!d" \
-	-e "s/=use.=\\([^ ]*\\) .*/=node=\\1 ../"  "$MK_INFO" >> "$MK_INFO"
+    $SED -e "/^<$Q'use1'>/!d" \
+         -e "s|^<$Q'use.'>\\([^ ]*\\) .*|<$Q'node'>\\1 ..<$QX>|"  "$MK_DATA" >> "$MK_DATA"
 }
+
 echo_site_filelist()
 {
-    $SED -e "/=use.=/!d" -e "s/=use.=//" -e "s/ .*//" "$MK_INFO"
+    $SED -e "/^<$Q'use.'>/!d" \
+         -e "s|^<$Q'use.'>||" -e "s| .*||" "$MK_DATA"
 }
 
 # ==========================================================================
@@ -1960,16 +1952,22 @@ head_sed_multisection() # $filename $section
    FF=`sed_slash_key "$1"`
    SECTION=`sed_slash_key "$2"`
    SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
-   # grep all pages with a =sect= relation to current $SECTION and
+   # grep all pages with a class='sect' relation to current $SECTION and
    # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
    # after that all the (still) numeric SECTNs are deactivated / killed.
    for section in $SECTION $headsection $tailsection ; do
        test ".$section" = ".no" && continue
-   $SED -e "/^=sect=[^ ]* $section/!d" \
-        -e "s, .*,\"\\\\)|<!--sectX-->\\\\1|,"  \
-        -e "s,^=sect=,s|^$SECTS\\\\(.*<a href=\"," "$MK_INFO"  # $++
+   $SED -e "/^<$Q'sect'>[^ ]* $section/!d" \
+        -e "s|<$Q'sect'>||" -e "s| .*||" \
+        -e "s/.*/s|^$SECTS\\\\(.*<a href=\"&\"\\\\)|<!--sectX-->\\\\1|/" \
+        "$MK_DATA"  # $++
+   $SED -e "/^<$Q'sect'>name:[^ ]* $section/!d" \
+        -e "s|<$Q'sect'>name:||" -e "s| .*||" \
+        -e "s/.*/s|^$SECTS\\\\(.*<a name=\"&\"\\\\)|<!--sectX-->\\\\1|/" \
+        "$MK_DATA"  # $++
    done
    echo "s|^$SECTN[^ ]*\\(<a href=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
+   echo "s|^$SECTN[^ ]*\\(<a name=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
    echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          # $++
    echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   # $++
    test ".$sectiontab" != ".no" && \
@@ -1984,9 +1982,6 @@ make_sitefile () # "$F"
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
    info2vars_sed > $MK_VARS           # have <!--title--> vars substituted
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
-   if test ".$simplevars" = ".warn" ; then
-   info2test_sed > $MK_TEST           # check <!--title--> vars old-style
-   $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi
    F_HEAD="$tmp/$F.$HEAD" ; F_FOOT="$tmp/$F.$FOOT"
    $CAT "$MK_PUTS"                                    > "$F_HEAD"
    head_sed_sitemap "$F" "`info_get_entry_section`"  >> "$F_HEAD"
@@ -2022,9 +2017,6 @@ make_htmlfile() # "$F"
    info2meta_sed > $MK_META           # add <meta name="DC.title"> values
    tags2span_sed > $MK_SPAN           # extern text/css -> intern css classes
    tags2meta_sed >>$MK_META           # extern text/css -> intern css classes
-   if test ".$simplevars" = ".warn" ; then
-   info2test_sed > $MK_TEST           # check <!--title--> vars old-style
-   $SED_LONGSCRIPT "$MK_TEST" "$SOURCEFILE" | tee -a "$MK_OLDS" ; fi
    F_HEAD="$tmp/$F.$HEAD" ; F_BODY="$tmp/$F.$BODY" ; F_FOOT="$tmp/$F.$FOOT"
    $CAT "$MK_PUTS"                        > "$F_HEAD"
    case "$sectionlayout" in
@@ -2107,6 +2099,11 @@ make_sitemap_list
 make_sitemap_sect
 make_sitemap_page
 
+if test -d DEBUG &&  test -f "$MK_DATA" 
+then FFFF=`echo "$F" | sed -e "s,/,:,g"`
+    cp "$MK_DATA" "DEBUG/$FFFF.DATA.tmp.htm"
+fi
+
 FILELIST=`echo_site_filelist`
 if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
    for F in $FILELIST; do echo "$F" ; done ; exit # --filelist
@@ -2150,10 +2147,6 @@ if test ".$printerfriendly" != "." ; then           # .......... PRINT VERSION
   make_printsitefile > "$PRINTSITEFILE"
 fi
 
-if test ".$simplevars" = ". " ; then
-mknewfile $MK_OLDS 
-fi
-
 for F in $FILELIST ; do case "$F" in                        #### 2. PASS
 name:*)                    skip_namespec "$F" ;; 
 http:*|*://*)              skip_httpspec "$F" ;;
@@ -2182,32 +2175,21 @@ ${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
 esac
 # .............. debug ....................
    if test -d DEBUG && test -f "./$F" ; then
-      FFFF=`echo "$F" | sed -e s,/,:,g`
-      cp "$tmp/$F.$INFO" DEBUG/$FFFF.info.TMP
-      for P in tags vars span meta page date list html sect info ; do
-      test -f $tmp/$MK.$P.tmp && cp $tmp/$MK.$P.tmp DEBUG/$FFFF.$P.tmp
-      test -f $tmp/$MK.$P.TMP && cp $tmp/$MK.$P.TMP DEBUG/$FFFF.$P.TMP
+      FFFF=`echo "$F" | sed -e "s,/,:,g"`
+      test -f  "$tmp/$F.$DATA" && cp "$tmp/$F.$DATA" DEBUG/$FFFF.data.tmp.htm
+      test -f  "$tmp/$F.$HEAD" && cp "$tmp/$F.$HEAD" DEBUG/$FFFF.head.tmp.sed
+      test -f  "$tmp/$F.$BODY" && cp "$tmp/$F.$BODY" DEBUG/$FFFF.body.tmp.sed
+      test -f  "$tmp/$F.$FOOT" && cp "$tmp/$F.$FOOT" DEBUG/$FFFF.foot.tmp.sed
+      test -f  "$tmp/$F.$FAST" && cp "$tmp/$F.$FAST" DEBUG/$FFFF.fast.tmp.sed
+      for P in tags vars span meta page date list html sect \
+               data head body foot fast          xmlmapping \
+               gets puts site mett sect1 sect2 sect3 style ; do
+      test -f $tmp/$MK.$P.tmp.htm && cp $tmp/$MK.$P.tmp.htm DEBUG/$FFFF.$P.tmp.htm
+      test -f $tmp/$MK.$P.tmp.sed && cp $tmp/$MK.$P.tmp.sed DEBUG/$FFFF.$P.tmp.sed
       done
    fi
 done
 
-if test ".$simplevars" = ".warn" ; then if test -f "$MK_OLDS" ; then
-oldvars=`cat "$MK_OLDS" | wc -l | $SED -e "s/ *//g"`
-if test "$oldvars" = "0" ; then
-echo "HINT: you have no simplevars in your htm sources, so you may want to"
-echo "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE"
-echo "hint: which makes execution _faster_ actually in the 2. pass"
-echo "note: simplevars expansion was the oldstyle way of variable expansion"
-else
-echo "HINT: there were $oldvars simplevars found in your htm sources."
-echo "hint: This style of variable expansion will be disabled in the near"
-echo "hint: future. If you do not want change then add the $SITEFILE magic"
-echo "hint: <!--mksite:simplevars--> somewhere to suppress this warning"
-echo "note: simplevars expansion will be an explicit option in the future."
-echo "note: errornous simplevar detection can be suppressed with a magic"
-echo "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now."
-fi fi fi
-
-rm $tmp/$MK.*.tmp
+rm $tmp/$MK.*.tmp.htm $tmp/$MK.*.tmp.sed $tmp/$MK.*.tmp.css $tmp/$MK.*.tmp.txt
 if test ".$tmp_dir_was_created" != ".no" ; then rm $tmp/* ; rmdir $tmp ; fi
 exit 0

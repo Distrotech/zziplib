@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.38 2006-01-25 03:44:51 guidod Exp $
+# $Id: mksite.pl,v 1.39 2006-04-12 00:32:37 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -37,7 +37,7 @@ $SITEFILE="site.htm"  if not $SITEFILE;
 # my $MK="-mksite";     # note the "-" at the start
 my $SED="sed";
 
-my $INFO="~~";     # extension for meta data files
+my $DATA="~~";     # extension for meta data files
 my $HEAD="~head~"; # extension for head sed script
 my $BODY="~body~"; # extension for body sed script
 my $FOOT="~foot~"; # append to body text (non sed)
@@ -51,6 +51,8 @@ my $AA="_$NN$AZ$az";                              # that makes the resulting
 my $AX="$AA.+-";                                  # script more readable
 
 my $n = "\n";
+my $Q = "q class";
+my $QX = "/q";
 
 # LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 # export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
@@ -159,8 +161,8 @@ my @MK_SITE= (); # "./$MK.site.tmp"
 my @MK_SECT1= (); # "./$MK.sect1.tmp"
 my @MK_SECT2= (); # "./$MK.sect2.tmp"
 my @MK_SECT3= (); # "./$MK.sect3.tmp"
-my @MK_INFO= (); # "./$MK~~"
-my %INFO= (); # used for $F.$PARTs
+my @MK_DATA= (); # "./$MK~~"
+my %DATA= (); # used for $F.$PARTs
 my %FAST= ();
 
 # ========================================================================
@@ -171,11 +173,10 @@ my %FAST= ();
 my $printerfriendly="";
 my $sectionlayout="list";
 my $sitemaplayout="list";
-my $simplevars="warn";      # <!--varname-->default
 my $attribvars=" ";         # <x ref="${varname:=default}">
 my $updatevars=" ";         # <!--$varname:=-->default
 my $expandvars=" ";         # <!--$varname-->
-my $commentvars=" ";        # $updatevars && $expandsvars && $simplevars
+my $commentvars=" ";        # $updatevars && $expandsvars
 my $sectiontab=" ";         # highlight ^<td class=...>...href="$section"
 my $currenttab=" ";         # highlight ^<br>..<a href="$topic">
 my $headsection="no";
@@ -227,8 +228,6 @@ sub mksite_magic_option
 	($x =~ /^(list|multi)$/) { $sectionlayout="$x" ; }
     $x=mksite_magic_option("sitemaplayout"); if
 	($x =~ /^(list|multi)$/) { $sitemaplayout="$x" ; }
-    $x=mksite_magic_option("simplevars"); if
-	($x =~ /^( |no|warn)$/) { $simplevars="$x" ; }
     $x=mksite_magic_option("attribvars"); if 
 	($x =~ /^( |no|warn)$/) { $attribvars="$x" ; }
     $x=mksite_magic_option("updatevars"); if
@@ -254,11 +253,8 @@ sub mksite_magic_option
 $printerfriendly=$o{print} if $o{print};
 $updatevars="no" if $commentvars eq "no"; # duplicated into
 $expandvars="no" if $commentvars eq "no"; # info2vars_sed
-$simplevars="no" if $commentvars eq "no"; # function above
 
 print "NOTE: '$sectionlayout\'sectionlayout '$sitemaplayout\'sitemaplayout$n"
-    if -d "DEBUG";
-print "NOTE: '$simplevars\'simplevars '$printerfriendly\'printerfriendly$n"
     if -d "DEBUG";
 print "NOTE: '$attribvars\'attribvars '$updatevars\'updatevars$n"
     if -d "DEBUG";
@@ -294,7 +290,7 @@ push @MK_TAGS, "s|<section>||g;";
 push @MK_TAGS, "s|</section>||g;";
 push @MK_TAGS, "s|<(a [^<>]*) />|<\$1></a>|g";
 my $_ulink_="<a href=\"\$1\" remap=\"url\">\$1</a>";
-push @MK_TAGS, "s|<a>(\\w+://[^<>]*)</a>|$_ulink_|g;";
+push @MK_TAGS, "s|<a>\\s*(\\w+://[^<>]*)</a>|$_ulink_|g;";
 # also make sure that some non-html entries are cleaned away that
 # we are generally using to inject meta information. We want to see
 # that meta ino in the *.htm browser view during editing but they
@@ -381,25 +377,33 @@ my $F; # current file during loop <<<<<<<<<
 my $i = 100;
 sub savelist {
     if (-d "DEBUG") {
-	my $X = "$F._$i"; $i++; $X =~ s|/|:|g;
+	my ($script,$ext,$Z) = @_;
+	if (not $ext) { $ext = "_".$i; $i++; }
+	my $X = "$F.$ext.tmp.PL"; $X =~ s|/|:|g;
 	open X, ">DEBUG/$X" or die "could not open $X: $!";
-	print X "#! /usr/bin/perl -".$#_."$n";
-	print X join("$n", @{$_[0]}),$n; close X;
+	print X "#! /usr/bin/env perl",$n;
+	print X "# ",$#_," $ext files ",localtime(),$n;
+	my $TEXT = join("$n", @{$script});
+	$TEXT =~ s|source\([^()]*\)|<>|;
+	print X $TEXT,$n; close X;
     }
 }
 
 sub eval_MK_LIST # $str @list
 {
+    my $FILETYPE = $_[0]; shift @_;
     my $result = $_[0]; shift @_;
     my $extra = "";
     my $script = "\$_ = \$result; my \$Z;";
     $script .= join(";$n ", @_);
     $script .= "$n;\$result = \$_;$n";
+    savelist([$script],$FILETYPE);
     eval $script;
     return $result.$extra;
 }
 
 sub eval_MK_FILE  {
+    my $FILETYPE = $_[0]; shift @_;
     my $FILENAME = $_[0]; shift @_;
     my $result = "";
     my $script = "my \$FILE; my \$extra = ''; my \$Z; $n";
@@ -408,7 +412,7 @@ sub eval_MK_FILE  {
     $script.= "$n; \$result .= \$_; ";
     $script.= "$n if(\$extra){\$result.=\$extra;\$extra='';\$result.=\"\\n\"}";
     $script.= "$n} if(\$extra){\$result.=\$extra;}$n";
-    savelist([$script,""]);
+    savelist([$script],$FILETYPE);
     eval $script;
     return $result;
 }
@@ -451,47 +455,15 @@ sub dir_name
     return $R;
 }
 
-sub info2test_sed # \@ \@ # cut out all old-style <!--vars--> usages
-{
-    my ($INP,$XXX) = @_;
-    $INP = \@{$INFO{$F}} if not $INP;
-    my @OUT = ();
-    my $V8=" *([^ ][^ ]*) (.*)";
-    my $V9=" *DC[.]([^ ][^ ]*) (.*)";
-    my $q="\\\$";
-    my ($_x_,$_y_,$_X_,$_Y_); my $W = "WARNING:";
-    $_x_= sub {"$W: assumed simplevar <!--$1--> changed to <!--$q$1:=-->" };
-    $_y_= sub {"$W: assumed simplevar <!--$1--> changed to <!--$q$1:?-->" };
-    $_X_= sub {"$W: assumed tailvar <!--$q$1:--> changed to <!--$q$1:=-->" };
-    $_Y_= sub {"$W: assumed tailvar <!--$q$1:--> changed to <!--$q$1:?-->" };
-    push @OUT, "s/^/ /;";
-    for (@$INP) {
-    if (/^=....=formatter /) { next; };
-    if (/=[Tt]ext=$V9%/){ push @OUT, esc("s|.*<!--($1)-->.*|".&$_x_."|;");}
-    if (/=[Nn]ame=$V9%/){ push @OUT, esc("s|.*<!--($1)[?]-->.*|".&$_y_."|;");}
-    if (/=[Tt]ext=$V8%/){ push @OUT, esc("s|.*<!--($1)-->.*|".&$_x_."|;");}
-    if (/=[Nn]ame=$V8%/){ push @OUT, esc("s|.*<!--($1)[?]-->.*|".&$_y_."|;");}
-    }
-    for (@$INP) {
-    if (/^=....=formatter /) { next; };
-    if (/=[Tt]ext=$V9%/){ push @OUT, esc("s|.*<!--($1):-->.*|".&$_X_."|;");}
-    if (/=[Nn]ame=$V9%/){ push @OUT, esc("s|.*<!--($1)[?]:-->.*|".&$_Y_."|;");}
-    if (/=[Tt]ext=$V8%/){ push @OUT, esc("s|.*<!--($1):-->.*|".&$_X_."|;");}
-    if (/=[Nn]ame=$V8%/){ push @OUT, esc("s|.*<!--($1)[?]:-->.*|".&$_Y_."|;");}
-    }
-    push @OUT, "/^WARNING:/ || next;";
-    return @OUT;
-}
-
 sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 {
     my ($INP,$Z) = @_;
-    $INP = \@{$INFO{$F}} if not $INP;
+    $INP = \@{$DATA{$F}} if not $INP;
     my @OUT = ();
-    my $V8=" *([^ ][^ ]*) +(.*)";
-    my $V9=" *DC[.]([^ ][^ ]*) +(.*)";
-    my $N8=" *([^ ][^ ]*) ([$NN].*)";
-    my $N9=" *DC[.]([^ ][^ ]*) ([$NN].*)";
+    my $V8=" *([^ ][^ ]*) +(.*)<$QX>";
+    my $V9=" *DC[.]([^ ][^ ]*) +(.*)<$QX>";
+    my $N8=" *([^ ][^ ]*) ([$NN].*)<$QX>";
+    my $N9=" *DC[.]([^ ][^ ]*) ([$NN].*)<$QX>";
     my $V0="([<]*)\\\$";
     my $V1="([^<>]*)\\\$";
     my $V2="([^{<>}]*)";
@@ -500,92 +472,67 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
     $Z="\$Z=";
     $updatevars = "no" if $commentvars  eq "no";   # duplicated from
     $expandvars = "no" if $commentvars  eq "no";   # option handling
-    $simplevars = "no" if $commentvars  eq "no";   # tests below
-    my @_INP = (); for (@{$INP}) { my $x=$_; $x =~ s/'/\\'/; push @_INP, $x; }
+    my @_INP = (); for (@{$INP}) { 
+	my $x=$_; $x =~ s/(>[^<>]*)'([^<>]*<)/$1\\'$2/; push @_INP, $x; # OOOOPS
+    }
     if ($expandvars ne "no") {
-	for (@_INP) { 
+	for (@_INP) {
     if    (/^=....=formatter /) { next; } 
-    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
-    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
+    elsif (/^<$Q='name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
+    elsif (/^<$Q='Name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
+    elsif (/^<$Q='name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|- \$Z|;"}
+    elsif (/^<$Q='Name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?-->|(\$Z)|;"}
         } 
     }
     if ($expandvars ne "no") {
 	for (@_INP) {
     if    (/^=....=formatter /) { next; } 
-    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
-    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
-    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
-    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
-    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
-    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
-	}
-    }
-    if ($simplevars ne "no" && $updatevars ne "no") {
-	for (@_INP) { my $Q = "[$AX]*";
-    if    (/^=....=formatter /) { next; } 
-    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
-    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
-    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"}
-    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
-    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:-->$Q|\$Z|;"}
-    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|- \$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1\\?:-->$Q|(\$Z)|;"}
+    elsif (/^<$Q='text'>$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Text'>$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='text'>$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Text'>$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V1$1\\?-->|\$1$SS\$Z|;"}
 	}
     }
     if ($updatevars ne "no") {
-	for (@_INP) {  my $Q = "[^<>]*";
+	for (@_INP) {  my $H = "[^<>]*";
     if    (/^=....=formatter /) { next; }
-    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"}
-    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|- \$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$Q|(\$Z)|;"}
+    elsif (/^<$Q='name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$H|- \$Z|;"}
+    elsif (/^<$Q='Name'>$V9/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$H|(\$Z)|;"}
+    elsif (/^<$Q='name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$H|- \$Z|;"}
+    elsif (/^<$Q='Name'>$V8/){push @OUT, "\$Z='$2';s|<!--$V0$1:\\?-->$H|(\$Z)|;"}
 	}
     }
     if ($updatevars ne "no") {
-	for (@_INP) {  my $Q = "[^<>]*";
+	for (@_INP) {  my $H = "[^<>]*";
     if    (/^=....=formatter /) { next; }
-    elsif (/^=text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$Q|\$1$SS\$Z|;"}
+    elsif (/^<$Q='text'>$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Text'>$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='name'>$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Name'>$V9/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='text'>$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Text'>$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\=-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='name'>$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$H|\$1$SS\$Z|;"}
+    elsif (/^<$Q='Name'>$V8/){push @OUT,"\$Z='$2';s|<!--$V1$1:\\?-->$H|\$1$SS\$Z|;"}
 	}
     }
     if ($attribvars ne "no") {
-	for (@_INP) {  my $Q = "[^<>]*";
+	for (@_INP) {  my $H = "[^<>]*";
     if    (/^=....=formatter /) { next; }
-    elsif (/^=text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=Text=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=Name=$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=Text=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
-    elsif (/^=Name=$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
+    elsif (/^<$Q='text'>$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='Text'>$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='name'>$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='Name'>$V9/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='text'>$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='Text'>$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[=]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='name'>$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"}
+    elsif (/^<$Q='Name'>$V8/){push @OUT,"\$Z='$2';s|<$V1\{$1:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
 	}
         for (split / /, $o{variables}) {
 	    {push @OUT,"\$Z='$o{$_}';s|<$V1\{$_:[?]$V2}$V3>|<\$1$SS\$Z\$3>|;"} 
-	}
-    }
-    if ($simplevars ne "no") {
-	for (@_INP) {  my $Q = "[$AX]*";
-    if    (/^=....=formatter /) { next; }
-    elsif (/^=text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
-    elsif (/^=Text=$V9/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
-    elsif (/^=name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"}
-    elsif (/^=Name=$V9/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"}
-    elsif (/^=text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
-    elsif (/^=Text=$V8/){push @OUT, "\$Z='$2';s|<!--$1-->$Q|\$Z|;"}
-    elsif (/^=name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| - \$Z|;"}
-    elsif (/^=Name=$V8/){push @OUT, "\$Z='$2';s|<!--$1\\?-->$Q| (\$Z)|;"}
 	}
     }
     # if value="2004" then generated sed might be "\\12004" which is bad
@@ -599,12 +546,12 @@ sub info2vars_sed      # generate <!--$vars--> substition sed addon script
 sub info2meta_sed     # generate <meta name..> text portion
 {
     my ($INP,$XXX) = @_;
-    $INP = \@{$INFO{$F}} if not $INP;
+    $INP = \@{$DATA{$F}} if not $INP;
     my @OUT = ();
     # http://www.metatab.de/meta_tags/DC_type.htm
-    my $V6=" *HTTP[.]([^ ]+) (.*)";
-    my $V7=" *DC[.]([^ ]+) (.*)";
-    my $V8=" *([^ ]+) (.*)" ;
+    my $V6=" *HTTP[.]([^ ]+) (.*)<$QX>";
+    my $V7=" *DC[.]([^ ]+) (.*)<$QX>";
+    my $V8=" *([^ ]+) (.*)<$QX>" ;
     sub __TYPE_SCHEME { "name=\"DC.type\" content=\"$2\" scheme=\"$1\"" };
     sub __DCMI { "name=\"$1\" content=\"$2\" scheme=\"DCMIType\"" };
     sub __NAME { "name=\"$1\" content=\"$2\"" };
@@ -612,31 +559,31 @@ sub info2meta_sed     # generate <meta name..> text portion
     sub __HTTP { "http-equiv=\"$1\" content=\"$2\"" };
     for (@$INP) {
 	if (/=....=today /) { next; }
-	if (/=meta=HTTP[.]/ && /=meta=$V6/) {
+	if (/<$Q='meta'>HTTP[.]/ && /<$Q='meta'>$V6/) {
 	    push @OUT, " <meta ${\(__HTTP)} />" if $2; next; }
-	if (/=meta=DC[.]DCMIType / && /=meta=$V7/) {
+	if (/<$Q='meta'>DC[.]DCMIType / && /<$Q='meta'>$V7/) {
 	    push @OUT, " <meta ${\(__TYPE_SCHEME)} />" if $2; next; }
-	if (/=meta=DC[.]type Collection$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Collection$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Dataset$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Dataset$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Event$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Event$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Image$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Image$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Service$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Service$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Software$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Software$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Sound$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Sound$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]type Text$/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]type Text$/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__DCMI)} />" if $2; next; }
-	if (/=meta=DC[.]date[.].*[+]/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]date[.].*[+]/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__NAME)} />" if $2; next; }
-	if (/=meta=DC[.]date[.].*[:]/ && /=meta=$V8/) {
+	if (/<$Q='meta'>DC[.]date[.].*[:]/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__NAME_TZ)} />" if $2; next; }
-	if (/=meta=/ && /=meta=$V8/) {
+	if (/<$Q='meta'>/ && /<$Q='meta'>$V8/) {
 	    push @OUT, " <meta ${\(__NAME)} />" if $2; next; }
     }
     return @OUT;
@@ -646,10 +593,10 @@ sub info_get_entry # get the first <!--vars--> value known so far
 {
     my ($TXT,$INP,$XXX) = @_;
     $TXT = "sect" if not $TXT;
-    $INP = \@{$INFO{$F}} if not $INP;
-    for (grep {/=text=$TXT /} @$INP) {
+    $INP = \@{$DATA{$F}} if not $INP;
+    for (grep {/<$Q='text'>$TXT /} @$INP) {
 	my $info = $_;
-	$info =~ s/=text=$TXT //; 
+	$info =~ s|<$Q='text'>$TXT ||; $info =~ s|<$QX>||;
 	chomp($info); chomp($info); return $info;
     }
 }
@@ -658,13 +605,13 @@ sub info1grep # test for a <!--vars--> substition to be already present
 {
     my ($TXT,$INP,$XXX) = @_;
     $TXT = "sect" if not $TXT;
-    $INP = \@{$INFO{$F}} if not $INP;
-    return scalar(grep {/^=text=$TXT /} @$INP); # returning the count
+    $INP = \@{$DATA{$F}} if not $INP;
+    return scalar(grep {/^<$Q='text'>$TXT /} @$INP); # returning the count
 }
 
 sub dx_init
 {
-    @{$INFO{$F}} = ();
+    @{$DATA{$F}} = ();
     &dx_meta ("formatter", basename($o{formatter}));
     for (split / /, $o{variables}) {        # commandline --def=value
 	if (/_/) { my $u=$_; $u =~ y/_/-/;  # makes for <!--$def--> override
@@ -676,7 +623,7 @@ sub dx_init
 sub dx_line
 {
     my ($U,$V,$W,$Z) = @_; chomp($U); chomp($V);
-    push @{$INFO{$F}}, $U.$V." ".trimmm($W);
+    push @{$DATA{$F}}, "<$Q=$U>".$V." ".trimmm($W)."<$QX>";
 }
 
 sub DX_line
@@ -688,7 +635,7 @@ sub DX_line
 sub dx_text
 {
     my ($U,$V,$Z) = @_;
-    &dx_line ("=text=",$U,$V);
+    &dx_line ("'text'",$U,$V);
 }
 
 sub DX_text   # add a <!--vars--> substition includings format variants
@@ -698,13 +645,13 @@ sub DX_text   # add a <!--vars--> substition includings format variants
     if ($N) {
 	if ($T) {
 	    my $text=lc("$T"); $text =~ s/<[^<>]*>//g;
-	    &dx_line ("=text=",$N,$T);
-	    &dx_line ("=name=",$N,$text);
+	    &dx_line ("'text'",$N,$T);
+	    &dx_line ("'name'",$N,$text);
 	    my $varname=$N; $varname =~ s/.*[.]//;  # cut out front part
 	    if ($N ne $varname and $varname) {
 		$text=lc("$varname $T"); $text =~ s/<[^<>]*>//g;
-		&dx_line ("=Text=",$varname,$T);
-		&dx_line ("=Name=",$varname,$text);
+		&dx_line ("'Text'",$varname,$T);
+		&dx_line ("'Name'",$varname,$text);
 	    }
 	}
     }
@@ -713,20 +660,20 @@ sub DX_text   # add a <!--vars--> substition includings format variants
 sub dx_meta
 {
     my ($U,$V,$Z) = @_;
-    &DX_line ("=meta=",$U,$V);
+    &DX_line ("'meta'",$U,$V);
 }
 
 sub DX_meta  # add simple meta entry and its <!--vars--> subsitution
 {
     my ($U,$V,$Z) = @_;
-    &DX_line ("=meta=",$U,$V);
+    &DX_line ("'meta'",$U,$V);
     &DX_text ("$U", $V);
 }
 
 sub DC_meta   # add new DC.meta entry plus two <!--vars--> substitutions
 {
     my ($U,$V,$Z) = @_;
-    &DX_line ("=meta=","DC.$U",$V);
+    &DX_line ("'meta'","DC.$U",$V);
     &DX_text ("DC.$U", $V);
     &DX_text ("$U", $V);
 }
@@ -734,7 +681,7 @@ sub DC_meta   # add new DC.meta entry plus two <!--vars--> substitutions
 sub HTTP_meta   # add new HTTP.meta entry plus two <!--vars--> substitutions
 {
     my ($U,$V,$Z) = @_;
-    &DX_line ("=meta=","HTTP.$U",$V);
+    &DX_line ("'meta'","HTTP.$U",$V);
     &DX_text ("HTTP.$U", $V);
     &DX_text ("$U", $V);
 }
@@ -807,9 +754,9 @@ sub DC_publisher    # make sure there is this DC.publisher meta tag
 
 sub DC_modified     # make sure there is a DC.date.modified meta tag
 {                      # maybe choose from filesystem dates if possible
-    my ($Q,$Z) = @_; # target file
+    my ($ZZ,$Z) = @_; # target file
     if (not &info1grep ("DC.date.modified")) {
-	my @stats = stat($Q);
+	my @stats = stat($ZZ);
 	my $text =  strftime("%Y-%m-%d", localtime($stats[9]));
 	&DC_meta ("date.modified", $text);
     }
@@ -817,7 +764,7 @@ sub DC_modified     # make sure there is a DC.date.modified meta tag
 
 sub DC_date         # make sure there is this DC.date meta tag
 {                      # choose from one of the available DC.date.* specials
-    my ($Q,$Z) = @_; # source file
+    my ($ZZ,$Z) = @_; # source file
     if (&info1grep ("DC.date")) {
 	&DX_text ("issue", "dated ".&info_get_entry("DC.date"));
         &DX_text ("updated", &info_get_entry("DC.date"));
@@ -825,12 +772,12 @@ sub DC_date         # make sure there is this DC.date meta tag
 	my $text=""; my $kind;
 	for $kind (qw/available issued modified created/) {
 	    $text=&info_get_entry("DC.date.$kind");
-	    # test ".$text" != "." && echo "$kind = date = $text ($Q)"
+	    # test ".$text" != "." && echo "$kind = date = $text ($ZZ)"
 	    last if $text;
 	}
 	if (not $text) {
 	    my $part; my $M="date";
-	    for (source($Q)) {
+	    for (source($ZZ)) {
 		/<$M>/ or next; s|.*<$M>||; s|</$M>.*||;
 		$part=trimm($_); last;
 	    }
@@ -839,7 +786,7 @@ sub DC_date         # make sure there is this DC.date meta tag
 	}
 	if (not $text) {
 	    my $part; my $M="!--date:*=*--"; # takeover updateable variable...
-	    for (source($Q)) {
+	    for (source($ZZ)) {
 		/<$M>/ or next; s|.*<$M>||; s|</.*||;
 		$part=trimm($_); last;
 	    }
@@ -869,23 +816,23 @@ sub DC_title
 {
     # choose a title for the document, either an explicit title-tag
     # or one of the section headers in the document or fallback to filename
-    my ($Q,$Z) = @_; # target file
+    my ($ZZ,$Z) = @_; # target file
     my ($term, $text);
     if (not &info1grep ("DC.title")) { 
 	for my $M (qw/TITLE title H1 h1 H2 h2 H3 H3 H4 H4 H5 h5 H6 h6/) {
-	    for (source($Q)) {
+	    for (source($ZZ)) {
 		/<$M>/ or next; s|.*<$M>||; s|</$M>.*||;
 		$text = trimm($_); last;
 	    }
 	    last if $text;
-	    for (source($Q)) {
+	    for (source($ZZ)) {
 		/<$M [^<>]*>/ or next; s|.*<$M [^<>]*>||; s|</$M>.*||;
 		$text = trimm($_); last;
 	    }
 	    last if $text;
 	}
 	if (not $text) {
-	    $text=basename($Q,".html"); 
+	    $text=basename($ZZ,".html"); 
 	    $text=basename($text,".htm"); $text =~ y/_/ /; $text =~ s/$/ info/;
 	    $text=~ s/\n/      /g;
 	}
@@ -902,15 +849,16 @@ sub DC_title
 sub site_get_section # return parent section page of given page
 {
     my $_F_ = &sed_slash_key(@_);
-    for my $x (grep {/=sect=$_F_ /} @MK_INFO) {
-	my $info = $x; $info =~ s/=sect=[^ ]* //; return $info;
+    for my $x (grep {/<$Q='sect'>$_F_ /} @MK_DATA) {
+	my $info = $x; $info =~ s|<$Q='sect'>[^ ]* ||; $info =~ s|<$QX>||;
+	return $info;
     }
 }
 
 sub DC_section # not really a DC relation (shall we use isPartOf ?) 
 {                 # each document should know its section father
     my $sectn = &site_get_section($F);
-     if ($sectn) {
+    if ($sectn) {
 	&DC_meta ("relation.section", $sectn);
     }
 }
@@ -923,8 +871,10 @@ sub info_get_entry_section
 sub site_get_selected  # return section of given page
 {
     my $_F_ = &sed_slash_key(@_);
-    for my $x (grep {/=[u]se.=$_F_ /} @MK_INFO) {
-	my $info = $x; $info =~ s/=[u]se.=[^ ]* //; return $info;
+    for my $x (grep {/<$Q='[u]se.'>$_F_ /} @MK_DATA) {
+	my $info = $x; 
+	$info =~ s/<$Q='[u]se.'>[^ ]* //; $info =~ s|<$QX>||;
+	return $info;
     }
 }
 
@@ -945,9 +895,9 @@ sub info_get_entry_selected
 sub site_get_rootsections # return all sections from root of nav tree
 {
     my @OUT;
-    for (grep {/=[u]se1=/} @MK_INFO) { 
+    for (grep {/<$Q='[u]se1'>/} @MK_DATA) { 
 	my $x = $_;
-	$x =~ s/=[u]se.=([^ ]*) .*/$1/; 
+	$x =~ s/<$Q='[u]se.'>([^ ]*) .*/$1/;
 	push @OUT, $x;
     }
     return @OUT;
@@ -957,9 +907,9 @@ sub site_get_sectionpages # return all children pages in the given section
 {
     my $_F_=&sed_slash_key(@_);
     my @OUT = ();
-    for (grep {/^=sect=[^ ]* $_F_$/} @MK_INFO) {
+    for (grep {/^<$Q='sect'>[^ ]* $_F_$/} @MK_DATA) {
 	my $x = $_;
-	$x =~ s/^=sect=//; $x =~ s/ .*//;
+	$x =~ s/^<$Q='sect'>//; $x =~ s/ .*//; $x =~ s|<$QX>||;
 	push @OUT, $x;
     }
     return @OUT;
@@ -969,9 +919,9 @@ sub site_get_subpages # return all page children of given page
 {
     my $_F_=&sed_slash_key(@_);
     my @OUT = ();
-    for (grep {/^=node=[^ ]* $_F_$/} @MK_INFO) {
-	my $x = $_;
-	$x =~ s/^=node=//; $x =~ s/ .*//;
+    for (grep {/^<$Q='node'>[^ ]* $_F_<[^<>]*>$/} @MK_DATA) {
+	my $x = $_; 
+	$x =~ s/^<$Q='node'>//; $x =~ s/ .*//; $x =~ s|<$QX>||;
 	push @OUT, $x;
     }
     return @OUT;
@@ -980,9 +930,9 @@ sub site_get_subpages # return all page children of given page
 sub site_get_parentpage # ret parent page for given page (".." for sections)
 {
     my $_F_=&sed_slash_key(@_);
-    for (grep {/^=node=$_F_ /} @MK_INFO) {
+    for (grep {/^<$Q='node'>$_F_ /} @MK_DATA) {
 	my $x = $_;
-	$x =~ s/^=node=[^ ]* //;
+	$x =~ s/^<$Q='node'>[^ ]* //; $x =~ s|<$QX>||;
 	return $x;
     } 
 }
@@ -1086,7 +1036,7 @@ sub make_fast # experimental - make a FAST file that can be applied
     }
 }
 
-# ============================================================== SITE MAP INFO
+# ============================================================== SITE MAP DATA
 # each entry needs atleast a list-title, a long-title, and a list-date
 # these are the basic information to be printed in the sitemap file
 # where it is bound the hierarchy of sect/subsect of the entries.
@@ -1094,55 +1044,55 @@ sub make_fast # experimental - make a FAST file that can be applied
 sub site_map_list_title # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @MK_INFO, "=list=$U ".trimm($V);
+    push @MK_DATA, "<$Q='list'>$U ".trimm($V)."<$QX>";
 }
 sub info_map_list_title # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @{$INFO{$U}}, "=list=".trimm($V);
+    push @{$DATA{$U}}, "<$Q='list'>".trimm($V)."<$QX>";
 }
 sub site_map_long_title # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @MK_INFO, "=long=$U ".trimm($V);
+    push @MK_DATA, "<$Q='long'>$U ".trimm($V)."<$QX>";
 }
 sub info_map_long_title # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @{$INFO{$U}}, "=long=".trimm($V);
+    push @{$DATA{$U}}, "<$Q='long'>".trimm($V)."<$QX>";
 }
 sub site_map_list_date # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @MK_INFO, "=date=$U ".trimm($V);
+    push @MK_DATA, "<$Q='date'>$U ".trimm($V)."<$QX>";
 }
 sub info_map_list_date # $file $text
 {
     my ($U,$V,$Z) = @_; chomp($U);
-    push @{$INFO{$U}}, "=date=".trimm($V);
+    push @{$DATA{$U}}, "<$Q='date'>".trimm($V)."<$QX>";
 }
 
 sub site_get_list_title
 {
     my ($U,$V,$Z) = @_;
-    for (@MK_INFO) { if (m|^=list=$U (.*)|) { return $1; } } return "";
+    for (@MK_DATA) { if (m|^<$Q='list'>$U (.*)<$QX>|) { return $1; } } return "";
 }
 sub site_get_long_title
 {
     my ($U,$V,$Z) = @_;
-    for (@MK_INFO) { if (m|^=long=$U (.*)|) { return $1; } } return "";
+    for (@MK_DATA) { if (m|^<$Q='long'>$U (.*)<$QX>|) { return $1; } } return "";
 }
 sub site_get_list_date
 {
     my ($U,$V,$Z) = @_;
-    for (@MK_INFO) { if (m|^=date=$U (.*)|) { return $1; } } return "";
+    for (@MK_DATA) { if (m|^<$Q='date'>$U (.*)<$QX>|) { return $1; } } return "";
 }
 
 sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
 {                      # the resulting script will act on each item/line
                        # containing <!--"filename"--> and expand any following
                        # reference of <!--name--> or <!--date--> or <!--long-->
-    my ($INP,$Z) = @_ ; $INP= \@MK_INFO if not $INP;
+    my ($INP,$Z) = @_ ; $INP= \@MK_DATA if not $INP;
     my @OUT = ();
     my $_list_=
 	sub{"s|<!--\\\"$1\\\"-->.*<!--name-->|\$\&<name href=\\\"$1\\\">$2</name>|"};
@@ -1153,9 +1103,9 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
     
     for (@$INP) {
 	my $info = $_;
-	$info =~ s:=list=([^ ]*) (.*):&$_list_:e;
-	$info =~ s:=date=([^ ]*) (.*):&$_date_:e;
-	$info =~ s:=long=([^ ]*) (.*):&$_long_:e;
+	$info =~ s:<$Q='list'>([^ ]*) (.*)<$QX>:&$_list_:e;
+	$info =~ s:<$Q='date'>([^ ]*) (.*)<$QX>:&$_date_:e;
+	$info =~ s:<$Q='long'>([^ ]*) (.*)<$QX>:&$_long_:e;
 	$info =~ /^s\|/ || next;
 	push @OUT, $info;
     }
@@ -1164,7 +1114,7 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
 
 sub make_multisitemap
 {  # each category gets its own column along with the usual entries
-    my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_INFO if not $INPUTS;
+    my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_DATA if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
     my @OUT = (); 
     my $_form_= sub{"<!--\"$2\"--><!--use$1--><!--long--><!--end$1-->"
@@ -1172,10 +1122,11 @@ sub make_multisitemap
     my $_tiny_="small><small><small" ; my $_tinyX_="small></small></small ";
     my $_tabb_="<br><$_tiny_> </$_tinyX_>" ; my $_bigg_="<big> </big>";
     push @OUT, "<table width=\"100%\"><tr><td> ".$n;
-    for (grep {/=[u]se.=/} @$INPUTS) {
+    for (grep {/<$Q='[u]se.'>/} @$INPUTS) {
 	my $x = $_;
-	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	$x = &eval_MK_LIST($x, @MK_SITE); $x =~ /<name/ or next;
+	$x =~ s|<$Q='[u]se(.)'>([^ ]*) .*|&$_form_|e;
+	$x = &eval_MK_LIST("multisitemap", $x, @MK_SITE); 
+	$x =~ /<name/ or next;
 	$x =~ s|<!--[u]se1-->|</td><td valign=\"top\"><b>|;
 	$x =~ s|<!--[e]nd1-->|</b>|;
 	$x =~ s|<!--[u]se2-->|<br>|;
@@ -1183,6 +1134,7 @@ sub make_multisitemap
 	$x =~ s|<long>||; $x =~ s|</long>||;
 	$x =~ s|<name |<$_tiny_><a |; $x =~ s|</name>||;
 	$x =~ s|<date>| |; $x =~ s|</date>|</a><br></$_tinyX_>|;
+	chomp $x;
 	push @OUT, $x.$n;
     }
     push @OUT, "</td><tr></table>".$n;
@@ -1191,7 +1143,7 @@ sub make_multisitemap
 
 sub make_listsitemap
 {   # traditional - the body contains a list with date and title extras
-    my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_INFO if not $INPUTS;
+    my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_DATA if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
     my @OUT = (); 
     my $_form_=sub{
@@ -1199,10 +1151,11 @@ sub make_listsitemap
     my $_tabb_="<td>\&nbsp\;</td>";
     push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">".$n;
     my $xx;
-    for $xx (grep {/=[u]se.=/} @$INPUTS) {
+    for $xx (grep {/<$Q='[u]se.'>/} @$INPUTS) {
 	my $x = "".$xx;
-	$x =~ s|=[u]se(.)=([^ ]*) .*|&$_form_|e;
-	$x = &eval_MK_LIST($x, @MK_SITE); $x =~ /<name/ or next;
+	$x =~ s|<$Q='[u]se(.)'>([^ ]*) .*|&$_form_|e;
+	$x = &eval_MK_LIST("listsitemap", $x, @MK_SITE); 
+	$x =~ /<name/ or next;
         $x =~ s|<!--[u]se(1)-->|<tr class=\"listsitemap$1\"><td>*</td>|;
         $x =~ s|<!--[u]se(2)-->|<tr class=\"listsitemap$1\"><td>-</td>|;
         $x =~ s|<!--[u]se(.)-->|<tr class=\"listsitemap$1\"><td> </td>|; 
@@ -1212,10 +1165,11 @@ sub make_listsitemap
         $x =~ s|<name |<td><a |;     $x =~ s|</name>|</a></td>$_tabb_|;
         $x =~ s|<date>|<td><small>|; $x =~ s|</date>|</small></td>$_tabb_|;
         $x =~ s|<long>|<td><em>|;    $x =~ s|</long>|</em></td></tr>|;
-        push @OUT, $x; 
+        push @OUT, $x.$n; 
     }
-    for $xx (grep {/=[u]se.=/} @$INPUTS) {
-	my $x = $xx; $x =~ s/=[u]se.=name:sitemap://; $x =~ s:\s*::gs; 
+    for $xx (grep {/<$Q='[u]se.'>/} @$INPUTS) {
+	my $x = $xx; 
+	$x =~ s/<$Q='[u]se.'>name:sitemap://; $x =~ s|<$QX>||; $x =~ s:\s*::gs; 
 	if (-f $x) { 
 	    for (grep {/<tr.class=\"listsitemap\d\">/} source($x)) {
 		push @OUT, $_;
@@ -1374,11 +1328,11 @@ sub make_subpage_entry
 sub make_printsitefile
 {
    # building the printsitefile looks big but its really a loop over sects
-    my ($INPUTS,$Z) = @_; $INPUTS=\@MK_INFO if not $INPUTS;
+    my ($INPUTS,$Z) = @_; $INPUTS=\@MK_DATA if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
-    savelist(\@MK_SITE);
-    my @OUT = &make_printsitefile_head ($SITEFILE);
+    savelist(\@MK_SITE,"SITE");
 
+    my @OUT = &make_printsitefile_head ($SITEFILE);
     my $sep=" - " ;
     my $_sect1=
 	"<a href=\"#.\" title=\"section\">$printsitefile_img_1</a> ||$sep";
@@ -1447,6 +1401,7 @@ sub make_printsitefile
     } # "$r"
     push @OUT, "<a name=\".\"></a>";
     push @OUT, "</body></html>";
+    savelist(\@OUT,"FORM");
     return @OUT;
 }
 
@@ -1697,9 +1652,9 @@ sub tags2span_sed # $SOURCEFILE > $++
     }
     my $xmlstylesheet;
     foreach $xmlstylesheet (@{$XMLSTYLESHEETS{$X}}) {
-	my $Q="[^<>]*href=[\'\"]${xmlstylesheet}[\'\"][^<>]*";
-	push @R, "s|<[?]xml-stylesheet$Q>||;";
-	push @R, "s|<link[^<>]* rel=['\"]*stylesheet['\"]$Q>||;";
+	my $H="[^<>]*href=[\'\"]${xmlstylesheet}[\'\"][^<>]*";
+	push @R, "s|<[?]xml-stylesheet$H>||;";
+	push @R, "s|<link[^<>]* rel=['\"]*stylesheet['\"]$H>||;";
     }
     return @R;
 }
@@ -1710,6 +1665,7 @@ sub tags2meta_sed # $SOURCEFILE > $++
     push @R, " <style type=\"text/css\"><!--";
     push @R, map {s/(^|\n)/$1  /g;$_} @{$XMLTAGSCSS{$SOURCEFILE}};
     push @R, " --></style>";
+    @R = () if $#R < 3;
     return @R;
 }
 
@@ -1725,7 +1681,7 @@ sub tags2meta_sed # $SOURCEFILE > $++
 sub scan_xml_rootnode
 {
     my ($INF,$XXX) = @_;
-    $INF = \@{$INFO{$F}} if not $INF;
+    $INF = \@{$DATA{$F}} if not $INF;
     for my $entry (source($SOURCEFILE)) {
 	my $line = $entry; next if $line !~ /<\w/;
 	$line =~ s/<(\w*).*/$1/s;
@@ -1737,7 +1693,7 @@ sub scan_xml_rootnode
 sub get_xml_rootnode
 {
     my ($INF,$XXX) = @_;
-    $INF = \@{$INFO{$F}} if not $INF;
+    $INF = \@{$DATA{$F}} if not $INF;
     my $_file_ = sed_slash_key($F);
     foreach my $entry (grep /^<!root $_file_>/, @{$INF}) {
 	my $line=$entry; $line =~ s|.*>||; 
@@ -1919,7 +1875,9 @@ sub echo_br_EM_PP
 		 "/^<>$V$W*<a href=/ and s/^/$X/;",
 		 "/^$S$V$W*<a href=/ and s/^/$X/;",
 		 "/^$V<>$W*<a href=/ and s/^/$X/;",
-		 "/^$V$S$W*<a href=/ and s/^/$X/;" );
+		 "/^$V$S$W*<a href=/ and s/^/$X/;",
+		 "/^$V$W*<><a href=/ and s/^/$X/;",
+		 "/^$V$W*$S<a href=/ and s/^/$X/;" );
     push @list, @listt;
     return @list;
 }    
@@ -2004,32 +1962,38 @@ sub make_sitemap_init
     push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "<!--sect3-->");
     push @MK_GETS, &echo_sp_sp   (                   "$q3"   , "<!--sect9-->");
+    push @MK_GETS, &echo_sp_sp   ("<br>",                      "<!--sect9-->");
     @MK_PUTS = map { my $x=$_; $x =~ s/(>)(\[)/$1 *$2/; $x } @MK_GETS;
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
 }
 
-my $_uses_= sub{"=use$1=$2 $3" }; my $_name_= sub{"=use$1=name:$2 $3" }; 
-my $_getW_="<!--sect([$NN])-->";
-my $_getX_="<!--sect([$NN])--><[^<>]*>[^<>]*";
-my $_getY_="<!--sect([$NN])--><[^<>]*>[^<>]*<[^<>]*>[^<>]*";
+my $_uses_= sub{"<$Q='use$1'>$2 $3<$QX>" }; 
+my $_name_= sub{"<$Q='use$1'>name:$2 $3<$QX>" }; 
+my $_getW_="<!--sect([$NN])-->[^<>]*";
+my $_getX_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*";
+my $_getY_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*";
+my $_getZ_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*";
 
 sub make_sitemap_list
 {
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
     for (source($SITEFILE)) {
 #	print join("$n;",@MK_GETS),$n;
-	$_ = &eval_MK_LIST($_, @MK_GETS);
+	$_ = &eval_MK_LIST("sitemap_list", $_, @MK_GETS);
 	/^<!--sect[$NN]-->/ or next;
+	chomp;
 	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	s{^$_getY_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
+	s{^$_getZ_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	s{^$_getW_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	s{^$_getX_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	s{^$_getY_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
-	/^=....=/ or next;
+	s{^$_getZ_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
+	/^<$Q=/ or next;
 	/^<!/ and next;
-	push @MK_INFO, $_;
+	push @MK_DATA, $_;
     }
 }
 
@@ -2039,16 +2003,18 @@ sub make_sitemap_sect
     # (A) each "use1" creates "=sect=href+ href1" for all following non-"use1"
     # (B) each "use1" creates "=node=href2 href1" for all following "use2"
     my $sect = "";
-    for (grep {/=[u]se.=/} @MK_INFO) {
-	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=sect=$1/; chomp $x;
-	push @MK_INFO, "$x $sect";
+    for (grep {/<$Q='[u]se.'>/} @MK_DATA) {
+	if (/<$Q='[u]se1'>([^ ]*) .*/) { $sect = $1; }
+	my $x = $_; # chomp $x; 
+	$x =~ s|<$Q='[u]se.'>([^ ]*) .*|<$Q='sect'>$1 $sect<$QX>|; 
+	push @MK_DATA, $x;
     }
-    for (grep {/=[u]se.=/} @MK_INFO) {
-	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
-	/=[u]se[13456789]=/ and next;
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
-	push @MK_INFO, "$x $sect";
+    for (grep {/<$Q='[u]se.'>/} @MK_DATA) {
+	if (/<$Q='[u]se1'>([^ ]*) .*/) { $sect = $1; }
+	/<$Q='[u]se[13456789]'>/ and next;
+	my $x = $_; # chomp $x; 
+	$x =~ s|<$Q='[u]se.'>([^ ]*) .*|<$Q='node'>$1 $sect<$QX>|;
+	push @MK_DATA, $x;
     }
 }
 
@@ -2057,31 +2023,34 @@ sub make_sitemap_page
     # scan used pages and store secondary group relation =page= and =node=
     # the parenting =node= for use3 is usually a use2 (or use1 if none there)
     my $sect = "";
-    for (grep {/=[u]se.=/} @MK_INFO) {
-	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
-	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
-	/=[u]se[1]=/ and next;
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=page=$1/; chomp $x;
-	push @MK_INFO, "$x $sect";
+    for (grep {/<$Q='[u]se.'>/} @MK_DATA) {
+	if (/<$Q='[u]se1'>([^ ]*) .*/) { $sect = $1; }
+	if (/<$Q='[u]se2'>([^ ]*) .*/) { $sect = $1; }
+	/<$Q='[u]se[1]'>/ and next;
+	my $x = $_; 
+	$x =~ s|<$Q='[u]se.'>([^ ]*) .*|<$Q='page'>$1<$QX>|; chomp $x;
+	push @MK_DATA, "$x $sect";
     }
-    for (grep {/=[u]se.=/} @MK_INFO) {
-	if (/=[u]se1=([^ ]*) .*/) { $sect = $1; }
-	if (/=[u]se2=([^ ]*) .*/) { $sect = $1; }
-	/=[u]se[12456789]=/ and next; 
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
-	push @MK_INFO, "$x $sect"; ## print "(",$_,")","$x $sect", $n;
+    for (grep {/<$Q='[u]se.'>/} @MK_DATA) {
+	if (/<$Q='[u]se1'>([^ ]*) .*/) { $sect = $1; }
+	if (/<$Q='[u]se2'>([^ ]*) .*/) { $sect = $1; }
+	/<$Q='[u]se[12456789]'>/ and next; 
+	my $x = $_; 
+	$x =~ s/<$Q='[u]se.'>([^ ]*) .*/<$Q='node'>$1<$QX>/; chomp $x;
+	push @MK_DATA, "$x $sect"; ## print "(",$_,")","$x $sect", $n;
     }
     # and for the root sections we register ".." as the parenting group
-    for (grep {/=[u]se1=/} @MK_INFO) {
-	my $x = $_; $x =~ s/=[u]se.=([^ ]*) .*/=node=$1/; chomp $x;
-	push @MK_INFO, trimm("$x ..");
+    for (grep {/<$Q='[u]se1'>/} @MK_DATA) {
+	my $x = $_; $x = trimm($x); 
+	$x =~ s/<$Q='[u]se.'>([^ ]*) .*/<$Q='node'>$1 ..<$QX>/; chomp $x;
+	push @MK_DATA, $x;
     }
 }
 sub echo_site_filelist
 {
     my @OUT = ();
-    for (grep {/=[u]se.=/} @MK_INFO) {
-	my $x = $_; $x =~ s/=[u]se.=//; $x =~ s/ .*[\n]*//; 
+    for (grep {/<$Q='[u]se.'>/} @MK_DATA) {
+	my $x = $_; $x =~ s/<$Q='[u]se.'>//; $x =~ s/ .*[\n]*//; 
 	push @OUT, $x;
     }
     return @OUT;
@@ -2244,14 +2213,21 @@ sub head_sed_multisection # $filename $section
     # after that all the (still) numeric SECTNs are deactivated / killed.
     for my $section ($SECTION, $headsection, $tailsection) {
 	next if $section eq "no";
-	for (grep {/^=sect=[^ ]* $section/} @MK_INFO) {
+	for (grep {/^<$Q='sect'>[^ ]* $section/} @MK_DATA) {
 	    my $x = $_;
-	    $x =~ s, .*,\\\"\)|<!--sectX-->\$1|,;
-	    $x =~ s,^=sect=,s|^$SECTS\(.*<a href=\\\",;
+	    $x =~ s|<$Q='sect'>||; $x =~ s| .*||; # $filename
+	    $x =~ s/(.*)/s|^$SECTS\(.*<a href=\\\"$1\\\"\)|<!--sectX-->\$1|/;
+	    push @OUT, $x.";";
+	}
+	for (grep {/^<$Q='sect'>name:[^ ]* $section/} @MK_DATA) {
+	    my $x = $_;
+	    $x =~ s|<$Q='sect'>name:||; $x =~ s| .*||; # $filename
+	    $x =~ s/(.*)/s|^$SECTS\(.*<a name=\\\"$1\\\"\)|<!--sectX-->\$1|/;
 	    push @OUT, $x.";";
 	}
     }
     push @OUT, "s|^$SECTN\[^ \]*(<a href=[^<>]*>).*|<!-- \$1 -->|;";
+    push @OUT, "s|^$SECTN\[^ \]*(<a name=[^<>]*>).*|<!-- \$1 -->|;";
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
     push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
     push @OUT, "/ href=\\\"$SECTION\\\"/ "
@@ -2267,10 +2243,6 @@ sub make_sitefile # "$F"
    # remember that in this case "${SITEFILE}l" = "$F" = "${SOURCEFILE}l"
    @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
    @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
-   if ( $simplevars eq "warn") {
-       @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
-##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
-   }
    my @F_HEAD = (); my @F_FOOT = ();
    push @F_HEAD, @MK_PUTS;
    push @F_HEAD, &head_sed_sitemap ($F, &info_get_entry_section());
@@ -2284,11 +2256,11 @@ sub make_sitefile # "$F"
    }
 
    my $html = ""; # 
-   $html .= &eval_MK_FILE($SITEFILE, @F_HEAD);
+   $html .= &eval_MK_FILE("SITE", $SITEFILE, @F_HEAD);
    $html .= join("", @F_FOOT);
    for (source($SITEFILE)) {
        /<\/body>/ or next;
-       $html .= &eval_MK_LIST($_, @MK_VARS);
+       $html .= &eval_MK_LIST("sitefile", $_, @MK_VARS);
    }
   open F, ">$F"; print F $html; close F;
   print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"$n";
@@ -2312,10 +2284,6 @@ sub make_htmlfile # "$F"
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
     @MK_SPAN = &tags2span_sed();       # extern text/css -> intern css classes
     push @MK_META, &tags2meta_sed();       # extern text/css -> intern css classes
-    if ( $simplevars eq "warn") {
-        @MK_TEST = &info2test_sed();       # check <!--title--> vars old-style
-##       $SED_LONGSCRIPT ./$MK_TEST $SOURCEFILE | tee -a ./$MK_OLDS ; fi
-    }
     my @F_HEAD = (); my @F_BODY = (); my $F_FOOT = "";
     push @F_HEAD, @MK_PUTS;
     if ( $sectionlayout eq "multi") {
@@ -2336,15 +2304,14 @@ sub make_htmlfile # "$F"
 	$F_FOOT = &body_for_emailfooter();
     }
     my $html = "";
-    $html .= eval_MK_FILE($SITEFILE, @F_HEAD);
-    $html .= eval_MK_FILE($SOURCEFILE, @F_BODY);
+    $html .= eval_MK_FILE("head", $SITEFILE, @F_HEAD);
+    $html .= eval_MK_FILE("body", $SOURCEFILE, @F_BODY);
     $html .= $F_FOOT;
     for (source($SITEFILE)) {
 	/<\/body>/ or next;
-	$_ = &eval_MK_LIST($_, @MK_VARS);
+	$_ = &eval_MK_LIST("htmlfile", $_, @MK_VARS);
 	$html .= $_;
     }
-    savelist(\@{$INFO{$F}});
     open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
     print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
     savesource("$F.~head~", \@F_HEAD);
@@ -2370,17 +2337,17 @@ sub make_printerfriendly # "$F"
 	$printsitefile="=>" ;  $BODY_TXT="$SOURCEFILE";
     }
     if (grep {/<meta name="formatter"/} source($BODY_TXT)) { return; }
-    if ($printsitefile ne "0" and -f $SOURCEFILE) {
+    if ($printsitefile ne "0" and -f $SOURCEFILE) {       my $x;
       @MK_FAST = &make_printerfile_fast (\@FILELIST);
       push @P_HEAD, @MK_VARS; push @P_HEAD, @MK_TAGS; push @P_HEAD, @MK_FAST;
-      @MK_METT = map { my $x = $_; $x =~
+      @MK_METT = map { $x = $_; $x =~
       /DC.relation.isFormatOf/ and $x =~ s|content=\"[^\"]*\"|content=\"$F\"| ;
 	  $x } @MK_META;
       push @P_HEAD, "/<head>/ and $sed_add join(\"\\n\", \@MK_METT);";
       push @P_HEAD, "/<\\/body>/ and next;";
       push @P_HEAD, &select_in_printsitefile ("$F");
       my $_ext_=&print_extension($printerfriendly);
-      push @P_HEAD, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
+      push @P_HEAD, map { $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
 #     my $line_=&sed_slash_key($printsitefile_img_2);
       push @P_HEAD, "/\\|\\|topics:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
@@ -2388,14 +2355,14 @@ sub make_printerfriendly # "$F"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
       push @P_HEAD, @F_FAST;
       push @P_BODY, @MK_VARS; push @P_BODY, @MK_TAGS; push @P_BODY, @MK_FAST;
-      push @P_BODY, map { my $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
+      push @P_BODY, map { $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
       push @P_BODY, @F_FAST;
       my $html = "";
-      $html .= eval_MK_FILE($PRINTSITEFILE, @P_HEAD);
-      $html .= eval_MK_FILE($BODY_TXT, @P_BODY);
+      $html .= eval_MK_FILE("p_head", $PRINTSITEFILE, @P_HEAD);
+      $html .= eval_MK_FILE("p_body", $BODY_TXT, @P_BODY);
       for (source($PRINTSITEFILE)) {
 	  /<\/body>/ or next;
-	  $_ = &eval_MK_LIST($_, @MK_VARS);
+	  $_ = &eval_MK_LIST("printerfriendly", $_, @MK_VARS);
 	  $html .= $_;
       }
       open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
@@ -2414,7 +2381,7 @@ $F=$SITEFILE;
 &make_sitemap_list();
 &make_sitemap_sect();
 &make_sitemap_page();
-savelist(\@MK_INFO);
+savelist(\@MK_DATA, "DATA");
 
 @FILELIST=&echo_site_filelist();
 if ($o{filelist} or $o{list} eq "file" or $o{list} eq "files") {
@@ -2466,7 +2433,7 @@ if ($printerfriendly) {                            # .......... PRINT VERSION
     my @TEXT = &make_printsitefile();
     print "NOTE: going to create printer-friendly sitefile '$PRINTSITEFILE'"
 	." $F._$i$n";
-    savelist(\@TEXT);
+    savelist(\@TEXT, "TEXT");
     my @LINES = map { chomp; $_."$n" } @TEXT;
     savesource($PRINTSITEFILE, \@LINES);
     if (1) {
@@ -2474,10 +2441,6 @@ if ($printerfriendly) {                            # .......... PRINT VERSION
 	    print PRINTSITEFILE join("", @LINES); close PRINTSITEFILE;
 	}
     }
-}
-
-if ($simplevars eq " ") {
-    @MK_OLDS = ();
 }
 
 for (@FILELIST) {                                          #### 2. PASS
@@ -2511,32 +2474,40 @@ for (@FILELIST) {                                          #### 2. PASS
   } else {
       print "?? -> '$F'$n";
   }
-# .............. debug ....................
-##   if test -d DEBUG && test -f "./$F" ; then
-##      cp ./$F.$INFO DEBUG/$F.info.TMP
-##      for P in tags vars meta page date list html sect info ; do
-##      test -f ./$MK.$P.tmp && cp ./$MK.$P.tmp DEBUG/$F.$P.tmp
-##      test -f ./$MK.$P.TMP && cp ./$MK.$P.TMP DEBUG/$F.$P.TMP
-##      done
-##   fi
-} # done
 
-if ( $simplevars eq "warn") {
-    my $oldvars = $#MK_OLDS; $oldvars ++;
-    if (not $oldvars) {
-print "HINT: you have no simplevars in your htm sources, so you may want to$n";
-print "hint: set the magic <!--mksite:nosimplevars--> in your $SITEFILE$n";
-print "hint: which makes execution _faster_ actually in the 2. pass$n";
-print "note: simplevars expansion was the oldstyle way of variable expansion$n";
-} else {
-print "HINT: there were $oldvars simplevars found in your htm sources.$n";
-print "hint: This style of variable expansion will be disabled in the near$n";
-print "hint: future. If you do not want change then add the $SITEFILE magic$n";
-print "hint: <!--mksite:simplevars--> somewhere to suppress this warning$n";
-print "note: simplevars expansion will be an explicit option in the future.$n";
-print "note: errornous simplevar detection can be suppressed with a magic$n";
-print "note: hint of <!--mksite:nosimplevars--> in the $SITEFILE for now.$n";
-} }
+# .............. debug ....................
+  if (-d "DEBUG" and -f $F)  {
+      my $INP = \@{$DATA{$F}};
+      my $FFFF = $F; $FFFF =~ s,/,:,g;
+      if (open FFFF, ">DEBUG/$FFFF.data.tmp.ht") {
+	  for (@{$INP}) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.tags.tmp.pl") {
+	  print FFFF "# /usr/bin/env perl -p",$n;
+	  for (@MK_TAGS) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.vars.tmp.pl") {
+	  print FFFF "# /usr/bin/env perl -p",$n;
+	  for (@MK_VARS) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.span.tmp.pl") {
+	  print FFFF "# /usr/bin/env perl -p",$n;
+	  for (@MK_SPAN) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.meta.tmp.ht") {
+	  for (@MK_META) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.gets.tmp.ht") {
+	  for (@MK_GETS) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.puts.tmp.ht") {
+	  for (@MK_PUTS) { print FFFF $_,$n; } close FFFF;
+      } 
+      if (open FFFF, ">DEBUG/$FFFF.fast.tmp.ht") {
+	  for (@MK_FAST) { print FFFF $_,$n; } close FFFF;
+      } 
+  }
+} # done
 
 ## rm ./$MK.*.tmp
 exit 0
