@@ -1,0 +1,24 @@
+<html><head>  <title> Testing - test 001 </title> 
+ <meta name="formatter" content="mksite.pl" />
+ <meta name="DC.date.issued" content="2006-04-04" />
+ <meta name="DC.title" content="Test 001" />
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta name="DC.relation.isFormatOf" content="page1.htm" />
+ <meta name="DC.date.modified" content="2006-04-13" />
+ <meta name="DC.date" content="2006-04-04" />
+ <meta name="DC.title.selected" content="Page 001" />
+ <meta name="DC.publisher" content="guidod" />
+</head><body>
+
+<table><tr><td>
+<br>&nbsp;<b><a href="page1.html">Page 001</a></b>
+<br>&nbsp;<a href="page2.html">Page 002</a>
+<br>&nbsp;<a href="page3.html">Page 003</a>
+<br>&nbsp;<a href="page4.html">Page 004</a>
+<br>&nbsp;<a href="site.html">sitemap</a>
+</td><td> <!-- the body goes here ->
+ 
+
+Hello World
+
+</td></tr></table></body></html>

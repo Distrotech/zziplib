@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.39 2006-04-12 00:32:37 guidod Exp $
+# $Id: mksite.pl,v 1.40 2006-04-13 19:50:16 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -163,7 +163,6 @@ my @MK_SECT2= (); # "./$MK.sect2.tmp"
 my @MK_SECT3= (); # "./$MK.sect3.tmp"
 my @MK_DATA= (); # "./$MK~~"
 my %DATA= (); # used for $F.$PARTs
-my %FAST= ();
 
 # ========================================================================
 # ========================================================================
@@ -1002,38 +1001,15 @@ sub fast_href  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
     }
 }
 
-sub make_fast # experimental - make a FAST file that can be applied
-{             # to htm sourcefiles in a subdirectory of the sitefile.
-#   R="$1" ; test ".$R" = "." && R="$F"
+sub make_back_path # "$FILE"
+{
     my ($R,$Z) = @_;
     my $S=&back_path ($R);
     my @OUT = ();
-    if (not $S) {
-	# echo "backpath '$F' = none needed"
-	return @OUT;
-    } else {
-	#  print "backpath '$F' -> '$S'$n";
-	my @hrefs = ();
-	for (source($SITEFILE)) {
-	    /href=\"[^\"]*\"/ or next;
-	    s/.*href=\"//; s/\".*//; chomp;
-	    if (/^ *$/ || /^\// || /^[.][.]/ || /^[\w]*:/) { next; }
-	    push @hrefs, $_;
-	}
-	for (source($SOURCEFILE)) {
-	    /href=\"[^\"]*\"/ or next;
-	    s/.*href=\"//; s/\".*//; chomp;
-	    if (/^ *$/ || /^\// || /^[.][.]/ || /^[\w]*:/) { next; }
-	    push @hrefs, $_;
-	}
-	my $ref = "";
-	for (sort(@hrefs)) { 
-	    next if /\$/; # some href="${...}" is problematic
-	    next if $ref eq $_; $ref = $_; # uniq
-	    push @OUT, "s|href=\\\"$ref\\\"|href=\\\"$S$ref\\\"|;";
-	}
-	return @OUT;
-    }
+    return @OUT if $S !~ /^\.\./;
+    push @OUT, "s|(<[^<>]*\\shref=\\\")(\\w[^<>:]*\\\"[^<>]*>)|\$1$S\$2|g;";
+    push @OUT, "s|(<[^<>]*\\ssrc=\\\")(\\w[^<>:]*\\\"[^<>]*>)|\$1$S\$2|g;";
+    return @OUT;
 }
 
 # ============================================================== SITE MAP DATA
@@ -2098,7 +2074,6 @@ sub scan_htmlfile # "$F"
     -d "DEBUG" and print "'$SOURCEFILE': scanning -> $F$n";            # HTML :
     if ($SOURCEFILE ne $F) {
     if ( -f $SOURCEFILE) {
-	@{$FAST{$F}} = &make_fast ($F);
 	dx_init "$F";
 	dx_text ("today", &timetoday());
 	dx_text ("todays", &timetodays());
@@ -2299,7 +2274,7 @@ sub make_htmlfile # "$F"
     push @F_BODY, &bodymaker_for_sectioninfo();             #if sectioninfo
     push @F_BODY, &info2body_sed();                         #cut early
     push @F_HEAD, &info2head_sed();
-    push @F_HEAD, @{$FAST{$F}}; 
+    push @F_HEAD, &make_back_path($F); 
     if ($emailfooter ne "no") {
 	$F_FOOT = &body_for_emailfooter();
     }
@@ -2327,11 +2302,10 @@ my $PRINTSITEFILE;
 sub make_printerfriendly # "$F"
 {                                                                 # PRINTER
     my $printsitefile="0";                                        # FRIENDLY
-    my @F_FAST = (); my $BODY_TXT; my $BODY_SED;
+    my $BODY_TXT; my $BODY_SED;
     my $P=&html_printerfile ($F);
     my @P_HEAD = (); my @P_BODY = ();
     if ("$F" =~ /^(${SITEFILE}|${SITEFILE}l)$/) {
-	@F_FAST = &make_fast ("$F");
 	$printsitefile=">=>" ; $BODY_TXT="$F.~foot~" ; 
     } elsif ("$F" =~ /^(.*[.]html)$/) {
 	$printsitefile="=>" ;  $BODY_TXT="$SOURCEFILE";
@@ -2347,16 +2321,14 @@ sub make_printerfriendly # "$F"
       push @P_HEAD, "/<\\/body>/ and next;";
       push @P_HEAD, &select_in_printsitefile ("$F");
       my $_ext_=&print_extension($printerfriendly);
-      push @P_HEAD, map { $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
 #     my $line_=&sed_slash_key($printsitefile_img_2);
       push @P_HEAD, "/\\|\\|topics:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
       push @P_HEAD, "/\\|\\|\\|pages:/"
 	  ." and s| href=\\\"\\#\\.\\\"| href=\\\"$F\\\"|;";
-      push @P_HEAD, @F_FAST;
+      push @P_HEAD, &make_back_path("$F");
       push @P_BODY, @MK_VARS; push @P_BODY, @MK_TAGS; push @P_BODY, @MK_FAST;
-      push @P_BODY, map { $x=$_; $x =~ s/[.]html\"|/$_ext_$&/g; $x} @F_FAST;
-      push @P_BODY, @F_FAST;
+      push @P_BODY, &make_back_path("$F");             
       my $html = "";
       $html .= eval_MK_FILE("p_head", $PRINTSITEFILE, @P_HEAD);
       $html .= eval_MK_FILE("p_body", $BODY_TXT, @P_BODY);
@@ -2403,7 +2375,7 @@ for (@FILELIST) {                                    #### 1. PASS
     } elsif (/^(\.\.\/.*)$/) { 
 	print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 
-#    make_fast  # try for later subdir build
+#    make_back_path  # try for later subdir build
 #    echo "!! -> '$F' (skipping subdir build)"
 #    ;;
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 

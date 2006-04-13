@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.67 2006-04-12 00:32:37 guidod Exp $
+# $Id: mksite.sh,v 1.68 2006-04-13 19:50:16 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -51,7 +51,6 @@ DATA="~~"     # extension for meta data files
 HEAD="~head~" # extension for head sed script
 BODY="~body~" # extension for body sed script
 FOOT="~foot~" # append to body text (non sed)
-FAST="~move~" # extension for printer friendly sed
 
 NULL="/dev/null"                             # to divert stdout/stderr
 CATNULL="$CAT $NULL"                         # to create 0-byte files
@@ -884,19 +883,13 @@ fast_href ()  # args "$FILETOREFERENCE" "$FROMCURRENTFILE:$F"
     fi fi
 }
 
-make_fast () # experimental - make a FAST file that can be applied
-{            # to htm sourcefiles in a subdirectory of the sitefile.
-#   R="$1" ; test ".$R" = "." && R="$F"
-    S=`back_path "$F"` 
-    if test ".$S" = "" ; then
-       # echo "backpath '$F' = none needed"
-       $CATNULL # $++
-    else
-       # echo "backpath '$F' -> '$S'"
-       $SED -e "/href=\"[^\"]*\"/!d" -e "s/.*href=\"//" -e "s/\".*//" \
-            -e "/^ *\$/d" -e "/^\\//d" -e "/^[.][.]/d" -e "/^[$AA]*:/d" \
-	   $SITEFILE $SOURCEFILE | sort | uniq \
-       | $SED -e "s,.*,s|href=\"&\"|href=\"$S&\"|," # $++
+make_back_path () # "$FILE"
+{
+    R="$1" ; test ".$R" = "." && R="$F"
+    S=`back_path "$R"`
+    if test ".$S" != "." ; then
+       echo "s|\\(<[^<>]* href=\\\"\\)\\([$AA][^<>:]*\\\"[^<>]*>\\)|\\1$S\\2|g"
+       echo "s|\\(<[^<>]* src=\\\"\\)\\([$AA][^<>:]*\\\"[^<>]*>\\)|\\1$S\\2|g"
     fi
 }
 
@@ -1853,7 +1846,7 @@ scan_htmlfile() # "$F"
  SOURCEFILE=`html_sourcefile "$F"`                                    # SCAN :
  test -d DEBUG && echo "'$SOURCEFILE': scanning -> $F"                # HTML :
  if test "$SOURCEFILE" != "$F" ; then :
- if test -f "$SOURCEFILE" ; then make_fast "$F" > "$tmp/$F.$FAST"
+ if test -f "$SOURCEFILE" ; then
    dx_init "$F"
    dx_text today "`timetoday`"
    dx_text todays "`timetodays`"
@@ -2031,7 +2024,7 @@ make_htmlfile() # "$F"
       bodymaker_for_sectioninfo             >> "$F_BODY" #if sectioninfo
       info2body_sed                         >> "$F_BODY" #cut early
       info2head_sed                         >> "$F_HEAD"
-      $CAT "$tmp/$F.$FAST"                  >> "$F_HEAD"
+      make_back_path "$F"                   >> "$F_HEAD"
       test ".$emailfooter" != ".no" && \
       body_for_emailfooter                   > "$F_FOOT"
 
@@ -2052,11 +2045,10 @@ make_printerfriendly () # "$F"
 {                                                                 # PRINTER
   printsitefile="0"                                               # FRIENDLY
   P=`html_printerfile "$F"`
-  F_FAST="$tmp/$F.$FAST"
   P_HEAD="$tmp/$P.$HEAD"
   P_BODY="$tmp/$P.$BODY"
   case "$F" in
-  ${SITEFILE}|${SITEFILE}l) make_fast "$F" > "$F_FAST"
+  ${SITEFILE}|${SITEFILE}l)
           printsitefile=">=>" ; BODY_TXT="$tmp/$F.$FOOT"  ;;
   *.html) printsitefile="=>" ;  BODY_TXT="$SOURCEFILE" ;;
   esac
@@ -2069,15 +2061,14 @@ make_printerfriendly () # "$F"
       echo "/<head>/r $MK_METT"                       >> "$P_HEAD" # meta
       echo "/<\\/body>/d"                             >> "$P_HEAD"
       select_in_printsitefile "$F"                    >> "$P_HEAD"
-      _ext_=`print_extension "$printerfriendly"`                     # head-
-      $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_HEAD" # hrefs
-      # line_=`sed_slash_key "$printsitefile_img_2"`                   # back-
+      _ext_=`print_extension "$printerfriendly"`                   # head-
+      # line_=`sed_slash_key "$printsitefile_img_2"`               # back-
       echo "/||topics:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
       echo "/|||pages:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
       $CAT                             "$F_FAST"      >> "$P_HEAD" # subdir
+      make_back_path "$F"                             >> "$P_HEAD"
       $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST"            > "$P_BODY"
-      $SED -e "s/[.]html\"|/$_ext_&/g" "$F_FAST"      >> "$P_BODY" # body-
-      $CAT                             "$F_FAST"      >> "$P_BODY" # hrefs
+      make_back_path "$F"                             >> "$P_BODY"
 
       mkpathfile "$P"
       $SED_LONGSCRIPT "$P_HEAD"              $PRINTSITEFILE  > $P # ~head~
@@ -2120,7 +2111,6 @@ ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
    echo "!! -> '$F' (skipping topdir build)"
    ;;
 # */*.html) 
-#    make_fast  > $F.$FAST # try for later subdir build
 #    echo "!! -> '$F' (skipping subdir build)"
 #    ;;
 # */*/*/|*/*/|*/|*/index.htm|*/index.html) 
@@ -2180,7 +2170,6 @@ esac
       test -f  "$tmp/$F.$HEAD" && cp "$tmp/$F.$HEAD" DEBUG/$FFFF.head.tmp.sed
       test -f  "$tmp/$F.$BODY" && cp "$tmp/$F.$BODY" DEBUG/$FFFF.body.tmp.sed
       test -f  "$tmp/$F.$FOOT" && cp "$tmp/$F.$FOOT" DEBUG/$FFFF.foot.tmp.sed
-      test -f  "$tmp/$F.$FAST" && cp "$tmp/$F.$FAST" DEBUG/$FFFF.fast.tmp.sed
       for P in tags vars span meta page date list html sect \
                data head body foot fast          xmlmapping \
                gets puts site mett sect1 sect2 sect3 style ; do

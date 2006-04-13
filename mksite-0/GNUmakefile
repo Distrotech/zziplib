@@ -13,7 +13,11 @@ SAVETO = _dist
 
 DISTFILES = GNUmakefile README.TXT COPYING.ZLIB $(PACKAGE).spec \
             mksite.txt mksite.sh mksite.pl \
-            doc/*.htm doc/*.gif test*/*.htm 
+            doc/*.htm doc/*.gif test*/*.htm \
+            selftest/GNUmakefile \
+            selftest/*/GNUmakefile \
+            selftest/*/*.htm \
+            selftest/*/*.html.test 
 
 diff =  diff
 diffs = diff -U1

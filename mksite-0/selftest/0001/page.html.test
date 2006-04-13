@@ -1,0 +1,16 @@
+<html><head>    <title> Testing - test 001 </title>
+ <meta name="formatter" content="mksite.pl" />
+ <meta name="DC.date.issued" content="2006-04-04" />
+ <meta name="DC.title" content="Test 001" />
+ <meta name="DC.relation.isFormatOf" content="page.htm" />
+ <meta name="DC.date.modified" content="2006-04-12" />
+ <meta name="DC.date" content="2006-04-04" />
+ <meta name="DC.title.selected" content="Page 001" />
+ <meta name="DC.publisher" content="guidod" />
+</head><body>
+
+<br>&nbsp;<b><a href="page.html">Page 001</a></b>
+
+
+Hello World
+</body></html>
