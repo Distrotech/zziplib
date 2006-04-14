@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.69 2006-04-14 12:42:39 guidod Exp $
+# $Id: mksite.sh,v 1.70 2006-04-14 16:50:35 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -424,6 +424,8 @@ dir_name ()
     echo "$1" | $SED -e "s:/[^/][^/]*\$::"
 }
 
+piped_value="s/|/\\\\|/g"
+amp_value="s|&|\\\\&|g"
 info2vars_sed ()          # generate <!--$vars--> substition sed addon script
 {
   INP="$1" ; test ".$INP" = "." && INP="$tmp/$F.$DATA"
@@ -439,14 +441,14 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
   test ".$commentvars"  = ".no" && updatevars="no"   # duplicated from
   test ".$commentvars"  = ".no" && expandvars="no"   # option handling
   test ".$expandvars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
+  $SED -e "/^=....=formatter /d" -e "$piped_value" \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V0\\1[?]-->|- \\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1[?]-->|(\\2)|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V0\\1[?]-->|- \\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1[?]-->|(\\2)|," \
-      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q/d" -e "/^<!/d" -e "$amp_value"  $INP # $++
   test ".$expandvars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
+  $SED -e "/^=....=formatter /d" -e "$piped_value" \
       -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
@@ -455,16 +457,16 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<!--$V1\\1-->|\\\\1$SS\\2|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V1\\1[?]-->|\\\\1$SS\\2|," \
-      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q/d" -e "/^<!/d" -e "$amp_value"  $INP # $++
   test ".$updatevars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
+  $SED -e "/^=....=formatter /d" -e "$piped_value" \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*|(\\2)|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*|(\\2)|," \
-      -e "/^<$Q/d"  -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q/d"  -e "/^<!/d" -e "$amp_value"  $INP # $++
   test ".$updatevars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
+  $SED -e "/^=....=formatter /d"  -e "$piped_value" \
       -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
@@ -473,9 +475,9 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<!--$V1\\1:[=]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V1\\1:[?]-->[^<>]*|\\\\1$SS\\2|," \
-      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q/d" -e "/^<!/d" -e "$amp_value"  $INP # $++
   test ".$attribvars" != ".no" && \
-  $SED -e "/^=....=formatter /d" \
+  $SED -e "/^=....=formatter /d" -e "$piped_value" \
       -e "/^<$Q'text'>/s,<$Q'text'>$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V9,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
@@ -484,7 +486,7 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
       -e "/^<$Q'Text'>/s,<$Q'Text'>$V8,s|<$V1{\\1:[=]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
       -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<$V1{\\1:[?]$V2}$V3>|<\\\\1$SS\\2\\\\3>|," \
-      -e "/^<$Q/d" -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
+      -e "/^<$Q/d" -e "/^<!/d" -e "$amp_value"  $INP # $++
   # if value="2004" then generated sed might be "\\12004" which is bad
   # instead we generate an edited value of "\\1$SS$value" and cut out
   # the spacer now after expanding the variable values:

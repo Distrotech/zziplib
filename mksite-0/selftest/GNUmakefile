@@ -5,3 +5,8 @@ check :
 	; then echo = $@ $$i OK \
 	; else echo = $@ $$i FAILED ; exit 1 \
 	; fi done
+
+sh :
+	$(MAKE) check "MKSITE=sh ../../mksite.sh"
+pl :
+	$(MAKE) check "MKSITE=perl ../../mksite.pl"
