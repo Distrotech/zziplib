@@ -1,6 +1,6 @@
 MKSITE ?= perl ../../mksite.pl
 U = -U0
-X = -I name=formatter -I generated.sitemap.index
+X = -I name=.formatter -I generated.sitemap.index -I DC.date
 diff = diff
 
 PAGES = page.html

@@ -257,3 +257,7 @@ guidod-hub:
 	$(MAKE) -C ../guidod-hub
 	$(MAKE) -C ../guidod-hub check
 
+selftest.pl :
+	$(MAKE) -C selftest "MKSITE=perl ../../mksite.pl"
+selftest.sh :
+	$(MAKE) -C selftest "MKSITE=sh ../../mksite.sh"

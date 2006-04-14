@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.68 2006-04-13 19:50:16 guidod Exp $
+# $Id: mksite.sh,v 1.69 2006-04-14 12:42:39 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -459,9 +459,9 @@ info2vars_sed ()          # generate <!--$vars--> substition sed addon script
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \
       -e "/^<$Q'name'>/s,<$Q'name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
-      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V9,s|<!--$V0\\1:[?]-->[^<>]*|(\\2)|," \
       -e "/^<$Q'name'>/s,<$Q'name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*|- \\2|," \
-      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*| (\\2) |," \
+      -e "/^<$Q'Name'>/s,<$Q'Name'>$V8,s|<!--$V0\\1:[?]-->[^<>]*|(\\2)|," \
       -e "/^<$Q/d"  -e "/^<!/d" -e "s|&|\\\\&|g"  $INP # $++
   test ".$updatevars" != ".no" && \
   $SED -e "/^=....=formatter /d" \

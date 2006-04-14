@@ -1,6 +1,6 @@
 MKSITE ?= perl ../../mksite.pl
 U = -U0
-X = -I name=formatter
+X = -I name=.formatter
 diff = diff
 
 PAGES = page.html
