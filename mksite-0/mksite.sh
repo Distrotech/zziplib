@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.70 2006-04-14 16:50:35 guidod Exp $
+# $Id: mksite.sh,v 1.71 2006-04-15 12:17:24 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -339,7 +339,8 @@ _EQUIVS="$_EQUIVS content-language content-script-type content-style-type"
 for P in $DC_VARS $_EQUIVS ; do # dublin core embedded
    echo "s|<$P>[^<>]*</$P>||g"              >> "$MK_TAGS"
 done
-   echo "s|<!--sect[$AZ$NN]-->||g"          >> "$MK_TAGS"
+   test ".$opt_keepsect" = "." && \
+   echo "s|<a sect=\"[$AZ$NN]\"|<a|g"       >> "$MK_TAGS"
    echo "s|<!--[$AX]*[?]-->||g"             >> "$MK_TAGS"
    echo "s|<!--\\\$[$AX]*[?]:-->||g"        >> "$MK_TAGS"
    echo "s|<!--\\\$[$AX]*:[?=]-->||g"       >> "$MK_TAGS"
@@ -1629,7 +1630,7 @@ make_xmlfile()
 # we scan the SITEFILE for href references to be converted
 # - in the new variant we use a ".gets.tmp" sed script that            SECTS
 # marks all interesting lines so they can be checked later
-# with an sed anchor of <!--sect[$NN]--> (or <!--sect[$AZ]-->)
+# with an sed anchor of sect="[$NN]" (or sect="[$AZ]")
 S="\\&nbsp\\;"
 # S="[&]nbsp[;]"
 
@@ -1638,69 +1639,69 @@ S="\\&nbsp\\;"
 # note that "<br>" is sometimes used with HR - it must exist in input
 echo_HR_EM_PP ()
 {
-    echo "/^$1$2$3*<a href=/s/^/$4/"
-    echo "/^<>$1$2$3*<a href=/s/^/$4/"
-    echo "/^$S$1$2$3*<a href=/s/^/$4/"
-    echo "/^$1<>$2$3*<a href=/s/^/$4/"
-    echo "/^$1$S$2$3*<a href=/s/^/$4/"
-    echo "/^$1$2<>$3*<a href=/s/^/$4/"
-    echo "/^$1$2$S$3*<a href=/s/^/$4/"
+    echo "s%^\\($1$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\(<>$1$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($S$1$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($1<>$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($1$S$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($1$2<>$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($1$2$S$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
 }
 
 echo_br_EM_PP ()
 {
     echo_HR_EM_PP  "$1" "$2" "$3" "$4"
-    echo "/^$2$3*<a href=/s/^/$4/"
-    echo "/^<>$2$3*<a href=/s/^/$4/"
-    echo "/^$S$2$3*<a href=/s/^/$4/"
-    echo "/^$2<>$3*<a href=/s/^/$4/"
-    echo "/^$2$S$3*<a href=/s/^/$4/"
-    echo "/^$2$3*<><a href=/s/^/$4/"
-    echo "/^$2$3*$S<a href=/s/^/$4/"
+    echo "s%^\\($2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\(<>$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($S$2$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($2<>$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($2$S$3*<a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($2$3*<><a\\) \\(href=\\)%\\1 $4 \\2%"
+    echo "s%^\\($2$3*$S<a\\) \\(href=\\)%\\1 $4 \\2%"
 }    
 
 echo_HR_PP ()
 {
-    echo "/^$1$2*<a href=/s/^/$3/"
-    echo "/^<>$1$2*<a href=/s/^/$3/"
-    echo "/^$S$1$2*<a href=/s/^/$3/"
-    echo "/^$1<>$2*<a href=/s/^/$3/"
-    echo "/^$1$S$2*<a href=/s/^/$3/"
+    echo "s%^\\($1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\(<>$1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\($S$1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\($1<>$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\($1$S$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
 }
 echo_br_PP ()
 {
     echo_HR_PP "$1" "$2" "$3"
-    echo "/^$2*<a href=/s/^/$3/"
-    echo "/^<>$2*<a href=/s/^/$3/"
-    echo "/^$S$2*<a href=/s/^/$3/"
+    echo "s%^\\($2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\(<>$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
+    echo "s%^\\($S$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
 }
 echo_sp_PP ()
 {
-    echo "/^<>$1*<a href=/s/^/$2/"
-    echo "/^$S$1*<a href=/s/^/$2/"
-    echo "/^<><>$1*<a href=/s/^/$2/"
-    echo "/^$S$S$1*<a href=/s/^/$2/"
-    echo "/^<>$1<>*<a href=/s/^/$2/"
-    echo "/^$S$1$S*<a href=/s/^/$2/"
-    echo "/^$1<><>*<a href=/s/^/$2/"
-    echo "/^$1$S$S*<a href=/s/^/$2/"
-    echo "/^$1<>*<a href=/s/^/$2/"
-    echo "/^$1$S*<a href=/s/^/$2/"
+    echo "s%^\\(<>$1*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<><>$1*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$S$1*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<>*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1$S*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><>*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S$S*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<>*<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S*<a\\) \\(href=\\)%\\1 $2 \\2%"
 }
 
 echo_sp_sp ()
 {
-    echo "/^$1*<a name=/s/^/$2/"
-    echo "/^<>$1*<a name=/s/^/$2/"
-    echo "/^$S$1*<a name=/s/^/$2/"
-    echo "/^<><>$1*<a name=/s/^/$2/"
-    echo "/^$S$S$1*<a name=/s/^/$2/"
-    echo "/^<>$1<>*<a name=/s/^/$2/"
-    echo "/^$S$1$S*<a name=/s/^/$2/"
-    echo "/^$1<><>*<a name=/s/^/$2/"
-    echo "/^$1$S$S*<a name=/s/^/$2/"
-    echo "/^$1<>*<a name=/s/^/$2/"
-    echo "/^$1$S*<a name=/s/^/$2/"
+    echo "s%^\\($1*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<><>$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$S$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<>*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><>*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<>*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
 }
 
 make_sitemap_init()
@@ -1712,21 +1713,21 @@ make_sitemap_init()
     b2="[-|[]"
     b3="[\\/:]"
     q3="[\\/:,[]"
-    echo_HR_PP    "<hr>"            "$h1"    "<!--sect1-->"      > "$MK_GETS"
-    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "<!--sect1-->"     >> "$MK_GETS"
-    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "<!--sect1-->"     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b1$b1" "<!--sect1-->"     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> "$MK_GETS"
-    echo_br_PP    "<br>"            "$b2$b2" "<!--sect2-->"     >> "$MK_GETS"
-    echo_br_PP    "<br>"            "$b3$b3" "<!--sect3-->"     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<small>"  "$q3"    "<!--sect3-->"     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<em>"     "$q3"    "<!--sect3-->"     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<u>"      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$q3"    "<!--sect3-->"     >> "$MK_GETS"
-    echo_sp_PP                      "$q3"    "<!--sect3-->"     >> "$MK_GETS"
-    echo_sp_sp                      "$q3"    "<!--sect9-->"     >> "$MK_GETS"
-    echo_sp_sp    "<br>"                     "<!--sect9-->"     >> "$MK_GETS"
+    echo_HR_PP    "<hr>"            "$h1"    "sect=\"sect1\""      > "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "sect=\"sect1\""     >> "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "sect=\"sect1\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b1$b1" "sect=\"sect1\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b2$b2" "sect=\"sect2\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b3$b3" "sect=\"sect3\""     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b2$b2" "sect=\"sect2\""     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b3$b3" "sect=\"sect3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<small>"  "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<em>"     "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<u>"      "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
+    echo_sp_PP                      "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
+    echo_sp_sp                      "$q3"    "sect=\"sect9\""     >> "$MK_GETS"
+    echo_sp_sp    "<br>"                     "sect=\"sect9\""     >> "$MK_GETS"
     $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
@@ -1735,22 +1736,13 @@ make_sitemap_init()
 
 _uses_="<$Q'use\\1'>\\2 \\3<$QX>" 
 _name_="<$Q'use\\1'>name:\\2 \\3<$QX>" ; 
-_getW_="<!--sect\\([$NN]\\)-->[^<>]*"
-_getX_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*"
-_getY_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*"
-_getZ_="<!--sect\\([$NN]\\)-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*"
 
 make_sitemap_list()
 {
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
-    $SED -f "$MK_GETS"           -e "/^<!--sect[$NN]-->/!d" \
-	-e "s|^$_getX_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
-	-e "s|^$_getY_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
-	-e "s|^$_getZ_<a href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
-	-e "s|^$_getW_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "s|^$_getX_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "s|^$_getY_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "s|^$_getZ_<a name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
+    $SED -f "$MK_GETS"           -e "/^<a sect=\"[$NN]\"/!d" \
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "/^<$Q/!d" -e "/^<!/d"   "$SITEFILE" > "$MK_DATA"
 }
 
@@ -1920,11 +1912,10 @@ skip_httpspec ()
 
 head_sed_sitemap() # $filename $section
 {
-   FF="$1"
+   FF=`sed_piped_key "$1"`
    SECTION=`sed_slash_key "$2"`
-   SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
-   echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          # $++
-   echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   # $++
+   SECTS="sect=\"[$NN$AZ]\"" ; SECTN="sect=\"[$NN]\"" # lines with hrefs
+   echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
 }
@@ -1932,11 +1923,10 @@ head_sed_sitemap() # $filename $section
 head_sed_listsection() # $filename $section
 {
    # traditional.... the sitefile is the full navigation bar
-   FF=`sed_slash_key "$1"`
+   FF=`sed_piped_key "$1"`
    SECTION=`sed_slash_key "$2"`
-   SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
-   echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          # $++
-   echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   # $++
+   SECTS="sect=\"[$NN$AZ]\"" ; SECTN="sect=\"[$NN]\"" # lines with hrefs
+   echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
 }
@@ -1944,9 +1934,9 @@ head_sed_listsection() # $filename $section
 head_sed_multisection() # $filename $section
 {
    # sitefile navigation bar is split into sections
-   FF=`sed_slash_key "$1"`
+   FF=`sed_piped_key "$1"`
    SECTION=`sed_slash_key "$2"`
-   SECTS="<!--sect[$NN$AZ]-->" ; SECTN="<!--sect[$NN]-->" # lines with hrefs
+   SECTS="sect=\"[$NN$AZ]\"" ; SECTN="sect=\"[$NN]\"" # lines with hrefs
    # grep all pages with a class='sect' relation to current $SECTION and
    # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
    # after that all the (still) numeric SECTNs are deactivated / killed.
@@ -1954,17 +1944,16 @@ head_sed_multisection() # $filename $section
        test ".$section" = ".no" && continue
    $SED -e "/^<$Q'sect'>[^ ]* $section/!d" \
         -e "s|<$Q'sect'>||" -e "s| .*||" \
-        -e "s/.*/s|^$SECTS\\\\(.*<a href=\"&\"\\\\)|<!--sectX-->\\\\1|/" \
+        -e "s/.*/s|<a $SECTS \\\\(href=\"&\"\\\\)|<a sect=\"X\" \\\\1|/" \
         "$MK_DATA"  # $++
    $SED -e "/^<$Q'sect'>name:[^ ]* $section/!d" \
         -e "s|<$Q'sect'>name:||" -e "s| .*||" \
-        -e "s/.*/s|^$SECTS\\\\(.*<a name=\"&\"\\\\)|<!--sectX-->\\\\1|/" \
+        -e "s/.*/s|<a $SECTS \\\\(name=\"&\"\\\\)|<a sect=\"X\" \\\\1|/" \
         "$MK_DATA"  # $++
    done
-   echo "s|^$SECTN[^ ]*\\(<a href=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
-   echo "s|^$SECTN[^ ]*\\(<a name=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
-   echo "/^$SECTS.*<a href=\"$FF\">/s|</a>|</a></b>|"          # $++
-   echo "/^$SECTS.*<a href=\"$FF\">/s|<a href=|<b><a href=|"   # $++
+   echo "s|.*<a \\($SECTN href=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
+   echo "s|.*<a \\($SECTN name=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
+   echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
 }

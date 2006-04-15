@@ -1,28 +1,32 @@
 <html><head>  <title> Testing - site ~ </title> 
  <meta name="formatter" content="mksite.pl" />
  <meta name="DC.title" content="site ~" />
- <meta name="DC.date.available" content="2006-04-13" />
+ <meta name="DC.date.available" content="2006-04-14" />
  <meta name="DC.subject" content="sitemap" />
  <meta name="DC.type" content="Collection" scheme="DCMIType" />
  <meta name="DC.title" content="Testing" />
- <meta name="DC.date.modified" content="2006-04-13" />
- <meta name="DC.date" content="2006-04-13" />
- <meta name="DC.relation.section" content="test/page3.html" />
+ <meta name="DC.date.modified" content="2006-04-14" />
+ <meta name="DC.date" content="2006-04-14" />
+ <meta name="DC.relation.section" content="test/subpage1.html" />
  <meta name="DC.publisher" content="guidod" />
 </head><body>
 
 <table><tr><td>
 <hr><a href="page1.html">Page 001</a>
 <br>-<a href="page2.html">Page 002</a>
-<hr><a href="test/page3.html">Page 003</a>
-<br>-<a href="test/page4.html">Page 004</a>
+<hr><a href="test/subpage1.html">SubPage 001</a>
+<br>-<a href="page3.html">Page 003</a>
+<br>-<a href="test/subpage2.html">SubPage 002</a>
+<br>-<a href="page4.html">Page 004</a>
 <br>&nbsp;:<b><a href="site.html">sitemap</a></b>
-</td><td> <!-- the body goes here ->
+</td><td> <!-- the body goes here -->
 <table cellspacing="0" cellpadding="0">
  <tr class="listsitemap1"><td>*</td> <td><a href="page1.html">Page 001</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 001</em></td></tr>
  <tr class="listsitemap2"><td>-</td> <td><a href="page2.html">Page 002</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 002</em></td></tr>
- <tr class="listsitemap1"><td>*</td> <td><a href="test/page3.html">Page 003</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 003</em></td></tr>
- <tr class="listsitemap2"><td>-</td> <td><a href="test/page4.html">Page 004</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 004</em></td></tr>
- <tr class="listsitemap3"><td> </td> <td><a href="site.html">- site ~</a></td><td>&nbsp;</td> <td><small>2006-04-13</small></td><td>&nbsp;</td> <td><em>generated sitemap index</em></td></tr>
+ <tr class="listsitemap1"><td>*</td> <td><a href="test/subpage1.html">SubPage 001</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>SubTest 001</em></td></tr>
+ <tr class="listsitemap2"><td>-</td> <td><a href="page3.html">Page 003</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 003</em></td></tr>
+ <tr class="listsitemap2"><td>-</td> <td><a href="test/subpage2.html">SubPage 002</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>SubTest 002</em></td></tr>
+ <tr class="listsitemap2"><td>-</td> <td><a href="page4.html">Page 004</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 004</em></td></tr>
+ <tr class="listsitemap3"><td> </td> <td><a href="site.html">- site ~</a></td><td>&nbsp;</td> <td><small>2006-04-14</small></td><td>&nbsp;</td> <td><em>generated sitemap index</em></td></tr>
 </table>
 </td></tr></table></body></html>

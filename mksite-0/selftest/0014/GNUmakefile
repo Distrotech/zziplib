@@ -19,3 +19,8 @@ sh :
 	$(MAKE) check "MKSITE=sh ../../mksite.sh"
 pl :
 	$(MAKE) check "MKSITE=perl ../../mksite.pl"
+tested :
+	@ for i in *.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html \
+	; do if test -f "$$i" \
+	; then echo cp "$$i" "$$i.test" ; cp "$$i" "$$i.test" \
+	; fi done

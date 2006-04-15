@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.40 2006-04-13 19:50:16 guidod Exp $
+# $Id: mksite.pl,v 1.41 2006-04-15 12:17:24 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -308,7 +308,7 @@ my @_EQUIVS =
 { my $P; for $P (@_EQUIVS) {
     push @MK_TAGS, "s|<$P>[^<>]*</$P>||g;";
 }}
-push @MK_TAGS, "s|<!--sect[$AZ$NN]-->||g;";
+push @MK_TAGS, "s|<a sect=\\\"[$AZ$NN]\\\"|<a|g;" if not $o{keepsect};
 push @MK_TAGS, "s|<!--[$AX]*[?]-->||g;";
 push @MK_TAGS, "s|<!--\\\$[$AX]*[?]:-->||g;";
 push @MK_TAGS, "s|<!--\\\$[$AX]*:[?=]-->||g;";
@@ -1821,7 +1821,7 @@ sub make_xmlfile
 # we scan the SITEFILE for href references to be converted
 # - in the new variant we use a ".gets.tmp" sed script that            SECTS
 # marks all interesting lines so they can be checked later
-# with an sed anchor of <!--sect[$NN]--> (or <!--sect[$AZ]-->)
+# with an sed anchor of sect="[$NN]" (or sect="[$AZ]")
 my $S="\\&nbsp\\;";
 # S="[&]nbsp[;]"
 
@@ -1832,13 +1832,13 @@ sub echo_HR_EM_PP
 {
     my ($U,$V,$W,$X,$Z) = @_;
     my @list = (
-		"/^$U$V$W*<a href=/   and s/^/$X/;",
-		"/^<>$U$V$W*<a href=/ and s/^/$X/;",
-		"/^$S$U$V$W*<a href=/ and s/^/$X/;",
-		"/^$U<>$V$W*<a href=/ and s/^/$X/;",
-		"/^$U$S$V$W*<a href=/ and s/^/$X/;",
-		"/^$U$V<>$W*<a href=/ and s/^/$X/;",
-		"/^$U$V$S$W*<a href=/ and s/^/$X/;" );
+		"s%^($U$V$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^(<>$U$V$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^($S$U$V$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^($U<>$V$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^($U$S$V$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^($U$V<>$W*<a) (href=)%\$1 $X \$2%;",
+		"s%^($U$V$S$W*<a) (href=)%\$1 $X \$2%;" );
     return @list;
 }
 
@@ -1847,13 +1847,13 @@ sub echo_br_EM_PP
     my ($U,$V,$W,$X,$Z) = @_;
     my @list = &echo_HR_EM_PP  ("$U", "$V", "$W", "$X");
     my @listt = (
-		 "/^$V$W*<a href=/   and s/^/$X/;",
-		 "/^<>$V$W*<a href=/ and s/^/$X/;",
-		 "/^$S$V$W*<a href=/ and s/^/$X/;",
-		 "/^$V<>$W*<a href=/ and s/^/$X/;",
-		 "/^$V$S$W*<a href=/ and s/^/$X/;",
-		 "/^$V$W*<><a href=/ and s/^/$X/;",
-		 "/^$V$W*$S<a href=/ and s/^/$X/;" );
+		 "s%^($V$W*<a) (href=)%\$1 $X \$2%;",
+		 "s%^(<>$V$W*<a) (href=)%\$1 $X \$2%;",
+		 "s%^($S$V$W*<a) (href=)%\$1 $X \$2%;",
+		 "s%^($V<>$W*<a) (href=)%\$1 $X \$2%;",
+		 "s%^($V$S$W*<a) (href=)%\$1 $X \$2%;",
+		 "s%^($V$W*<><a) (href=)%\$1 $X \$2%;",
+		 "s%^($V$W*$S<a) (href=)%\$1 $X \$2%;" );
     push @list, @listt;
     return @list;
 }    
@@ -1862,11 +1862,12 @@ sub echo_HR_PP
 {
     my ($U,$V,$W,$Z) = @_;
     my @list = (
-		"/^$U$V*<a href=/   and s/^/$W/;",
-		"/^<>$U$V*<a href=/ and s/^/$W/;",
-		"/^$S$U$V*<a href=/ and s/^/$W/;",
-		"/^$U<>$V*<a href=/ and s/^/$W/;",
-		"/^$U$S$V*<a href=/ and s/^/$W/;" );
+		"s%^($U<a) (href=)%\$1 $W \$2%;",
+		"s%^($U$V*<a) (href=)%\$1 $W \$2%;",
+		"s%^(<>$U$V*<a) (href=)%\$1 $W \$2%;",
+		"s%^($S$U$V*<a) (href=)%\$1 $W \$2%;",
+		"s%^($U<>$V*<a) (href=)%\$1 $W \$2%;",
+		"s%^($U$S$V*<a) (href=)%\$1 $W \$2%;" );
     return @list;
 }
 sub echo_br_PP
@@ -1874,9 +1875,9 @@ sub echo_br_PP
     my ($U,$V,$W,$Z) = @_;
     my @list = &echo_HR_PP ("$U", "$V", "$W");
     my @listt = (
-		 "/^$V*<a href=/   and s/^/$W/;",
-		 "/^<>$V*<a href=/ and s/^/$W/;",
-		 "/^$S$V*<a href=/ and s/^/$W/;" );
+		 "s%^($V*<a) (href=)%\$1 $W \$2%;",
+		 "s%^(<>$V*<a) (href=)%\$1 $W \$2%;",
+		 "s%^($S$V*<a) (href=)%\$1 $W \$2%;" );
     push @list, @listt;
     return @list;
 }
@@ -1884,33 +1885,33 @@ sub echo_sp_PP
 {
     my ($U,$V,$Z) = @_;
     my @list = (
-		"/^<>$U*<a href=/ and s/^/$V/;",
-		"/^$S$U*<a href=/ and s/^/$V/;",
-		"/^<><>$U*<a href=/ and s/^/$V/;",
-		"/^$S$S$U*<a href=/ and s/^/$V/;",
-		"/^<>$U<>*<a href=/ and s/^/$V/;",
-		"/^$S$U$S*<a href=/ and s/^/$V/;",
-		"/^$U<><>*<a href=/ and s/^/$V/;",
-		"/^$U$S$S*<a href=/ and s/^/$V/;",
-		"/^$U<>*<a href=/ and s/^/$V/;",
-		"/^$U$S*<a href=/ and s/^/$V/;" );
+		"s%^(<>$U*<a) (href=)%\$1 $V \$2%;",
+		"s%^($S$U*<a) (href=)%\$1 $V \$2%;",
+		"s%^(<><>$U*<a) (href=)%\$1 $V \$2%;",
+		"s%^($S$S$U*<a) (href=)%\$1 $V \$2%;",
+		"s%^(<>$U<>*<a) (href=)%\$1 $V \$2%;",
+		"s%^($S$U$S*<a) (href=)%\$1 $V \$2%;",
+		"s%^($U<><>*<a) (href=)%\$1 $V \$2%;",
+		"s%^($U$S$S*<a) (href=)%\$1 $V \$2%;",
+		"s%^($U<>*<a) (href=)%\$1 $V \$2%;",
+		"s%^($U$S*<a) (href=)%\$1 $V \$2%;" );
     return @list;
 }
 sub echo_sp_sp
 {
     my ($U,$V,$Z) = @_;
     my @list = (
-		"/^$U*<a name=/ and s/^/$V/;",
-		"/^<>$U*<a name=/ and s/^/$V/;",
-		"/^$S$U*<a name=/ and s/^/$V/;",
-		"/^<><>$U*<a name=/ and s/^/$V/;",
-		"/^$S$S$U*<a name=/ and s/^/$V/;",
-		"/^<>$U<>*<a name=/ and s/^/$V/;",
-		"/^$S$U$S*<a name=/ and s/^/$V/;",
-		"/^$U<><>*<a name=/ and s/^/$V/;",
-		"/^$U$S$S*<a name=/ and s/^/$V/;",
-		"/^$U<>*<a name=/ and s/^/$V/;",
-		"/^$U$S*<a name=/ and s/^/$V/;" );
+		"s%^($U*<a) (name=)%\$1 $V \$2%;",
+		"s%^(<>$U*<a) (name=)%\$1 $V \$2%;",
+		"s%^($S$U*<a) (name=)%\$1 $V \$2%;",
+		"s%^(<><>$U*<a) (name=)%\$1 $V \$2%;",
+		"s%^($S$S$U*<a) (name=)%\$1 $V \$2%;",
+		"s%^(<>$U<>*<a) (name=)%\$1 $V \$2%;",
+		"s%^($S$U$S*<a) (name=)%\$1 $V \$2%;",
+		"s%^($U<><>*<a) (name=)%\$1 $V \$2%;",
+		"s%^($U$S$S*<a) (name=)%\$1 $V \$2%;",
+		"s%^($U<>*<a) (name=)%\$1 $V \$2%;",
+		"s%^($U$S*<a) (name=)%\$1 $V \$2%;" );
     return @list;
 }
 
@@ -1924,21 +1925,21 @@ sub make_sitemap_init
     my $b3="[\\/:]";
     my $q3="[\\/:,[]";
     @MK_GETS = ();
-    push @MK_GETS, &echo_HR_PP   ("<hr>",            "$h1",    "<!--sect1-->");
-    push @MK_GETS, &echo_HR_EM_PP("<hr>","<em>",     "$h1",    "<!--sect1-->");
-    push @MK_GETS, &echo_HR_EM_PP("<hr>","<strong>", "$h1",    "<!--sect1-->");
-    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b1$b1", "<!--sect1-->");
-    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b2$b2", "<!--sect2-->");
-    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b3$b3", "<!--sect3-->");
-    push @MK_GETS, &echo_br_PP   ("<br>",          , "$b2$b2", "<!--sect2-->");
-    push @MK_GETS, &echo_br_PP   ("<br>",          , "$b3$b3", "<!--sect3-->");
-    push @MK_GETS, &echo_br_EM_PP("<br>","<small>" , "$q3"   , "<!--sect3-->");
-    push @MK_GETS, &echo_br_EM_PP("<br>","<em>"    , "$q3"   , "<!--sect3-->");
-    push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "<!--sect3-->");
-    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "<!--sect3-->");
-    push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "<!--sect3-->");
-    push @MK_GETS, &echo_sp_sp   (                   "$q3"   , "<!--sect9-->");
-    push @MK_GETS, &echo_sp_sp   ("<br>",                      "<!--sect9-->");
+    push @MK_GETS, &echo_HR_PP   ("<hr>",            "$h1",    "sect=\\\"1\\\"");
+    push @MK_GETS, &echo_HR_EM_PP("<hr>","<em>",     "$h1",    "sect=\\\"1\\\"");
+    push @MK_GETS, &echo_HR_EM_PP("<hr>","<strong>", "$h1",    "sect=\\\"1\\\"");
+    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b1$b1", "sect=\\\"1\\\"");
+    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b2$b2", "sect=\\\"2\\\"");
+    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$b3$b3", "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_br_PP   ("<br>",          , "$b2$b2", "sect=\\\"2\\\"");
+    push @MK_GETS, &echo_br_PP   ("<br>",          , "$b3$b3", "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_br_EM_PP("<br>","<small>" , "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_br_EM_PP("<br>","<em>"    , "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_sp_sp   (                   "$q3"   , "sect=\\\"9\\\"");
+    push @MK_GETS, &echo_sp_sp   ("<br>",                      "sect=\\\"9\\\"");
     @MK_PUTS = map { my $x=$_; $x =~ s/(>)(\[)/$1 *$2/; $x } @MK_GETS;
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
@@ -1947,26 +1948,17 @@ sub make_sitemap_init
 
 my $_uses_= sub{"<$Q='use$1'>$2 $3<$QX>" }; 
 my $_name_= sub{"<$Q='use$1'>name:$2 $3<$QX>" }; 
-my $_getW_="<!--sect([$NN])-->[^<>]*";
-my $_getX_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*";
-my $_getY_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*";
-my $_getZ_="<!--sect([$NN])-->[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*<[^<>]*>[^<>]*";
 
 sub make_sitemap_list
 {
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
     for (source($SITEFILE)) {
-#	print join("$n;",@MK_GETS),$n;
-	$_ = &eval_MK_LIST("sitemap_list", $_, @MK_GETS);
-	/^<!--sect[$NN]-->/ or next;
+	my $x = $_;
+	local $_ = &eval_MK_LIST("sitemap_list", $x, @MK_GETS);
+	/<a sect=\"[$NN]\"/ or next;
 	chomp;
-	s{^$_getX_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
-	s{^$_getY_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
-	s{^$_getZ_<a href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
-	s{^$_getW_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
-	s{^$_getX_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
-	s{^$_getY_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
-	s{^$_getZ_<a name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
+	s{.*<a sect=\"([^\"]*)\" href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
+	s{.*<a sect=\"([^\"]*)\" name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
 	/^<$Q=/ or next;
 	/^<!/ and next;
 	push @MK_DATA, $_;
@@ -2146,13 +2138,12 @@ sub skip_httpspec
 sub head_sed_sitemap # $filename $section
 {
     my ($U,$V,$Z) = @_;
-    my $FF=&sed_slash_key($U);
+    my $FF=&sed_piped_key($U);
     my $SECTION=&sed_slash_key($V);
-    my $SECTS="<!--sect[$NN$AZ]-->" ; 
-    my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
+    my $SECTS="sect=\"[$NN$AZ]\"" ; 
+    my $SECTN="sect=\"[$NN]\""; # lines with hrefs
     my @OUT = ();
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
+    push @OUT, "s|(<a $SECTS href=\\\"$FF\\\">.*</a>)|<b>\$1</b>|;";
     push @OUT, "/ href=\\\"$SECTION\\\"/ "
 	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
@@ -2162,13 +2153,12 @@ sub head_sed_listsection # $filename $section
 {
    # traditional.... the sitefile is the full navigation bar
     my ($U,$V,$Z) = @_;
-    my $FF=&sed_slash_key($U);
+    my $FF=&sed_piped_key($U);
     my $SECTION=&sed_slash_key($V);
-    my $SECTS="<!--sect[$NN$AZ]-->" ; 
-    my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
+    my $SECTS="sect=\"[$NN$AZ]\"" ; 
+    my $SECTN="sect=\"[$NN]\""; # lines with hrefs
     my @OUT = ();
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
+    push @OUT, "s|(<a $SECTS href=\\\"$FF\\\">.*</a>)|<b>\$1</b>|;";
     push @OUT, "/ href=\\\"$SECTION\\\"/ "
 	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
@@ -2178,33 +2168,32 @@ sub head_sed_multisection # $filename $section
 {
     # sitefile navigation bar is split into sections
     my ($U,$V,$Z) = @_;
-    my $FF=&sed_slash_key($U);
+    my $FF=&sed_piped_key($U);
     my $SECTION=&sed_slash_key($V);
-    my $SECTS="<!--sect[$NN$AZ]-->" ; 
-    my $SECTN="<!--sect[$NN]-->"; # lines with hrefs
+    my $SECTS="sect=\"[$NN$AZ]\"" ; 
+    my $SECTN="sect=\"[$NN]\""; # lines with hrefs
     my @OUT = ();
     # grep all pages with a =sect= relation to current $SECTION and
-    # build foreach an sed line "s|$SECTS\(<a href=$F>\)|<!--sectX-->\1|"
+    # build foreach an sed line "s|<a $SECTS (href=$F)>|<a sect="X" $1>|"
     # after that all the (still) numeric SECTNs are deactivated / killed.
     for my $section ($SECTION, $headsection, $tailsection) {
 	next if $section eq "no";
 	for (grep {/^<$Q='sect'>[^ ]* $section/} @MK_DATA) {
 	    my $x = $_;
 	    $x =~ s|<$Q='sect'>||; $x =~ s| .*||; # $filename
-	    $x =~ s/(.*)/s|^$SECTS\(.*<a href=\\\"$1\\\"\)|<!--sectX-->\$1|/;
+	    $x =~ s/(.*)/s|<a $SECTS \(href=\\\"$1\\\"\)|<a sect=\\\"X\\\" \$1|/;
 	    push @OUT, $x.";";
 	}
 	for (grep {/^<$Q='sect'>name:[^ ]* $section/} @MK_DATA) {
 	    my $x = $_;
 	    $x =~ s|<$Q='sect'>name:||; $x =~ s| .*||; # $filename
-	    $x =~ s/(.*)/s|^$SECTS\(.*<a name=\\\"$1\\\"\)|<!--sectX-->\$1|/;
+	    $x =~ s/(.*)/s|<a $SECTS \(name=\\\"$1\\\"\)|<a sect=\\\"X\\\" \$1|/;
 	    push @OUT, $x.";";
 	}
     }
-    push @OUT, "s|^$SECTN\[^ \]*(<a href=[^<>]*>).*|<!-- \$1 -->|;";
-    push @OUT, "s|^$SECTN\[^ \]*(<a name=[^<>]*>).*|<!-- \$1 -->|;";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|</a>|</a></b>|;";
-    push @OUT, "/^$SECTS.*<a href=\\\"$FF\\\">/ and s|<a href=|<b><a href=|;";
+    push @OUT, "s|.*<a ($SECTN href=[^<>]*)>).*|<!-- \$1 -->|;";
+    push @OUT, "s|.*<a ($SECTN name=[^<>]*)>).*|<!-- \$1 -->|;";
+    push @OUT, "s|(<a $SECTS href=\\\"$FF\\\">.*</a>)|<b>\$1</b>|;";
     push @OUT, "/ href=\\\"$SECTION\\\"/ "
 	."and s|^<td class=\\\"[^\\\"]*\\\"|<td |;" if $sectiontab ne "no";
     return @OUT;
