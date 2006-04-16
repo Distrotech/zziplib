@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.72 2006-04-16 04:27:44 guidod Exp $
+# $Id: mksite.sh,v 1.73 2006-04-16 22:33:02 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -931,9 +931,9 @@ siteinfo2sitemap ()  # generate <name><page><date> addon sed scriptlet
                      # containing <!--"filename"--> and expand any following
                      # reference of <!--name--> or <!--date--> or <!--long-->
   INP="$1" ; test ".$INP" = "." && INP="$MK_DATA"
-  _list_="s|<!--\"\\1\"-->.*<!--name-->|\\&<name href=\"\\1\">\\2</name>|"
-  _date_="s|<!--\"\\1\"-->.*<!--date-->|\\&<date>\\2</date>|"
-  _long_="s|<!--\"\\1\"-->.*<!--long-->|\\&<long>\\2</long>|"
+  _list_="s|\\\\(<!--\"\\1\"-->.*\\\\)<name href=[^<>]*>.*</name>|\\\\1<name href=\"\\1\">\\2</name>|"
+  _date_="s|\\\\(<!--\"\\1\"-->.*\\\\)<date>.*</date>|\\\\1<date>\\2</date>|"
+  _long_="s|\\\\(<!--\"\\1\"-->.*\\\\)<long>.*</long>|\\\\1<long>\\2</long>|"
   $SED -e "s:&:\\\\&:g" \
        -e "s:<$Q'list'>\\([^ ]*\\) \\(.*\\)<$QX>:$_list_:" \
        -e "s:<$Q'date'>\\([^ ]*\\) \\(.*\\)<$QX>:$_date_:" \
@@ -945,21 +945,22 @@ make_multisitemap ()
 {  # each category gets its own column along with the usual entries
    INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
-  _form_="<!--\"\\2\"--><!--use\\1--><!--long--><!--end\\1-->"
-  _form_="$_form_<br><!--name--><!--date-->"
+  _form_="<!--\"\\2\"--><!--use\\1--><long>\\3</long><!--end\\1-->"
+  _form_="$_form_<br><name href=\"\\2\">\\3</name><date>......</date>"
   _tiny_="small><small><small" ; _tinyX_="small></small></small "
   _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
   echo "<table width=\"100%\"><tr><td> " # $++
-  $SED -e "/^<$Q'use.'>/!d" \
-       -e "s|^<$Q'use\\(.\\)'>\\([^ ]*\\) .*|$_form_|" \
+  $SED -e "/^<$Q'[Uu]se.'>/!d" \
+       -e "s|^<$Q'[Uu]se\\(.\\)'>\\([^ ]*\\) \\(.*\\)<$QX>|$_form_|" \
        -f "$MK_SITE" -e "/<name/!d" \
        -e "s|<!--use1-->|</td><td valign=\"top\"><b>|" \
        -e "s|<!--end1-->|</b>|"  \
        -e "s|<!--use2-->|<br>|"  \
        -e "s|<!--use.-->|<br>|" -e "s/<!--[^<>]*-->/ /g" \
-       -e "s|<long>||" -e "s|</long>||" \
        -e "s|<name |<$_tiny_><a |" -e "s|</name>||" \
-       -e "s|<date>| |" -e "s|</date>|</a><br></$_tinyX_>|" \
+       -e "s|<date>|<small style=\"date\">|" \
+       -e "s|</date>|</small></a><br></$_tinyX_>|" \
+       -e "s|<long>|<!--long-->|" -e "s|</long>|<!--/long-->|" \
        $INPUTS              # $++
    echo "</td><tr></table>" # $++
 }
@@ -968,11 +969,13 @@ make_listsitemap ()
 {   # traditional - the body contains a list with date and title extras
    INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
    siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
-   _form_="<!--\"\\2\"--><!--use\\1--><!--name--><!--date--><!--long-->"
+   _form_="<!--\"\\2\"--><!--use\\1--><name href=\"\\2\">\\3</name>"
+   _form_="$_form_<date>......</date><long>\\3</long>"
    _tabb_="<td>\\&nbsp\\;</td>" 
    echo "<table cellspacing=\"0\" cellpadding=\"0\">" # $++
-   $SED -e "/^<$Q'use.'>/!d" \
-        -e "s|^<$Q'use\\(.\\)'>\\([^ ]*\\) .*|$_form_|" \
+   $SED -e "/^<$Q'[Uu]se.'>/!d" \
+        -e "/>name:/d" \
+        -e "s|^<$Q'[Uu]se\\(.\\)'>\\([^ ]*\\) \\(.*\\)<$QX>|$_form_|" \
         -f "$MK_SITE" -e "/<name/!d" \
         -e "s|<!--use\\(1\\)-->|<tr class=\"listsitemap\\1\"><td>*</td>|" \
         -e "s|<!--use\\(2\\)-->|<tr class=\"listsitemap\\1\"><td>-</td>|" \
@@ -981,8 +984,10 @@ make_listsitemap ()
         -e "s|<!--[^<>]*-->| |g" \
 	-e "s|<name href=\"name:sitemap:|<name href=\"|" \
         -e "s|<name |<td><a |" -e "s|</name>|</a></td>$_tabb_|" \
-        -e "s|<date>|<td><small>|" -e "s|</date>|</small></td>$_tabb_|" \
-        -e "s|<long>|<td><em>|" -e "s|</long>|</em></td></tr>|" \
+        -e "s|<date>|<td><small style=\"date\">|" \
+        -e "s|</date>|</small></td>$_tabb_|" \
+        -e "s|<long>|<td><em><!--long-->|" \
+        -e "s|</long>|<!--/long--></em></td></tr>|" \
         $INPUTS             # $++
    for xx in `grep "^<$Q'use.'>name:sitemap:" $INPUTS` ; do
        xx=`echo $xx | sed -e "s/^<$Q'use.'>name:sitemap://" -e "s|<$QX>||"` 
@@ -1100,11 +1105,11 @@ make_current_entry () # $sect $file      ## requires $MK_SITE
   S="$1" ; R="$2"
   SSS=`sed_slash_key "$S"`  
   sep=" - " ; _left_=" [ " ; _right_=" ] "
-  echo_current_line "$S" "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep" \
-       | $SED -f "$MK_SITE" -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
+  echo_current_line "$S" "<!--\"$R\"--><name href=\"$R\">$R</name>$sep" \
+       | $SED -f "$MK_SITE" \
+        -e "s|<!--[^<>]*--><name |<a |" -e "s|</name>|</a>|" \
         -e "/<a href=\"$SSS\"/s/<a href/$_left_&/" \
-        -e "/<a href=\"$SSS\"/s/<\\/a>/&$_right_/" \
-        -e "s/<!--\"[^\"]*\"--><!--name-->//" # $+++
+        -e "/<a href=\"$SSS\"/s/<\\/a>/&$_right_/"  # $+++
 }
 echo_subpage_line () # $sect $extra
 {
@@ -1116,9 +1121,9 @@ make_subpage_entry ()
   S="$1" ; R="$2"
   RR=`sed_slash_key "$R"`  
   sep=" - " ;
-  echo_subpage_line "$S" "<a href=\"$R\"><!--\"$R\"--><!--name--></a>$sep" \
-       | $SED -f "$MK_SITE" -e "s/<name[^<>]*>//" -e "s/<\\/name>//" \
-        -e "s/<!--\"[^\"]*\"--><!--name-->//" # $+++
+  echo_subpage_line "$S" "<!--\"$R\"--><name href=\"$R\">$R</name>$sep" \
+       | $SED -f "$MK_SITE" \
+        -e "s|<!--[^<>]*--><name |<a |" -e "s|</name>|</a>|" # $+++
 }
 
 make_printsitefile ()
@@ -1662,6 +1667,7 @@ echo_br_EM_PP ()
 
 echo_HR_PP ()
 {
+    echo "s%^\\($1<a\\) \\(href=\\)%\\1 $3 \\2%"
     echo "s%^\\($1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
     echo "s%^\\(<>$1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
     echo "s%^\\($S$1$2*<a\\) \\(href=\\)%\\1 $3 \\2%"
@@ -1713,25 +1719,26 @@ make_sitemap_init()
     b2="[-|[]"
     b3="[\\/:]"
     q3="[\\/:,[]"
-    echo_HR_PP    "<hr>"            "$h1"    "sect=\"sect1\""      > "$MK_GETS"
-    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "sect=\"sect1\""     >> "$MK_GETS"
-    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "sect=\"sect1\""     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b1$b1" "sect=\"sect1\""     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b2$b2" "sect=\"sect2\""     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$b3$b3" "sect=\"sect3\""     >> "$MK_GETS"
-    echo_br_PP    "<br>"            "$b2$b2" "sect=\"sect2\""     >> "$MK_GETS"
-    echo_br_PP    "<br>"            "$b3$b3" "sect=\"sect3\""     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<small>"  "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<em>"     "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
-    echo_br_EM_PP "<br>" "<u>"      "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
-    echo_HR_PP    "<br>"            "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
-    echo_sp_PP                      "$q3"    "sect=\"sect3\""     >> "$MK_GETS"
-    echo_sp_sp                      "$q3"    "sect=\"sect9\""     >> "$MK_GETS"
-    echo_sp_sp    "<br>"                     "sect=\"sect9\""     >> "$MK_GETS"
+    echo_HR_PP    "<hr>"            "$h1"    "sect=\"1\""      > "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "sect=\"1\""     >> "$MK_GETS"
+    echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "sect=\"1\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b1$b1" "sect=\"1\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b2$b2" "sect=\"2\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$b3$b3" "sect=\"3\""     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b2$b2" "sect=\"2\""     >> "$MK_GETS"
+    echo_br_PP    "<br>"            "$b3$b3" "sect=\"3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<small>"  "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<em>"     "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_br_EM_PP "<br>" "<u>"      "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_HR_PP    "<br>"            "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_sp_PP                      "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_sp_sp                      "$q3"    "sect=\"9\""     >> "$MK_GETS"
+    echo_sp_sp    "<br>"                     "sect=\"9\""     >> "$MK_GETS"
     $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
     # the .puts.tmp variant is used to <b><a href=..></b> some hrefs which
     # shall not be used otherwise for being generated - this is nice for
     # some quicklinks somewhere. The difference: a whitspace "<hr> <a...>"
+    echo "" > "$MK_DATA" # fresh start
 }
 
 _uses_="<$Q'use\\1'>\\2 \\3<$QX>" 
@@ -1741,11 +1748,12 @@ make_sitemap_list()
 {
     _sitefile_="$1" ; test ".$_sitefile_" = "." && _sitefile_="$SITEFILE"
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
-    $SED -f "$MK_GETS"           -e "/^<a sect=\"[$NN]\"/!d" \
+    $SED -f "$MK_GETS"           -e "/<a sect=\"[$NN]\"/!d" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)|$_name_|" \
-	-e "/^<$Q/!d" -e "/^<!/d"   "$_sitefile_" > "$MK_DATA"
+	-e "/^<$Q/!d" -e "/^<!/d" \
+           "$_sitefile_" >> "$MK_DATA"
 }
 
 _Uses_="<$Q'Use\\1'>\\2 \\3<$QX>" 
@@ -1755,11 +1763,13 @@ make_subsitemap_list()
 {
     _sitefile_="$1" ; test ".$_sitefile_" = "." && _sitefile_="$SITEFILE"
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
-    $SED -f "$MK_GETS"           -e "/^<a sect=\"[$NN]\"/!d" \
+    $SED -f "$MK_GETS"           -e "/<a sect=\"[$NN]\"/!d" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_Uses_|" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_Name_|" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)|$_Name_|" \
-	-e "/^<$Q/!d" -e "/^<!/d"   "$_sitefile_" > "$MK_DATA"
+	-e "/^<$Q/!d" -e "/^<!/d" \
+        -e "s|>\\([^:./][^:./]*[./]\\)|>$2\\1|" \
+           "$_sitefile_" >> "$MK_DATA"
 }
 
 make_sitemap_sect() 
@@ -1891,6 +1901,23 @@ scan_htmlfile() # "$F"
  fi
 }
 
+scan_subsitemap_long ()
+{
+    grep "<a href=\"[^\"]*\">" "$1" | { 
+	while read _line_ ; do
+	    _href_=`echo "$_line_" | $SED -e "s|.*<a href=\"\\([^\"]*\\)\">.*|\\1|"`
+	    _date_=`echo "$_line_" | $SED -e "s|.*<small style=\"date\">\\([^<>]*\\)</small>.*|\\1|" -e "/<a href=\"[^\"]*\">/d"`
+	    _long_=`echo "$_line_" | $SED -e "s|.*<!--long-->\\([^<>]*\\)<!--/long-->.*|\\1|" -e "/<a href=\"[^\"]*\">/d"`
+	    if test ".$_href_" != "." && test ".$_date_" != "." ; then
+		site_map_list_date "$2$_href_" "$_date_"
+	    fi
+	    if test ".$_href_" != "." && test ".$_long_" != "." ; then
+		site_map_long_title "$2$_href_" "$_long_"
+	    fi
+	done
+    }
+}
+
 scan_namespec ()
 {
     # nothing so far
@@ -1902,6 +1929,13 @@ scan_namespec ()
 	    site_map_long_title "$F" "external sitemap index"
 	    site_map_list_date  "$F" "`timetoday`"
 	    echo "'$F' external sitemap index$n" 
+	    ;;
+	name:*.htm|name:*.html)
+	    FF=`echo "$1" | $SED -e "s|name:||"`
+	    FFF=`echo "$FF" | $SED -e "s|/[^/]*\$|/|"` # dirname
+	    case "$FFF" in */*) : ;; *) FFF="" ;; esac
+	    make_subsitemap_list "$FF" "$FFF"
+	    scan_subsitemap_long "$FF" "$FFF"
 	    ;;
     esac
 }
@@ -1931,7 +1965,7 @@ head_sed_sitemap() # $filename $section
    FF=`sed_piped_key "$1"`
    SECTION=`sed_slash_key "$2"`
    SECTS="sect=\"[$NN$AZ]\"" ; SECTN="sect=\"[$NN]\"" # lines with hrefs
-   echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
+   echo "s|\\(<a $SECTS href=\"$FF\">.*</a>\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
 }
@@ -1942,7 +1976,7 @@ head_sed_listsection() # $filename $section
    FF=`sed_piped_key "$1"`
    SECTION=`sed_slash_key "$2"`
    SECTS="sect=\"[$NN$AZ]\"" ; SECTN="sect=\"[$NN]\"" # lines with hrefs
-   echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
+   echo "s|\\(<a $SECTS href=\"$FF\">.*</a>\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
 }

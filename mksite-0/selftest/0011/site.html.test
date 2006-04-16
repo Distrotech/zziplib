@@ -1,12 +1,12 @@
 <html><head>  <title> Testing - site ~ </title> 
  <meta name="formatter" content="mksite.pl" />
  <meta name="DC.title" content="site ~" />
- <meta name="DC.date.available" content="2006-04-14" />
+ <meta name="DC.date.available" content="2006-04-16" />
  <meta name="DC.subject" content="sitemap" />
  <meta name="DC.type" content="Collection" scheme="DCMIType" />
  <meta name="DC.title" content="Testing" />
  <meta name="DC.date.modified" content="2006-04-14" />
- <meta name="DC.date" content="2006-04-14" />
+ <meta name="DC.date" content="2006-04-16" />
  <meta name="DC.publisher" content="guidod" />
 </head><body>
 
@@ -18,10 +18,10 @@
 <br>&nbsp;<b><a href="site.html">sitemap</a></b>
 </td><td> <!-- the body goes here -->
 <table cellspacing="0" cellpadding="0">
- <tr class="listsitemap3"><td> </td> <td><a href="page1.html">- Page 001</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 001</em></td></tr>
- <tr class="listsitemap3"><td> </td> <td><a href="page2.html">- Page 002</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 002</em></td></tr>
- <tr class="listsitemap3"><td> </td> <td><a href="page3.html">- Page 003</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 003</em></td></tr>
- <tr class="listsitemap3"><td> </td> <td><a href="page4.html">- Page 004</a></td><td>&nbsp;</td> <td><small>2006-04-04</small></td><td>&nbsp;</td> <td><em>Test 004</em></td></tr>
- <tr class="listsitemap3"><td> </td> <td><a href="site.html">- site ~</a></td><td>&nbsp;</td> <td><small>2006-04-14</small></td><td>&nbsp;</td> <td><em>generated sitemap index</em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="page1.html">- Page 001</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 001<!--/long--></em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="page2.html">- Page 002</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 002<!--/long--></em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="page3.html">- Page 003</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 003<!--/long--></em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="page4.html">- Page 004</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 004<!--/long--></em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="site.html">- site ~</a></td><td>&nbsp;</td><td><small style="date">2006-04-16</small></td><td>&nbsp;</td><td><em><!--long-->generated sitemap index<!--/long--></em></td></tr>
 </table>
 </td></tr></table></body></html>

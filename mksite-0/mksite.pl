@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.42 2006-04-16 04:27:44 guidod Exp $
+# $Id: mksite.pl,v 1.43 2006-04-16 22:33:02 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1101,7 +1101,7 @@ sub make_multisitemap
     for (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = $_;
 	$x =~ />name:/ and next;
-	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)|&$_form_|e;
+	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)<$QX>|&$_form_|e;
 	$x = &eval_MK_LIST("multisitemap", $x, @MK_SITE); 
 	$x =~ /<name/ or next;
 	$x =~ s|<!--[u]se1-->|</td><td valign=\"top\"><b>|;
@@ -1112,7 +1112,7 @@ sub make_multisitemap
 	$x =~ s|<date>|<small style="date">|; 
 	$x =~ s|</date>|</small></a><br></$_tinyX_>|;
 	$x =~ s|<long>|<!--long-->|; 
-	$x =~ s|<!--/long--></long>||;
+	$x =~ s|</long>|<!--/long-->|;
 	chomp $x;
 	push @OUT, $x.$n;
     }
@@ -1133,15 +1133,13 @@ sub make_listsitemap
     for $xx (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = "".$xx;
 	$x =~ />name:/ and next;
-	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)|&$_form_|e;
+	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)<$QX>|&$_form_|e;
 	$x = &eval_MK_LIST("listsitemap", $x, @MK_SITE); 
-	print STDERR "?",$x,$n;
 	$x =~ /<name/ or next;
-	print STDERR "!",$x,$n;
         $x =~ s|<!--[u]se(1)-->|<tr class=\"listsitemap$1\"><td>*</td>|;
         $x =~ s|<!--[u]se(2)-->|<tr class=\"listsitemap$1\"><td>-</td>|;
         $x =~ s|<!--[u]se(.)-->|<tr class=\"listsitemap$1\"><td> </td>|; 
-        $x =~  /<tr.class=\"listsitemap3\">/ and $x =~ s|<name [^<>]*>|$&- |;
+        $x =~  /<tr.class=\"listsitemap3\">/ and $x =~ s|(<name [^<>]*>)|$1- |;
 	$x =~ s|<!--[^<>]*-->| |g;
 	$x =~ s|<name href=\"name:sitemap:|<name href=\"|;
         $x =~ s|<name |<td><a |;     $x =~ s|</name>|</a></td>$_tabb_|;
