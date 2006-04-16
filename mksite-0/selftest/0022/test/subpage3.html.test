@@ -1,0 +1,41 @@
+<html><head>  <title> Testing - subtest 003 </title> 
+ <meta name="formatter" content="mksite.pl" />
+ <meta name="DC.date.issued" content="2006-04-04" />
+ <meta name="DC.title" content="SubTest 003" />
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta name="DC.relation.isFormatOf" content="test/subpage3.htm" />
+ <meta name="DC.date.modified" content="2006-04-14" />
+ <meta name="DC.date" content="2006-04-04" />
+ <meta name="DC.relation.section" content="page6.html" />
+ <meta name="DC.title.selected" content="SubPage 003" />
+ <meta name="DC.publisher" content="guidod" />
+</head><body>
+<!--mksite:printerfriendly-->
+<table><tr><td bgcolor="yellow">
+<br> SubPage 003
+<hr><a href="../page1.html">Page 001</a>
+<br>-<a href="../page2.html">Page 002</a>
+<br>-<a href="../page3.html">Page 003</a>
+<br>-<a href="../page4.html">Page 004</a>
+<hr><a href="../test/subpage1.html">SubPage 001</a>
+<br>-<a href="../test/subpage2.html">SubPage 002</a>
+<br>-<a href="../page5.html">Page 005</a>
+<hr><a href="../page6.html">Page 006</a>
+<br>-<b><a href="../test/subpage3.html">SubPage 003</a></b>
+<hr><a href="../test/subpage4.html">SubPage 004</a>
+<br>&nbsp;<a href="../page7.html">Page 007</a>
+<br>&nbsp;<a href="../test/subpage5.html">SubPage 005</a>
+&nbsp;<a href="../test/subpage6.html">006</a>
+&nbsp;<a href="../test/subpage7.html">007</a>
+&nbsp;<a href="../test/subpage8.html">008</a>
+<br>&nbsp;<a href="../page8.html">Page 008</a>
+&nbsp;/<a href="../page9.html">Page 009</a>
+&nbsp;/<a href="../test/subpage9.html">SubPage</a>
+
+<br>&nbsp;:<a href="../site.html">sitemap</a>
+</td><td> <!-- the body goes here -->
+ 
+
+Hello World
+
+</td></tr></table></body></html>

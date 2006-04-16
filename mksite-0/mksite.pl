@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.41 2006-04-15 12:17:24 guidod Exp $
+# $Id: mksite.pl,v 1.42 2006-04-16 04:27:44 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1071,11 +1071,11 @@ sub siteinfo2sitemap# generate <name><page><date> addon sed scriptlet
     my ($INP,$Z) = @_ ; $INP= \@MK_DATA if not $INP;
     my @OUT = ();
     my $_list_=
-	sub{"s|<!--\\\"$1\\\"-->.*<!--name-->|\$\&<name href=\\\"$1\\\">$2</name>|"};
+	sub{"s|(<!--\\\"$1\\\"-->.*)<name [^<>]*>.*</name>|\$1<name href=\\\"$1\\\">$2</name>|"};
     my $_date_=
-	sub{"s|<!--\\\"$1\\\"-->.*<!--date-->|\$\&<date>$2</date>|"};
+	sub{"s|(<!--\\\"$1\\\"-->.*)<date>.*</date>|\$1<date>$2</date>|"};
     my $_long_=
-	sub{"s|<!--\\\"$1\\\"-->.*<!--long-->|\$\&<long>$2</long>|"};
+	sub{"s|(<!--\\\"$1\\\"-->.*)<long>.*</long>|\$1<long>$2</long>|"};
     
     for (@$INP) {
 	my $info = $_;
@@ -1093,23 +1093,26 @@ sub make_multisitemap
     my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_DATA if not $INPUTS;
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
     my @OUT = (); 
-    my $_form_= sub{"<!--\"$2\"--><!--use$1--><!--long--><!--end$1-->"
-			."<br><!--name--><!--date-->" };
+    my $_form_= sub{"<!--\"$2\"--><!--use$1--><long>$3</long><!--end$1-->"
+			."<br><name href=\"$2\">$3</name><date>......</date>" };
     my $_tiny_="small><small><small" ; my $_tinyX_="small></small></small ";
     my $_tabb_="<br><$_tiny_> </$_tinyX_>" ; my $_bigg_="<big> </big>";
     push @OUT, "<table width=\"100%\"><tr><td> ".$n;
-    for (grep {/<$Q='[u]se.'>/} @$INPUTS) {
+    for (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = $_;
-	$x =~ s|<$Q='[u]se(.)'>([^ ]*) .*|&$_form_|e;
+	$x =~ />name:/ and next;
+	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)|&$_form_|e;
 	$x = &eval_MK_LIST("multisitemap", $x, @MK_SITE); 
 	$x =~ /<name/ or next;
 	$x =~ s|<!--[u]se1-->|</td><td valign=\"top\"><b>|;
 	$x =~ s|<!--[e]nd1-->|</b>|;
 	$x =~ s|<!--[u]se2-->|<br>|;
 	$x =~ s|<!--[u]se.-->|<br>|; $x =~ s/<!--[^<>]*-->/ /g;
-	$x =~ s|<long>||; $x =~ s|</long>||;
 	$x =~ s|<name |<$_tiny_><a |; $x =~ s|</name>||;
-	$x =~ s|<date>| |; $x =~ s|</date>|</a><br></$_tinyX_>|;
+	$x =~ s|<date>|<small style="date">|; 
+	$x =~ s|</date>|</small></a><br></$_tinyX_>|;
+	$x =~ s|<long>|<!--long-->|; 
+	$x =~ s|<!--/long--></long>||;
 	chomp $x;
 	push @OUT, $x.$n;
     }
@@ -1123,15 +1126,18 @@ sub make_listsitemap
     @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
     my @OUT = (); 
     my $_form_=sub{
-	"<!--\"$2\"--><!--use$1--><!--name--><!--date--><!--long-->"};
+	"<!--\"$2\"--><!--use$1--><name href=\"$2\">$3</name><date>......</date><long>$3</long>"};
     my $_tabb_="<td>\&nbsp\;</td>";
     push @OUT, "<table cellspacing=\"0\" cellpadding=\"0\">".$n;
     my $xx;
-    for $xx (grep {/<$Q='[u]se.'>/} @$INPUTS) {
+    for $xx (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = "".$xx;
-	$x =~ s|<$Q='[u]se(.)'>([^ ]*) .*|&$_form_|e;
+	$x =~ />name:/ and next;
+	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)|&$_form_|e;
 	$x = &eval_MK_LIST("listsitemap", $x, @MK_SITE); 
+	print STDERR "?",$x,$n;
 	$x =~ /<name/ or next;
+	print STDERR "!",$x,$n;
         $x =~ s|<!--[u]se(1)-->|<tr class=\"listsitemap$1\"><td>*</td>|;
         $x =~ s|<!--[u]se(2)-->|<tr class=\"listsitemap$1\"><td>-</td>|;
         $x =~ s|<!--[u]se(.)-->|<tr class=\"listsitemap$1\"><td> </td>|; 
@@ -1139,8 +1145,10 @@ sub make_listsitemap
 	$x =~ s|<!--[^<>]*-->| |g;
 	$x =~ s|<name href=\"name:sitemap:|<name href=\"|;
         $x =~ s|<name |<td><a |;     $x =~ s|</name>|</a></td>$_tabb_|;
-        $x =~ s|<date>|<td><small>|; $x =~ s|</date>|</small></td>$_tabb_|;
-        $x =~ s|<long>|<td><em>|;    $x =~ s|</long>|</em></td></tr>|;
+        $x =~ s|<date>|<td><small style="date">|; 
+	$x =~ s|</date>|</small></td>$_tabb_|;
+        $x =~ s|<long>|<td><em><!--long-->|;    
+	$x =~ s|</long>|<!--/long--></em></td></tr>|;
         push @OUT, $x.$n; 
     }
     for $xx (grep {/<$Q='[u]se.'>/} @$INPUTS) {
@@ -1951,16 +1959,40 @@ my $_name_= sub{"<$Q='use$1'>name:$2 $3<$QX>" };
 
 sub make_sitemap_list
 {
+    my ($V,$Z) = @_; $V = $SITEFILE if not $V;
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
-    for (source($SITEFILE)) {
+    for (source($V)) {
 	my $x = $_;
 	local $_ = &eval_MK_LIST("sitemap_list", $x, @MK_GETS);
 	/<a sect=\"[$NN]\"/ or next;
 	chomp;
 	s{.*<a sect=\"([^\"]*)\" href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_uses_}e;
 	s{.*<a sect=\"([^\"]*)\" name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_name_}e;
+	s{.*<a sect=\"([^\"]*)\" name=\"([^\"]*)\"[^<>]*>(.*)}{&$_name_}e;
+	/^<$Q=/ or next;
+	/^<!/ and next; 
+	push @MK_DATA, $_;
+    }
+}
+
+my $_Uses_= sub{"<$Q='Use$1'>$2 $3<$QX>" }; 
+my $_Name_= sub{"<$Q='Use$1'>name:$2 $3<$QX>" }; 
+
+sub make_subsitemap_list # file-to-scan
+{
+    my ($V,$W,$Z) = @_; $V = $SITEFILE if not $V;
+    # scan sitefile for references pages - store as "=use+=href+ anchortext"
+    for (source($V)) {
+	my $x = $_; 
+	local $_ = &eval_MK_LIST("subsitemap_list", $x, @MK_GETS);
+	/<a sect=\"[$NN]\"/ or next;
+	chomp;
+	s{.*<a sect=\"([^\"]*)\" href=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_Uses_}e;
+	s{.*<a sect=\"([^\"]*)\" name=\"([^\"]*)\"[^<>]*>(.*)</a>.*}{&$_Name_}e;
+	s{.*<a sect=\"([^\"]*)\" name=\"([^\"]*)\"[^<>]*>(.*)}{&$_Name_}e;
 	/^<$Q=/ or next;
 	/^<!/ and next;
+	s|>([^:./][^:./]*[./])|>$W$1|;
 	push @MK_DATA, $_;
     }
 }
@@ -2102,6 +2134,20 @@ sub scan_htmlfile # "$F"
     }
 }
 
+sub scan_subsitemap_long
+{
+    my ($V,$W,$ZZZ) = @_;
+    for (source($V)) {
+	my $x = $_;
+	if ($x =~ m|<a href="([^\"]*)">.*<small style="date">([^<>]*)</small>|) {
+	    &site_map_list_date($W.$1,$2);
+	}
+	if ($x =~ m|<a href="([^\"]*)">.*<!--long-->([^<>]*)<!--/long-->|) {
+	    &site_map_long_title($W.$1,$2);
+	}
+    }
+}
+
 sub scan_namespec 
 {
     # nothing so far
@@ -2115,6 +2161,13 @@ sub scan_namespec
 	site_map_long_title ($F, "external sitemap index");
 	site_map_list_date  ($F, &timetoday());
 	print "'$F' external sitemap index$n";
+    }
+    elsif ($F =~ /^name:(.*\.html*)$/) { # assuming it is a subsitefile
+	my $FF=$1;
+	my $FFF=$FF; $FFF =~ s:/[^/]*$:/:; # dirname
+	$FFF="" if $FFF !~ m:/:;
+	make_subsitemap_list($FF, $FFF);
+	scan_subsitemap_long($FF, $FFF);
     }
 }
 sub scan_httpspec
@@ -2339,7 +2392,7 @@ sub make_printerfriendly # "$F"
 #                                                          #### 0. INIT
 $F=$SITEFILE;
 &make_sitemap_init();
-&make_sitemap_list();
+&make_sitemap_list($SITEFILE);
 &make_sitemap_sect();
 &make_sitemap_page();
 savelist(\@MK_DATA, "DATA");

@@ -1,0 +1,24 @@
+<html><head>  <title> Testing - test 002 </title> 
+ <meta name="formatter" content="mksite.pl" />
+ <meta name="DC.date.issued" content="2006-04-04" />
+ <meta name="DC.title" content="Test 002" />
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta name="DC.relation.isFormatOf" content="page2.html" />
+ <meta name="DC.date.modified" content="2006-04-13" />
+ <meta name="DC.date" content="2006-04-04" />
+ <meta name="DC.relation.section" content="page1.html" />
+ <meta name="DC.title.selected" content="Page 002" />
+ <meta name="DC.publisher" content="guidod" />
+   <style>
+     a:link    { text-decoration : none ; font-weight : bold ;  color : #000060 ; }
+     a:visited { text-decoration : none ; font-weight : bold ;  color : #000040 ; }
+     body      { background-color : white ; }
+   </style>
+</head><body>
+<a name="."></a>
+<title> Test 002 </title>
+ 
+
+Hello World
+
+</body></html>

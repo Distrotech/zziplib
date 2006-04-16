@@ -1,0 +1,35 @@
+<html><head>  <title> Testing - test 001 </title> 
+ <meta name="formatter" content="mksite.pl" />
+ <meta name="DC.date.issued" content="2006-04-04" />
+ <meta name="DC.title" content="Test 001" />
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta name="DC.relation.isFormatOf" content="page1.html" />
+ <meta name="DC.date.modified" content="2006-04-13" />
+ <meta name="DC.date" content="2006-04-04" />
+ <meta name="DC.relation.section" content="page1.html" />
+ <meta name="DC.title.selected" content="Page 001" />
+ <meta name="DC.publisher" content="guidod" />
+   <style>
+     a:link    { text-decoration : none ; font-weight : bold ;  color : #000060 ; }
+     a:visited { text-decoration : none ; font-weight : bold ;  color : #000040 ; }
+     body      { background-color : white ; }
+   </style>
+</head><body>
+<br><a href="#." title="section"><img alt="|go text:" width="8" height="8" border="0" /></a> || - 
+ [ <a href="page1.print.html">Page 001</a> ]  - 
+<a href="test/subpage1.print.html">SubPage 001</a> - 
+<a href="page6.print.html">Page 006</a> - 
+<a href="test/subpage4.print.html">SubPage 004</a> - 
+
+<br><a href="page1.html" title="topics"><img alt="||topics:" width="8" height="8" border="0" /></a> || - 
+<a href="page2.print.html">Page 002</a> - 
+<a href="page3.print.html">Page 003</a> - 
+<a href="page4.print.html">Page 004</a> - 
+
+<a name="."></a>
+<title> Test 001 </title>
+ 
+
+Hello World
+
+</body></html>

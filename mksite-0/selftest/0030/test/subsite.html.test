@@ -1,0 +1,23 @@
+<!-- no need to make it a complete sitefile - just scannable for hrefs -->
+<br><a href="subpage1.html">SubPage 001 </a>
+<br><a href="subpage2.html">SubPage 002 </a>
+<br><a href="subpage3.html">SubPage 003 </a>
+<br><a href="subpage4.html">SubPage 004 </a>
+<br><a href="subpage5.html">SubPage 005 </a>
+<br><a href="subpage6.html">SubPage 006 </a>
+<br><a href="subpage7.html">SubPage 007 </a>
+<br><a href="subpage8.html">SubPage 008 </a>
+<br><a href="subpage9.html">SubPage 009 </a>
+<br><b><a href="subsite.html">SubPage Sitemap </a></b>
+<table cellspacing="0" cellpadding="0">
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage1.html">SubPage 001</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 001<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage2.html">SubPage 002</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 002<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage3.html">SubPage 003</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 003<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage4.html">SubPage 004</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 004<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage5.html">SubPage 005</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 005<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage6.html">SubPage 006</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 006<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage7.html">SubPage 007</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 007<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage8.html">SubPage 008</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 008<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subpage9.html">SubPage 009</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->SubTest 009<!--/long--></em></td></tr>
+ <tr class="listsitemap1"><td>*</td><td><a href="subsite.html">subsite ~</a></td><td>&nbsp;</td><td><small style="date">2006-04-16</small></td><td>&nbsp;</td><td><em><!--long-->generated sitemap index<!--/long--></em></td></tr>
+</table>

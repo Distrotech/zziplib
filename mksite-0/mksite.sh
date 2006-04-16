@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.71 2006-04-15 12:17:24 guidod Exp $
+# $Id: mksite.sh,v 1.72 2006-04-16 04:27:44 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1739,11 +1739,27 @@ _name_="<$Q'use\\1'>name:\\2 \\3<$QX>" ;
 
 make_sitemap_list()
 {
+    _sitefile_="$1" ; test ".$_sitefile_" = "." && _sitefile_="$SITEFILE"
     # scan sitefile for references pages - store as "=use+=href+ anchortext"
     $SED -f "$MK_GETS"           -e "/^<a sect=\"[$NN]\"/!d" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_uses_|" \
 	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_name_|" \
-	-e "/^<$Q/!d" -e "/^<!/d"   "$SITEFILE" > "$MK_DATA"
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)|$_name_|" \
+	-e "/^<$Q/!d" -e "/^<!/d"   "$_sitefile_" > "$MK_DATA"
+}
+
+_Uses_="<$Q'Use\\1'>\\2 \\3<$QX>" 
+_Name_="<$Q'Use\\1'>name:\\2 \\3<$QX>" ; 
+
+make_subsitemap_list()
+{
+    _sitefile_="$1" ; test ".$_sitefile_" = "." && _sitefile_="$SITEFILE"
+    # scan sitefile for references pages - store as "=use+=href+ anchortext"
+    $SED -f "$MK_GETS"           -e "/^<a sect=\"[$NN]\"/!d" \
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" href=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_Uses_|" \
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)</a>.*|$_Name_|" \
+	-e "s|.*<a sect=\"\\([^\"]*\\)\" name=\"\\([^\"]*\\)\"[^<>]*>\\(.*\\)|$_Name_|" \
+	-e "/^<$Q/!d" -e "/^<!/d"   "$_sitefile_" > "$MK_DATA"
 }
 
 make_sitemap_sect() 
