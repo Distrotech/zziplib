@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.73 2006-04-16 22:33:02 guidod Exp $
+# $Id: mksite.sh,v 1.74 2006-04-17 00:22:04 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -189,7 +189,7 @@ MK_SECT1="$tmp/$MK.sect1.tmp.sed"
 MK_SECT2="$tmp/$MK.sect2.tmp.sed"
 MK_SECT3="$tmp/$MK.sect3.tmp.sed"
 MK_STYLE="$tmp/$MK.style.tmp.sed"
-MK_DATA="$tmp/$MK.$DATA.htm"
+MK_DATA="$tmp/$MK.$DATA.tmp.htm"
 
 # ========================================================================
 # ========================================================================
