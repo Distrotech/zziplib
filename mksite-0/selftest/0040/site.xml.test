@@ -1,0 +1,22 @@
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<section><title>Documentation</title>
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page1.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page2.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page3.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page4.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page5.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page6.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page7.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page8.xml" />
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml"
+    href="page9.xml" />
+</section>

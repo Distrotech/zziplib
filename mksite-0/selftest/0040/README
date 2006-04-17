@@ -1,0 +1,13 @@
+The XML is no feature as a kind of "generates it". Instead you can
+markup your "htm" text with some xhtml markups. 
+
+Additionally, some xhtml markups are converted docbook xml while
+other docbook xml tags are being cleaned away when generating a
+html target - most prominently any "<section>" tags around article
+parts. You need to write them down explicitly.
+
+That mode allows to generated html and xml from the same sources.
+Additionally the xml sitefile is now an xml masterdocbook. You
+should be able to just compile the xml masterdocbook file to get
+a full xml docbook that can be converted to other targets like pdf.
+

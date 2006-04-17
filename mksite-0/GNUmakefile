@@ -1,4 +1,5 @@
 all : index.html
+docs : doc.html
 
 SUBDIRS =
 PACKAGE = mksite
@@ -96,8 +97,8 @@ test3x.html : test3/*.htm test3/*.dbk mksite.pl GNUmakefile
 
 test1 test2  site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
-	cd doc && sh ../mksite.sh site.htm        "-VERSION=$(VERSION)"
 	cd doc && sh ../mksite.sh features.htm    "-VERSION=$(VERSION)"
+	cd doc && sh ../mksite.sh site.htm        "-VERSION=$(VERSION)"
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.html > $@
 	sleep 5 # done $@

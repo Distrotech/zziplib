@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.43 2006-04-16 22:33:02 guidod Exp $
+# $Id: mksite.pl,v 1.44 2006-04-17 08:00:17 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1100,7 +1100,7 @@ sub make_multisitemap
     push @OUT, "<table width=\"100%\"><tr><td> ".$n;
     for (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = $_;
-	$x =~ />name:/ and next;
+	$x =~ />\w\w\w\w*:/ and next; # name: http: ftp: mailto: ...
 	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)<$QX>|&$_form_|e;
 	$x = &eval_MK_LIST("multisitemap", $x, @MK_SITE); 
 	$x =~ /<name/ or next;
@@ -1132,7 +1132,7 @@ sub make_listsitemap
     my $xx;
     for $xx (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
 	my $x = "".$xx;
-	$x =~ />name:/ and next;
+	$x =~ />\w\w\w\w*:/ and next;
 	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)<$QX>|&$_form_|e;
 	$x = &eval_MK_LIST("listsitemap", $x, @MK_SITE); 
 	$x =~ /<name/ or next;
@@ -1159,6 +1159,32 @@ sub make_listsitemap
 	}
     }
     push @OUT, "</table>".$n;
+    return @OUT;
+}
+
+my $_xi_include_=
+    "<xi:include xmlns:xi=\"http://www.w3.org/2001/XInclude\" parse=\"xml\"";
+
+sub make_xmlsitemap
+{   # traditional - the body contains a list with date and title extras
+    my ($INPUTS,$Z)= @_ ; $INPUTS=\@MK_DATA if not $INPUTS;
+    @MK_SITE = &siteinfo2sitemap(); # have <name><long><date> addon-sed
+    my @OUT = (); 
+    my $_form_=sub{"<!--\"$2\"--><name href=\"$2\">$3</name>"};
+    my $xx;
+    for $xx (grep {/<$Q='[Uu]se.'>/} @$INPUTS) {
+	my $x = "".$xx;
+	$x =~ />\w\w\w\w*:/ and next;
+	$x =~ s|<$Q='[Uu]se(.)'>([^ ]*) (.*)<$QX>|&$_form_|e;
+	$x = &eval_MK_LIST("listsitemap", $x, @MK_SITE); 
+	$x =~ /<name/ or next;
+	$x =~ m|href="${SITEFILE}"| and next;
+	$x =~ m|href="${SITEFILE}l"| and next;
+	$x =~ s|(href="[^<>]*)\.html(")|$1.xml$2|g;
+	$x =~ s|.*<name|$_xi_include_$n   |;
+	$x =~ s|>.*</name>| />|;
+        push @OUT, $x.$n; 
+    }
     return @OUT;
 }
 
@@ -1813,6 +1839,30 @@ sub make_xmlfile
     print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >> ",&ls_s($F),"$n";
 }
 
+sub make_xmlmaster
+{
+    $SOURCEFILE= &xml_sourcefile($F);
+    my $X=$SOURCEFILE;
+    my $article="section"; # book? chapter?
+    my $text = "";
+    $text .= '<!DOCTYPE '.$article.
+	' PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"'.$n;
+    $text .= '    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">'
+	.$n;
+    for my $stylesheet (@{$XMLSTYLESHEETS{$X}}) {
+	$text .= "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\"   ?>"
+	    .$n;
+    }
+    # $text .= "<section><sectioninfo><date/><authorblurb/></sectioninfo>...";
+    $text .= "<section><title>Documentation</title>$n";
+    for (make_xmlsitemap()) {
+	$text .= $_; 
+    }
+    $text .= "</section>$n";
+    open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
+    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >*> ",&ls_s($F),"$n";
+}
+
 # ==========================================================================
 #  
 #  During processing we will create a series of intermediate files that
@@ -2408,10 +2458,12 @@ for (@FILELIST) {                                    #### 1. PASS
     $F = $_;
     if (/^(name:.*)$/) { 
 	&scan_namespec ("$F"); 
-    } elsif (/^(http:.*|.*:\/\/.*)$/) { 
+    } elsif (/^(http:|https:|ftp:|mailto:|telnet:|news:|gopher:|wais:)/) { 
 	&scan_httpspec ("$F"); 
     } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
 	&scan_sitefile ("$F") ;;                      # ........... SCAN SITE
+    } elsif (/^(.*\@.*\.de)$/) { 
+	print "!! -> '$F' (skipping malformed mailto:-link)$n";
     } elsif (/^(\.\.\/.*)$/) { 
 	print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 
@@ -2459,11 +2511,17 @@ for (@FILELIST) {                                          #### 2. PASS
   $F = $_;
   if (/^(name:.*)$/) { 
       &skip_namespec ("$F") ;;
-  } elsif (/^(http:.*|.*:\/\/.*)$/) { 
+  } elsif (/^(http:|https:|ftp:|mailto:|telnet:|news:|gopher:|wais:)/) { 
       &skip_httpspec ("$F") ;;
   } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
       &make_sitefile ("$F") ;;                         # ........ SITE FILE
       &make_printerfriendly ("$F") if ($printerfriendly);
+      if ($o{xml}) {
+	  $F =~ s/\.html$/.xml/;
+	  &make_xmlmaster ("$F");
+      }
+  } elsif (/^(.*\@.*\.de)$/) { 
+      print "!! -> '$F' (skipping malformed mailto:-link)$n";
   } elsif (/^(\.\.\/.*)$/) {
       print "!! -> '$F' (skipping topdir build)$n";
 # */*.html) 

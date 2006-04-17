@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.74 2006-04-17 00:22:04 guidod Exp $
+# $Id: mksite.sh,v 1.75 2006-04-17 08:00:17 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -951,6 +951,7 @@ make_multisitemap ()
   _tabb_="<br><$_tiny_> </$_tinyX_>" ; _bigg_="<big> </big>"
   echo "<table width=\"100%\"><tr><td> " # $++
   $SED -e "/^<$Q'[Uu]se.'>/!d" \
+       -e "/>[$AZ$az][$AZ$az][$AZ$az][$AZ$az]*:/d" \
        -e "s|^<$Q'[Uu]se\\(.\\)'>\\([^ ]*\\) \\(.*\\)<$QX>|$_form_|" \
        -f "$MK_SITE" -e "/<name/!d" \
        -e "s|<!--use1-->|</td><td valign=\"top\"><b>|" \
@@ -974,7 +975,7 @@ make_listsitemap ()
    _tabb_="<td>\\&nbsp\\;</td>" 
    echo "<table cellspacing=\"0\" cellpadding=\"0\">" # $++
    $SED -e "/^<$Q'[Uu]se.'>/!d" \
-        -e "/>name:/d" \
+        -e "/>[$AZ$az][$AZ$az][$AZ$az][$AZ$az]*:/d" \
         -e "s|^<$Q'[Uu]se\\(.\\)'>\\([^ ]*\\) \\(.*\\)<$QX>|$_form_|" \
         -f "$MK_SITE" -e "/<name/!d" \
         -e "s|<!--use\\(1\\)-->|<tr class=\"listsitemap\\1\"><td>*</td>|" \
@@ -2106,7 +2107,6 @@ make_printerfriendly () # "$F"
       # line_=`sed_slash_key "$printsitefile_img_2"`               # back-
       echo "/||topics:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
       echo "/|||pages:/s| href=\"[#][.]\"| href=\"$F\"|" >> "$P_HEAD"
-      $CAT                             "$F_FAST"      >> "$P_HEAD" # subdir
       make_back_path "$F"                             >> "$P_HEAD"
       $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST"            > "$P_BODY"
       make_back_path "$F"                             >> "$P_BODY"
@@ -2146,8 +2146,12 @@ if test ".$FILELIST" = ".SITEFILE" ; then echo "only '$SITEFILE'?!" >&2 ; fi
 
 for F in $FILELIST ; do case "$F" in                       #### 1. PASS
 name:*)                   scan_namespec "$F" ;;
-http:*|*://*)             scan_httpspec "$F" ;;
+http:*|https:*|ftp:*|mailto:*|telnet:*|news:*|gopher:*|wais:*) 
+                          scan_httpspec "$F" ;;
 ${SITEFILE}|${SITEFILE}l) scan_sitefile "$F" ;;   # ........... SCAN SITE
+*@*.de) 
+   echo "!! -> '$F' (skipping malformed mailto:-link)"
+   ;;
 ../*) 
    echo "!! -> '$F' (skipping topdir build)"
    ;;
@@ -2180,9 +2184,13 @@ fi
 
 for F in $FILELIST ; do case "$F" in                        #### 2. PASS
 name:*)                    skip_namespec "$F" ;; 
-http:*|*://*)              skip_httpspec "$F" ;;
+http:*|https:*|ftp:*|mailto:*|telnet:*|news:*|gopher:*|wais:*)              
+                           skip_httpspec "$F" ;;
 ${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
     if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
+*@*.de) 
+   echo "!! -> '$F' (skipping malformed mailto:-link)"
+   ;;
 ../*) 
     echo "!! -> '$F' (skipping topdir build)"
     ;;
