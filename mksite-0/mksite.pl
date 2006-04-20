@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.44 2006-04-17 08:00:17 guidod Exp $
+# $Id: mksite.pl,v 1.45 2006-04-20 04:43:18 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -64,6 +64,38 @@ my @HTMLTAGS = qw/a p h1 h2 h3 h4 h5 h6 dl dd dt ul ol li pre code
 my @HTMLTAGS2 = qw/html head body title meta http-equiv style link/;
 
 # ==========================================================================
+my $hint="";
+
+sub echo
+{
+    print join(" ",@_),$n;
+}
+sub error
+{
+    print STDERR "ERROR: ", join(" ",@_),$n;
+}
+sub warns
+{
+    print STDERR "WARN: ", join(" ",@_), $n;
+}
+sub hint
+{
+    print STDERR "NOTE: ", join(" ", @_), $n if $hint;
+}
+sub init
+{
+    $hint="1" if -d "DEBUG";
+}
+
+&init ("NOW!!!");
+
+sub ls_s {
+    my $x=`ls -s @_`;
+    chomp($x);
+    return $x;
+}
+
+# ==========================================================================
 # reading options from the command line                            GETOPT
 my %o = (); # to store option variables
 $o{variables}="files";
@@ -81,7 +113,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	if (/^-.*=.*$/) {
 	    $opt=$arg; $opt =~ s/-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg$n";
+		error "invalid option $arg";
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = $arg;
@@ -91,7 +123,7 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	} elsif (/^-.*.-.*$/) {
 	    $opt=$arg; $opt =~ s/-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg$n";
+		error "invalid option $arg";
 		$opt="";
 	    } else {
 		    # keep the option for next round
@@ -99,14 +131,14 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 	} elsif (/^-.*/) {
 	    $opt=$arg; $opt =~ s/^-*([$AA][$AA-]*).*/$1/; $opt =~ y/-/_/;
 	    if (not $opt) {
-		print STDERR "ERROR: invalid option $arg$n";
+		error "invalid option $arg";
 	    } else {
 		$arg =~ s/^[^=]*=//;
 		$o{$opt} = ' ';
 	    }
 	    $opt="" ;;
 	} else {
-	    print "<$arg>$n";
+	    hint "<$arg>";
 	    if (not $o{main_file}) { $o{main_file} = $arg; } else {
 	    $o{files} .= $o{fileseparator} if $o{files};
 	    $o{files} .= $arg; };
@@ -122,28 +154,29 @@ for my $arg (@ARGV) {     # this variant should allow to embed spaces in $arg
 
 $SITEFILE=$o{main_file} if $o{main_file} and -f $o{main_file};
 $SITEFILE=$o{site_file} if $o{site_file} and -f $o{site_file};
+$hint="1" if $o{debug};
 
 if ($o{help}) {
     $_=$SITEFILE;
-    print "$0 [sitefile]$n";
-    print "  default sitefile = $_  ($o{main_file}) ($o{files})$n";
-    print "options:$n"
-	. " --filelist : show list of target files as ectracted from $_$n"
-	. " --src-dir xx : if source files are not where mksite is executed$n"
-	. " --tmp-dir xx : use temp instead of local directory$n"
-	. " --tmp : use automatic temp directory in \$TEMP/mksite.*$n";
+    echo "$0 [sitefile]";
+    echo "  default sitefile = $_  ($o{main_file}) ($o{files})";
+    echo "options:";
+    echo " --filelist : show list of target files as ectracted from $_";
+    echo " --src-dir xx : if source files are not where mksite is executed";
+    echo " --tmp-dir xx : use temp instead of local directory";
+    echo " --tmp : use automatic temp directory in \$TEMP/mksite.*";
     exit;
-    print " internal:$n"
-	."--fileseparator=x : for building the internal filelist (def. '?')$n"
-	."--files xx : for list of additional files to be processed$n"
-	."--main-file xx : for the main sitefile to take file list from$n";
+    echo " internal:";
+    echo "--fileseparator=x : for building the internal filelist (def. '?')";
+    echo "--files xx : for list of additional files to be processed";
+    echo "--main-file xx : for the main sitefile to take file list from";
 }
 	
 if (not $SITEFILE) {
-    print STDERR "error: no SITEFILE found (default would be 'site.htm')$n";
+    error "no SITEFILE found (default would be 'site.htm')$n";
     exit 1;
 } else {
-    print STDERR "NOTE: sitefile: ",`ls -s $SITEFILE`,"$n";
+    hint "sitefile: ", ls_s($SITEFILE);
 }
 
 # we use internal hashes to store mappings - kind of relational tables
@@ -185,7 +218,7 @@ my $emailfooter="no";
 
 for (source($SITEFILE)) {
     if (/<!--multi-->/) {
-	warn("WARNING: do not use <!--multi-->,"
+	warns("do not use <!--multi-->,"
 	     ." change to <!--mksite:multi-->  $SITEFILE"
 	     ."warning: or"
 	     ." <!--mksite:multisectionlayout-->"
@@ -253,16 +286,11 @@ $printerfriendly=$o{print} if $o{print};
 $updatevars="no" if $commentvars eq "no"; # duplicated into
 $expandvars="no" if $commentvars eq "no"; # info2vars_sed
 
-print "NOTE: '$sectionlayout\'sectionlayout '$sitemaplayout\'sitemaplayout$n"
-    if -d "DEBUG";
-print "NOTE: '$attribvars\'attribvars '$updatevars\'updatevars$n"
-    if -d "DEBUG";
-print "NOTE: '$expandvars\'expandvars '$commentvars\'commentvars $n"
-    if -d "DEBUG";
-print "NOTE: '$currenttab\'currenttab '$sectiontab\'sectiontab$n"
-    if -d "DEBUG";
-print "NOTE: '$headsection\'headsection '$tailsection\'tailsection$n"
-    if -d "DEBUG";
+hint "'$sectionlayout\'sectionlayout '$sitemaplayout\'sitemaplayout";
+hint "'$attribvars\'attribvars '$updatevars\'updatevars";
+hint "'$expandvars\'expandvars '$commentvars\'commentvars";
+hint "'$currenttab\'currenttab '$sectiontab\'sectiontab";
+hint "'$headsection\'headsection '$tailsection\'tailsection";
 
 # ==========================================================================
 # init a few global variables
@@ -418,11 +446,6 @@ sub eval_MK_FILE  {
 my $sed_add = "\$extra .= "; # "/r ";
 
 sub foo { print "               '$F'$n"; }
-sub ls_s {
-    my $result = `ls -s @_`;
-    chomp($result);
-    return $result;
-}
 
 # ======================================================================
 #                                                                FUNCS
@@ -1693,6 +1716,7 @@ sub scan_xml_rootnode
     for my $entry (source($SOURCEFILE)) {
 	my $line = $entry; next if $line !~ /<\w/;
 	$line =~ s/<(\w*).*/$1/s;
+	# print ":",$line,$n;
 	push @{$INF}, "<!root $F>$line";
 	return;
     }
@@ -1726,10 +1750,10 @@ sub xml_sourcefile
 sub scan_xmlfile
 {
     $SOURCEFILE= &xml_sourcefile($F);
-    print "'$SOURCEFILE': scanning xml -> '$F'", $n;
+    hint "'$SOURCEFILE': scanning xml -> '$F'";
     scan_xml_rootnode();
     my $rootnode=&get_xml_rootnode(); $rootnode =~ s|^(h\d.*$)|$1 <?section?>|;
-    print "'$SOURCEFILE': rootnode ('$rootnode')", $n;
+    hint "'$SOURCEFILE': rootnode ('$rootnode')";
 }
 
 sub make_xmlfile
@@ -1739,9 +1763,6 @@ sub make_xmlfile
     my $article= &get_xml_rootnode();
     $article="article" if $article eq "";
     my $text = "";
-#    $text .= '<!DOCTYPE '.$article.
-#	' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"'.$n;
-#   $text .= '    "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">'
     $text .= '<!DOCTYPE '.$article.
 	' PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"'.$n;
     $text .= '    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">'
@@ -1763,8 +1784,7 @@ sub make_xmlfile
 	s!(</title> *)([^<>]*\w[^<>\r\n]*)$!$1<sub>$2</sub>!;
 	s!(</title>.*)<sub>!$1<subtitle>!g;
 	s!(</title>.*)</sub>!$1</subtitle>!g;
-	s!(<section>[^<>]*)(<date>.*</date>[^<>]*)$
-	    !$1<sectioninfo>$2</sectioninfo>!gx;
+	s!(<section>[^<>]*)(<date>.*</date>[^<>\n]*)$!$1<sectioninfo>$2</sectioninfo>!gx;
         s!<em>!<emphasis>!g;
         s!</em>!</emphasis>!g;
         s!<i>!<emphasis>!g;
@@ -1836,7 +1856,7 @@ sub make_xmlfile
 	$text .= $_; 
     }
     open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
-    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >> ",&ls_s($F),"$n";
+    echo "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >> ",&ls_s($F);
 }
 
 sub make_xmlmaster
@@ -1860,7 +1880,7 @@ sub make_xmlmaster
     }
     $text .= "</section>$n";
     open F, ">$F" or die "could not write $F: $!"; print F $text; close F;
-    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >*> ",&ls_s($F),"$n";
+    echo "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," >*> ",&ls_s($F);
 }
 
 # ==========================================================================
@@ -2114,7 +2134,7 @@ sub echo_site_filelist
 sub scan_sitefile # $F
 {
     $SOURCEFILE=&html_sourcefile($F);
-    -d "DEBUG" and print "'$SOURCEFILE': scanning -> sitefile$n";
+    hint "'$SOURCEFILE': scanning -> sitefile";
     if ($SOURCEFILE ne $F) {
 	dx_init "$F";
 	dx_text ("today", &timetoday());
@@ -2132,7 +2152,7 @@ sub scan_sitefile # $F
 	if ($printerfriendly) {
 	    DX_text ("printerfriendly", fast_html_printerfile($F)); }
 	if ($ENV{USER}) { DC_publisher ($ENV{USER}); }
-	print "'$SOURCEFILE': $short (sitemap)$n";
+	echo "'$SOURCEFILE': $short (sitemap)";
 	site_map_list_title ($F, "$short");
 	site_map_long_title ($F, "generated sitemap index");
 	site_map_list_date  ($F, &timetoday());
@@ -2143,7 +2163,7 @@ sub scan_htmlfile # "$F"
 {
     my ($FF,$Z) = @_;
     $SOURCEFILE=&html_sourcefile($F);                                  # SCAN :
-    -d "DEBUG" and print "'$SOURCEFILE': scanning -> $F$n";            # HTML :
+    hint "'$SOURCEFILE': scanning -> $F";                              # HTML :
     if ($SOURCEFILE ne $F) {
     if ( -f $SOURCEFILE) {
 	dx_init "$F";
@@ -2171,14 +2191,14 @@ sub scan_htmlfile # "$F"
 	&site_map_list_date ($F, "$edate");
 	&info_map_list_date ($F, "$edate");
         css_scan();
-	print "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')$n";
+	echo "'$SOURCEFILE':  '$title' ('$short') @ '$issue' ('$sectn')";
     }else {
-	print "'$SOURCEFILE': does not exist$n";
+	echo "'$SOURCEFILE': does not exist";
 	site_map_list_title ($F, "$F");
 	site_map_long_title ($F, "$F (no source)");
     } 
     } else {
-	print "<$F> - skipped - ($SOURCEFILE)$n";
+	echo "<$F> - skipped - ($SOURCEFILE)";
     }
 }
 
@@ -2208,7 +2228,7 @@ sub scan_namespec
 	site_map_list_title ($F, "$short");
 	site_map_long_title ($F, "external sitemap index");
 	site_map_list_date  ($F, &timetoday());
-	print "'$F' external sitemap index$n";
+	echo "'$F' external sitemap index";
     }
     elsif ($F =~ /^name:(.*\.html*)$/) { # assuming it is a subsitefile
 	my $FF=$1;
@@ -2328,11 +2348,11 @@ sub make_sitefile # "$F"
        $html .= &eval_MK_LIST("sitefile", $_, @MK_VARS);
    }
   open F, ">$F"; print F $html; close F;
-  print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F),"$n";
+  echo "'$SOURCEFILE': ",ls_s($SOURCEFILE)," >-> ",ls_s($F);
    savesource("$F.~head~", \@F_HEAD);
    savesource("$F.~foot~", \@F_FOOT);
 } else {
-    print "'$SOURCEFILE': does not exist$n";
+    echo "'$SOURCEFILE': does not exist";
 } }
 }
 
@@ -2342,8 +2362,8 @@ sub make_htmlfile # "$F"
  if ("$SOURCEFILE" ne "$F") {
  if (-f "$SOURCEFILE") {
     if (grep {/<meta name="formatter"/} source($SOURCEFILE)) {
-      print "$SOURCEFILE: SKIP, this sourcefile looks like a formatted file$n";
-      print "$SOURCEFILE:  (may be a sourcefile in place of a targetfile?)$n";
+      echo "'$SOURCEFILE': SKIP, this sourcefile looks like a formatted file";
+      echo "'$SOURCEFILE':  (may be a sourcefile in place of a targetfile?)";
     return; }
     @MK_VARS = &info2vars_sed();           # have <!--title--> vars substituted
     @MK_META = &info2meta_sed();           # add <meta name="DC.title"> values
@@ -2378,13 +2398,13 @@ sub make_htmlfile # "$F"
 	$html .= $_;
     }
     open F, ">$F" or die "could not write $F: $!"; print F $html; close F;
-    print "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F),"$n";
+    echo "'$SOURCEFILE': ",&ls_s($SOURCEFILE)," -> ",&ls_s($F);
     savesource("$F.~head~", \@F_HEAD);
     savesource("$F.~body~", \@F_BODY);
  } else {
-     print "'$SOURCEFILE': does not exist$n";
+     echo "'$SOURCEFILE': does not exist";
  }} else {
-     print "<$F> - skipped$n";
+     echo "<$F> - skipped";
  }
 }
 
@@ -2428,7 +2448,7 @@ sub make_printerfriendly # "$F"
 	  $html .= $_;
       }
       open P, ">$P" or die "could not write $P: $!"; print P $html; close P;
-      print "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P),"$n";
+      echo "'$SOURCEFILE': ",ls_s($SOURCEFILE)," $printsitefile ",ls_s($P);
   }
 }
 
@@ -2447,12 +2467,12 @@ savelist(\@MK_DATA, "DATA");
 
 @FILELIST=&echo_site_filelist();
 if ($o{filelist} or $o{list} eq "file" or $o{list} eq "files") {
-    for (@FILELIST) { print $_,"$n";  } exit; # --filelist
+    for (@FILELIST) { echo $_;  } exit; # --filelist
 }
 if ($o{files}) { @FILELIST=split(/ /, $o{files}); } # --files
-if ($#FILELIST < 0) { print STDERR "nothing to do$n"; }
+if ($#FILELIST < 0) { warns "nothing to do (no --filelist)"; }
 if ($#FILELIST == 0 and 
-    $FILELIST[0] eq $SITEFILE) { print STDERR "only '$SITEFILE'!?$n"; }
+    $FILELIST[0] eq $SITEFILE) { warns "only '$SITEFILE'?!"; }
 
 for (@FILELIST) {                                    #### 1. PASS
     $F = $_;
@@ -2463,9 +2483,9 @@ for (@FILELIST) {                                    #### 1. PASS
     } elsif (/^(${SITEFILE}|${SITEFILE}l)$/) {
 	&scan_sitefile ("$F") ;;                      # ........... SCAN SITE
     } elsif (/^(.*\@.*\.de)$/) { 
-	print "!! -> '$F' (skipping malformed mailto:-link)$n";
+	echo "!! -> '$F' (skipping malformed mailto:-link)";
     } elsif (/^(\.\.\/.*)$/) { 
-	print "!! -> '$F' (skipping topdir build)$n";
+	echo "!! -> '$F' (skipping topdir build)";
 # */*.html) 
 #    make_back_path  # try for later subdir build
 #    echo "!! -> '$F' (skipping subdir build)"
@@ -2482,11 +2502,11 @@ for (@FILELIST) {                                    #### 1. PASS
     } elsif (/^(.*\.xml)$/) {
 	&scan_xmlfile ("$F") ;;
     } elsif (/^(.*\/)$/) {
-	print "'$F' : directory - skipped$n";
+	echo "'$F' : directory - skipped";
 	&site_map_list_title ("$F", &sed_slash_key($F));
 	&site_map_long_title ("$F", "(directory)");
     } else {
-	print "?? -> '$F'$n";
+	echo "?? -> '$F'";
     }
 }
 
@@ -2495,8 +2515,8 @@ if ($printerfriendly) {                            # .......... PRINT VERSION
     $PRINTSITEFILE=$SITEFILE; $PRINTSITEFILE =~ s/(\.\w*)$/$_ext_$1/;
     $F=$PRINTSITEFILE;
     my @TEXT = &make_printsitefile();
-    print "NOTE: going to create printer-friendly sitefile '$PRINTSITEFILE'"
-	." $F._$i$n";
+    echo "NOTE: going to create printer-friendly sitefile '$PRINTSITEFILE'"
+	." $F._$i";
     savelist(\@TEXT, "TEXT");
     my @LINES = map { chomp; $_."$n" } @TEXT;
     savesource($PRINTSITEFILE, \@LINES);
@@ -2521,9 +2541,9 @@ for (@FILELIST) {                                          #### 2. PASS
 	  &make_xmlmaster ("$F");
       }
   } elsif (/^(.*\@.*\.de)$/) { 
-      print "!! -> '$F' (skipping malformed mailto:-link)$n";
+      echo "!! -> '$F' (skipping malformed mailto:-link)";
   } elsif (/^(\.\.\/.*)$/) {
-      print "!! -> '$F' (skipping topdir build)$n";
+      echo "!! -> '$F' (skipping topdir build)";
 # */*.html) 
 #   echo "!! -> '$F' (skipping subdir build)"
 #   ;;
@@ -2540,9 +2560,9 @@ for (@FILELIST) {                                          #### 2. PASS
   } elsif (/^(.*\.xml)$/) {
       &make_xmlfile ("$F") ;;
   } elsif (/^(.*\/)$/) {
-      print "'$F' : directory - skipped$n";
+      echo "'$F' : directory - skipped";
   } else {
-      print "?? -> '$F'$n";
+      echo "?? -> '$F'";
   }
 
 # .............. debug ....................
@@ -2579,5 +2599,5 @@ for (@FILELIST) {                                          #### 2. PASS
   }
 } # done
 
-## rm ./$MK.*.tmp
+## rm ./$MK.*.tmp.* if not $o{keeptmpfiles}
 exit 0

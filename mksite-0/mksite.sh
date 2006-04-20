@@ -20,19 +20,13 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.75 2006-04-17 08:00:17 guidod Exp $
+# $Id: mksite.sh,v 1.76 2006-04-20 04:43:18 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
   emulate sh
   NULLCMD=:
 fi
-
-sed_debug ()
-{
-    echo "sed" "$@" >&2
-    sed "$@"
-}
 
 # initialize some defaults
 test ".$SITEFILE" = "." && test -f "site.htm"  && SITEFILE="site.htm"
@@ -65,15 +59,8 @@ AZ="$UPPER"                                  # use char-ranges in the
 NN="0123456789"                              # match expressions so that
 AA="_$NN$AZ$az"                              # we use their unrolled
 AX="$AA.+-"                                  # definition here
-if $SED -V 2>$NULL | $GREP "GNU sed" >$NULL ; then
-az="a-z"                                     # but if we have GNU sed
-AZ="A-Z"                                     # then we assume there are
-NN="0-9"                                     # char-ranges available
-AA="_$NN$AZ$az"                              # that makes the resulting
-AX="$AA.+-"                                  # script more readable
-elif uname -s | $GREP HP-UX >$NULL ; then
-SED_LONGSCRIPT="sed_longscript"              # due to 100 sed lines limit
-fi
+AP="|"                                       # (pipe symbol in char-range)
+AK="["                                       # (open range in char-range)
 
 LANG="C" ; LANGUAGE="C" ; LC_COLLATE="C"     # these are needed for proper
 export LANG LANGUAGE LC_COLLATE              # lowercasing as some collate
@@ -84,6 +71,73 @@ HTMLTAGS=" $HTMLTAGS b u i s q em strong strike cite big small sup sub tt"
 HTMLTAGS=" $HTMLTAGS thead tbody center hr br nobr wbr"
 HTMLTAGS=" $HTMLTAGS span div img adress blockquote"
 HTMLTAGS2=" html head body title meta http-equiv style link"
+
+# ==========================================================================
+if "${SHELL-/bin/sh}" -c 'foo () { exit 0; }; foo' 2>$NULL ; then : ; else
+echo "!! sorry, this shell '$SHELL' does not support shell functions" ; exit 1
+fi
+
+error ()
+{
+    echo "ERROR:" "$@" 1>&2
+}
+
+warn ()
+{
+    echo "WARN:" "$@" 1>&2
+}
+
+note ()
+{
+    echo "NOTE:" "$@" 1>&2
+}
+
+hint=":"
+
+init ()
+{
+    if test -d DEBUG
+	then hint="note"
+    fi
+    if test "$SED" = "sed" ; then
+	if gsed --version 2>$NULL | $GREP "GNU sed" >$NULL ; then
+	    SED="gsed"
+	    $hint "using 'gsed' as SED"
+	fi
+    fi
+    if $SED --version 2>$NULL | $GREP "GNU sed" >$NULL ; then
+	az="a-z"                                # but if we have GNU sed
+	AZ="A-Z"                                # then we assume there are
+	NN="0-9"                                # char-ranges available
+	AA="_$NN$AZ$az"                         # that makes the resulting
+	AX="$AA.+-"                             # script more readable
+	$hint "found GNU sed - good"
+    elif uname -s | $GREP HP-UX >$NULL ; then
+	SED_LONGSCRIPT="sed_longscript"         # due to 100 sed lines limit
+	$hint "weird sed - hpux sed has a limit of 100 lines" \
+	    "- using sed_longscript mode"
+    fi
+    if echo "TEST" | sed -e "s%[:[]*TEST%OK%" | grep OK 2>&1 > $NULL
+	 then :
+    elif echo "TEST" | sed -e "s%[:\\[]*TEST%OK%" | grep OK 2>&1 > $NULL
+	then  AK="\\[" ; $hint "AK=\\["
+    else AK="" ; warn "buggy sed - disabled [ in char-ranges / fileref-tests"
+    fi
+    if echo "TEST" | sed -e "s%[:|]*TEST%OK%" | grep OK 2>&1 > $NULL
+	 then :
+    elif echo "TEST" | sed -e "s%[:\\|]*TEST%OK%" | grep OK 2>&1 > $NULL
+	then  AP="\\[" ; $hint "AP=\\|"
+    else AP="" ; warn "buggy sed - disabled | in char-ranges / fileref-tests"
+    fi	
+}
+
+init "NOW!!!"
+
+sed_debug ()
+{
+    $note "sed" "$@" >&2
+    sed "$@"
+}
 
 # ==========================================================================
 # reading options from the command line                            GETOPT
@@ -102,31 +156,32 @@ do if test ".$opt" != "." ; then
       -*=*) 
          opt=`echo "$arg" | $SED -e "s/-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
          if test ".$opt" = "." ; then
-            echo "ERROR: invalid option $arg" >&2
+            error "invalid option $arg"
          else
             arg=`echo "$arg" | $SED -e "s/^[^=]*=//"`
             eval "export opt_$opt='$arg'"
 	    opt_variables="$opt_variables $opt"
          fi
          opt="" ;;
-      -*?-*)   
+      -*?-*) : an option with an argument --main-file=x or --main-file x
          opt=`echo "$arg" | $SED -e "s/-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
          if test ".$opt" = "." ; then
-            echo "ERROR: invalid option $arg" >&2
+            error "invalid option $arg"
             opt=""
          else :
             # keep the option for next round
          fi ;;
-      -*)  
+      -*)   : a simple option --filelist or --debug or --verbose
          opt=`echo "$arg" | $SED -e "s/^-*\\([$AA][$AA-]*\\).*/\\1/" -e y/-/_/`
          if test ".$opt" = "." ; then
-            echo "ERROR: invalid option $arg" >&2
+            error "invalid option $arg"
          else
             arg=`echo "$arg" | $SED -e "s/^[^=]*=//"`
             eval "export opt_$opt=' '"
          fi
          opt="" ;;
-      *) if test ".$opt_main_file" = "." ; then opt_main_file="$arg" ; else
+      *) $hint "<$arg>"
+	 if test ".$opt_main_file" = "." ; then opt_main_file="$arg" ; else
          test ".$opt_files" != "." && opt_files="$opt_files$opt_fileseparator"
          opt_files="$opt_files$arg" ; fi
          opt="" ;;
@@ -142,6 +197,8 @@ test ".$opt_main_file" != "." && test -f "$opt_main_file" && \
 SITEFILE="$opt_main_file"
 test ".$opt_site_file" != "." && test -f "$opt_site_file" && \
 SITEFILE="$opt_site_file"
+test "$opt_debug" && \
+hint="note"
 
 if test ".$opt_help" != "." ; then
     F="$SITEFILE"
@@ -160,14 +217,10 @@ if test ".$opt_help" != "." ; then
 fi
 
 if test ".$SITEFILE" = "." ; then
-   echo "error: no SITEFILE found (default would be 'site.htm')"
+   error "no SITEFILE found (default would be 'site.htm')"
    exit 1
 else
-   echo "NOTE: sitefile: `ls -s $SITEFILE`"
-fi
-
-if "${SHELL-/bin/sh}" -c 'foo () { exit 0; }; foo' 2>$NULL ; then : ; else
-echo "!! sorry, this shell '$SHELL' does not support shell functions"; exit 1
+   $hint "sitefile:" `ls -s $SITEFILE`
 fi
 
 tmp="." ; if test ".$opt_tmp_dir" != "." ; then tmp="$opt_tmp_dir" ; fi
@@ -267,16 +320,12 @@ test ".$opt_print" != "." && printerfriendly="$opt_print"
 test ".$commentvars"  = ".no" && updatevars="no"   # duplicated into
 test ".$commentvars"  = ".no" && expandvars="no"   # info2vars_sed ()
 
-test -d DEBUG && \
-echo "NOTE: '$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout"
-test -d DEBUG && \
-echo "NOTE: '$attribvars'attribvars '$updatevars'updatevars"
-test -d DEBUG && \
-echo "NOTE: '$expandvars'expandvars '$commentvars'commentvars "
-test -d DEBUG && \
-echo "NOTE: '$currenttab'currenttab '$sectiontab'sectiontab"
-test -d DEBUG && \
-echo "NOTE: '$headsection'headsection '$tailsection'tailsection"
+
+$hint "'$sectionlayout'sectionlayout '$sitemaplayout'sitemaplayout"
+$hint "'$attribvars'attribvars '$updatevars'updatevars"
+$hint "'$expandvars'expandvars '$commentvars'commentvars "
+$hint "'$currenttab'currenttab '$sectiontab'sectiontab"
+$hint "'$headsection'headsection '$tailsection'tailsection"
 
 if ($STAT_R "$SITEFILE" >$NULL) 2>$NULL ; then : ; else STAT_R=":" ; fi
 # ==========================================================================
@@ -1262,7 +1311,7 @@ css_sourcefile ()
 {
     if test -f "$1" ; then echo "$1"
     elif test -f "$opt_src_dir/$1" ; then echo "$opt_src_dir/$1"
-    elif echo "$1" | grep "^/" > /dev/null ; then echo "$1"
+    elif echo "$1" | grep "^/" > $NULL ; then echo "$1"
     else echo "./$1"
     fi
 }
@@ -1301,7 +1350,7 @@ css_xmlstyles_sed () # $SOURCEFILE
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
 	 xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
          _xmltag=`sed_slash_key "$xmltag"`
-         if echo " title section " | grep " $xmltag " > /dev/null ; then
+         if echo " title section " | grep " $xmltag " > $NULL ; then
 	    test "$xmltag" = "section" && continue;
             echo "/^ *$_xmltag *[,\\n{]/bfound" >> "$R"
             echo "/[,\\n] *$_xmltag *[,\\n{]/bfound" >> "$R"
@@ -1320,7 +1369,7 @@ css_xmlstyles_sed () # $SOURCEFILE
       for x in 1 2 3 4 5 6 7 8 9 ; do echo "/}/!N" ; done
       $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do
 	 xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
-         if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
+         if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > $NULL ; then
            continue # keep html tags
          fi
          echo "s|^\\( *\\)\\($xmltag *[ ,\\n{]\\)|\\1.\\2|g"
@@ -1341,7 +1390,7 @@ css_xmltags_css () # $SOURCEFILE
             echo "/* $xmlstylesheet */"
             cat "$stylesheet" | $SED -f "$S"
          else
-            echo "$xmlstylesheet : ERROR, no such stylesheet" 1>&2
+            error "$xmlstylesheet : ERROR, no such stylesheet"
          fi
       done }
    } > "$R"
@@ -1417,9 +1466,10 @@ tags2span_sed() # $SOURCEFILE > $++
    echo "s|<link  *rel=['\"]*stylesheet[^<>]*>||"
    echo "s|<section[^<>]*>||g"
    echo "s|</section>||g" 
-   $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do # echo "xmltag=$xmltag" 1>&2
+   $SED "/^[$AZ$az$NN]/!d" "$S" | { while read xmltag ; do 
+      # note "xmltag=$xmltag"
       xmltag=`echo "$xmltag" | sed -e "s/ .*//"`
-      if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > /dev/null ; then
+      if echo " $HTMLTAGS $HTMLTAGS2" | grep " $xmltag " > $NULL ; then
         continue # keep html tags
       fi
       _xmltag=`sed_slash_key "$xmltag"`
@@ -1466,17 +1516,16 @@ tags2meta_sed() # $SOURCEFILE > $++
 
 scan_xml_rootnode ()
 {
-  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$DATA"
   rootnode=`cat "$SOURCEFILE" | \
      $SED -e "/<[$AZ$az$NN]/!d" -e "s/<\\([$AZ$az$NN]*\\).*/\\1/" -e q`  
-  echo "<!root $F>$rootnode" >> "$INF"
+  echo "<$Q'root'>$F $rootnode<$QX>" >> "$MK_DATA"
 }
 
 get_xml_rootnode ()
 {
-  INF="$1" ; test ".$INF" = "." && INF="$tmp/$F.$DATA"
   _file_=`sed_slash_key "$F"`
-  $SED -e "/^<!root $_file_>/!d" -e "s|^.*>||" -e q "$INF" # +
+  $SED -e "/^<$Q'root'>$_file_ /!d" \
+       -e "s|.* ||" -e "s|<.*||" -e q "$MK_DATA" # +
 }
 
 xml_sourcefile ()  
@@ -1500,10 +1549,10 @@ xml_sourcefile ()
 scan_xmlfile()
 {
    SOURCEFILE=`xml_sourcefile "$F"`
-   echo "'$SOURCEFILE': scanning xml -> '$F'" 
+   $hint "'$SOURCEFILE': scanning xml -> '$F'" 
    scan_xml_rootnode
    rootnode=`get_xml_rootnode | sed -e "/^h[$NN]/s|\$| <?section?>|"`
-   echo "'$SOURCEFILE': rootnode ('$rootnode')" 
+   $hint "'$SOURCEFILE': rootnode ('$rootnode')" 
 }
 
 make_xmlfile()
@@ -1512,9 +1561,9 @@ make_xmlfile()
    X=`echo $SOURCEFILE | sed -e "y:/:~:"`
    article=`get_xml_rootnode`
    test ".$article" = "." && article="article"
-   echo '<!DOCTYPE '$article' PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"' \
+   echo '<!DOCTYPE '$article' PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"' \
         > "$F"
-   echo  '   "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">' \
+   echo  '    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">' \
        >> "$F"
    cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read stylesheet ; do
        echo "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\" ?>" \
@@ -1715,11 +1764,11 @@ make_sitemap_init()
 {
     # build a list of detectors that map site.htm entries to a section table
     # note that the resulting .gets.tmp / .puts.tmp are real sed-script
-    h1="[-|[]"
+    h1="[-$AP$AK]"
     b1="[*=]"
-    b2="[-|[]"
-    b3="[\\/:]"
-    q3="[\\/:,[]"
+    b2="[-$AP$AK]"
+    b3="[:/]"
+    q3="[:/,$AK]"
     echo_HR_PP    "<hr>"            "$h1"    "sect=\"1\""      > "$MK_GETS"
     echo_HR_EM_PP "<hr>" "<em>"     "$h1"    "sect=\"1\""     >> "$MK_GETS"
     echo_HR_EM_PP "<hr>" "<strong>" "$h1"    "sect=\"1\""     >> "$MK_GETS"
@@ -1838,7 +1887,7 @@ echo_site_filelist()
 scan_sitefile () # $F
 {
  SOURCEFILE=`html_sourcefile "$F"`
- test -d DEBUG && echo "'$SOURCEFILE': scanning -> sitefile"
+ $hint "'$SOURCEFILE': scanning -> sitefile"
  if test "$SOURCEFILE" != "$F" ; then
    dx_init "$F"
    dx_text today "`timetoday`"
@@ -1865,7 +1914,7 @@ scan_sitefile () # $F
 scan_htmlfile() # "$F"
 {
  SOURCEFILE=`html_sourcefile "$F"`                                    # SCAN :
- test -d DEBUG && echo "'$SOURCEFILE': scanning -> $F"                # HTML :
+ $hint "'$SOURCEFILE': scanning -> $F"                                # HTML :
  if test "$SOURCEFILE" != "$F" ; then :
  if test -f "$SOURCEFILE" ; then
    dx_init "$F"
@@ -2043,9 +2092,9 @@ make_htmlfile() # "$F"
  SOURCEFILE=`html_sourcefile "$F"`                      #     2.PASS
  if test "$SOURCEFILE" != "$F" ; then
  if test -f "$SOURCEFILE" ; then
-   if grep '<meta name="formatter"' "$SOURCEFILE" >/dev/null ; then
-     echo "$SOURCEFILE: SKIP, this sourcefile looks like a formatted file"
-     echo "$SOURCEFILE:  (may be a sourcefile in place of a targetfile?)"
+   if grep '<meta name="formatter"' "$SOURCEFILE" > $NULL ; then
+     echo "'$SOURCEFILE': SKIP, this sourcefile looks like a formatted file"
+     echo "'$SOURCEFILE':  (may be a sourcefile in place of a targetfile?)"
      return
    fi
    info2vars_sed > $MK_VARS           # have <!--$title--> vars substituted
@@ -2094,7 +2143,7 @@ make_printerfriendly () # "$F"
           printsitefile=">=>" ; BODY_TXT="$tmp/$F.$FOOT"  ;;
   *.html) printsitefile="=>" ;  BODY_TXT="$SOURCEFILE" ;;
   esac
-  if grep '<meta name="formatter"' "$BODY_TXT" >/dev/null ; then return; fi
+  if grep '<meta name="formatter"' "$BODY_TXT" > $NULL ; then return; fi
   if test ".$printsitefile" != ".0" && test -f "$SOURCEFILE" ; then
       make_printerfile_fast "$FILELIST" > ./$MK_FAST
       $CAT "$MK_VARS" "$MK_TAGS" "$MK_FAST" > "$P_HEAD"
@@ -2141,8 +2190,8 @@ if test ".$opt_filelist" != "." || test ".$opt_list" = ".file"; then
    for F in $FILELIST; do echo "$F" ; done ; exit # --filelist
 fi
 if test ".$opt_files" != "." ; then FILELIST="$opt_files" ; fi # --files
-if test ".$FILELIST" = "."; then echo "nothing to do" >&2 ; fi
-if test ".$FILELIST" = ".SITEFILE" ; then echo "only '$SITEFILE'?!" >&2 ; fi
+if test ".$FILELIST" = "."; then warn "nothing to do (no --filelist)"  ; fi
+if test ".$FILELIST" = ".SITEFILE" ; then warn "only '$SITEFILE'?!" ; fi
 
 for F in $FILELIST ; do case "$F" in                       #### 1. PASS
 name:*)                   scan_namespec "$F" ;;
@@ -2228,6 +2277,11 @@ esac
    fi
 done
 
-rm $tmp/$MK.*.tmp.htm $tmp/$MK.*.tmp.sed $tmp/$MK.*.tmp.css $tmp/$MK.*.tmp.txt
+if test ".$opt_keeptmpfiles" = "." ; then
+    for i in $tmp/$MK.*.tmp.htm $tmp/$MK.*.tmp.sed \
+             $tmp/$MK.*.tmp.css $tmp/$MK.*.tmp.txt
+    do test -f "$i" && rm "$i"
+    done
+fi
 if test ".$tmp_dir_was_created" != ".no" ; then rm $tmp/* ; rmdir $tmp ; fi
 exit 0

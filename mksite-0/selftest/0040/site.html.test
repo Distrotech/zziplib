@@ -1,12 +1,12 @@
 <html><head>  <title> Testing - site ~ </title> 
  <meta name="formatter" content="mksite.pl" />
  <meta name="DC.title" content="site ~" />
- <meta name="DC.date.available" content="2006-04-17" />
+ <meta name="DC.date.available" content="2006-04-20" />
  <meta name="DC.subject" content="sitemap" />
  <meta name="DC.type" content="Collection" scheme="DCMIType" />
  <meta name="DC.title" content="Testing" />
  <meta name="DC.date.modified" content="2006-04-17" />
- <meta name="DC.date" content="2006-04-17" />
+ <meta name="DC.date" content="2006-04-20" />
  <meta name="DC.relation.section" content="page1.html" />
  <meta name="DC.publisher" content="guidod" />
 </head><body>
@@ -35,6 +35,6 @@
  <tr class="listsitemap3"><td> </td><td><a href="page7.html">- Page 007</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 007<!--/long--></em></td></tr>
  <tr class="listsitemap3"><td> </td><td><a href="page8.html">- Page 008</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 008<!--/long--></em></td></tr>
  <tr class="listsitemap3"><td> </td><td><a href="page9.html">- Page 009</a></td><td>&nbsp;</td><td><small style="date">2006-04-04</small></td><td>&nbsp;</td><td><em><!--long-->Test 009<!--/long--></em></td></tr>
- <tr class="listsitemap3"><td> </td><td><a href="site.html">- site ~</a></td><td>&nbsp;</td><td><small style="date">2006-04-17</small></td><td>&nbsp;</td><td><em><!--long-->generated sitemap index<!--/long--></em></td></tr>
+ <tr class="listsitemap3"><td> </td><td><a href="site.html">- site ~</a></td><td>&nbsp;</td><td><small style="date">2006-04-20</small></td><td>&nbsp;</td><td><em><!--long-->generated sitemap index<!--/long--></em></td></tr>
 </table>
 </td></tr></table></body></html>
