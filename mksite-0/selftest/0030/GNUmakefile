@@ -4,3 +4,5 @@ include ../Rules.mk
 
 check : CHECK
 tested : TESTED
+prepare :
+	(cd test && $(subst ../../,../../../,$(MKSITE)) subsite.htm)

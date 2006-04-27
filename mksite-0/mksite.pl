@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.45 2006-04-20 04:43:18 guidod Exp $
+# $Id: mksite.pl,v 1.46 2006-04-27 07:58:56 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1973,21 +1973,38 @@ sub echo_sp_PP
 		"s%^($U$S*<a) (href=)%\$1 $V \$2%;" );
     return @list;
 }
+sub echo_sp_SP
+{
+    my ($U,$V,$Z) = @_;
+    my @list = (
+		"s%^($U<a) (href=)%\$1 $V \$2%;",
+		"s%^(<>$U<a) (href=)%\$1 $V \$2%;",
+		"s%^($S$U<a) (href=)%\$1 $V \$2%;",
+		"s%^(<><>$U<a) (href=)%\$1 $V \$2%;",
+		"s%^($S$S$U<a) (href=)%\$1 $V \$2%;",
+		"s%^(<>$U<><a) (href=)%\$1 $V \$2%;",
+		"s%^($S$U$S<a) (href=)%\$1 $V \$2%;",
+		"s%^($U<><><a) (href=)%\$1 $V \$2%;",
+		"s%^($U$S$S<a) (href=)%\$1 $V \$2%;",
+		"s%^($U<><a) (href=)%\$1 $V \$2%;",
+		"s%^($U$S<a) (href=)%\$1 $V \$2%;" );
+    return @list;
+}
 sub echo_sp_sp
 {
     my ($U,$V,$Z) = @_;
     my @list = (
-		"s%^($U*<a) (name=)%\$1 $V \$2%;",
-		"s%^(<>$U*<a) (name=)%\$1 $V \$2%;",
-		"s%^($S$U*<a) (name=)%\$1 $V \$2%;",
-		"s%^(<><>$U*<a) (name=)%\$1 $V \$2%;",
-		"s%^($S$S$U*<a) (name=)%\$1 $V \$2%;",
-		"s%^(<>$U<>*<a) (name=)%\$1 $V \$2%;",
-		"s%^($S$U$S*<a) (name=)%\$1 $V \$2%;",
-		"s%^($U<><>*<a) (name=)%\$1 $V \$2%;",
-		"s%^($U$S$S*<a) (name=)%\$1 $V \$2%;",
-		"s%^($U<>*<a) (name=)%\$1 $V \$2%;",
-		"s%^($U$S*<a) (name=)%\$1 $V \$2%;" );
+		"s%^($U<a) (name=)%\$1 $V \$2%;",
+		"s%^(<>$U<a) (name=)%\$1 $V \$2%;",
+		"s%^($S$U<a) (name=)%\$1 $V \$2%;",
+		"s%^(<><>$U<a) (name=)%\$1 $V \$2%;",
+		"s%^($S$S$U<a) (name=)%\$1 $V \$2%;",
+		"s%^(<>$U<><a) (name=)%\$1 $V \$2%;",
+		"s%^($S$U$S<a) (name=)%\$1 $V \$2%;",
+		"s%^($U<><><a) (name=)%\$1 $V \$2%;",
+		"s%^($U$S$S<a) (name=)%\$1 $V \$2%;",
+		"s%^($U<><a) (name=)%\$1 $V \$2%;",
+		"s%^($U$S<a) (name=)%\$1 $V \$2%;" );
     return @list;
 }
 
@@ -2014,6 +2031,7 @@ sub make_sitemap_init
     push @MK_GETS, &echo_br_EM_PP("<br>","<u>"     , "$q3"   , "sect=\\\"3\\\"");
     push @MK_GETS, &echo_HR_PP   ("<br>",          , "$q3"   , "sect=\\\"3\\\"");
     push @MK_GETS, &echo_sp_PP   (                   "$q3"   , "sect=\\\"3\\\"");
+    push @MK_GETS, &echo_sp_SP   (                   ""      , "sect=\\\"2\\\"");
     push @MK_GETS, &echo_sp_sp   (                   "$q3"   , "sect=\\\"9\\\"");
     push @MK_GETS, &echo_sp_sp   ("<br>",                      "sect=\\\"9\\\"");
     @MK_PUTS = map { my $x=$_; $x =~ s/(>)(\[)/$1 *$2/; $x } @MK_GETS;

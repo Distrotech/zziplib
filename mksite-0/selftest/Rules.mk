@@ -16,16 +16,28 @@ TESTED :
 	; do if test -f "$$i" \
 	; then echo cp "$$i" "$$i.test" ; cp "$$i" "$$i.test" \
 	; fi done
-CHECK :
+CLEAN :
 	test ! -d DEBUG || rm -rf DEBUG ; mkdir DEBUG
-	$(MKSITE) 
-	@ BAD="" \
+	@ for i in *.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html \
+	           *.xml  */*.xml  */*/*.xml  */*/*/*.xml  */*/*/*/*.xml \
+	; do if test -f "$$i" ; then echo "rm $$i" ; rm "$$i" ; fi done
+CHECK :
+	$(MAKE) clean || $(MAKE) CLEAN
+	$(MAKE) prepare || true
+	$(MKSITE) $(MKSITEFLAGS)
+	$(MAKE) test || $(MAKE) TEST
+TEST :
+	@ BAD="" ; OK="" \
 	; for i in `find . -name \*.test | $(sortuniq)` \
-	; do echo $(diff) $X $U $$i `basename $$i .test` \
-	; if      $(diff) $X $U $$i `basename $$i .test` \
-	; then echo "= $@ $$i OK" \
-	; else echo "= $@ $$i FAILED" ; BAD="$$BAD|$$i" \
+	; do echo $(diff) $X $U $$i `echo "$$i" | sed -e "s|.test$$||"` \
+	; if      $(diff) $X $U $$i `echo "$$i" | sed -e "s|.test$$||"` \
+	; then OK="$$OK|$$i" \
+	; else BAD="$$BAD|$$i" ; echo "= $@ $$i FAILED" \
 	; fi done \
-	; if test ".$$BAD" = "." ; then echo "= $@ = OK" \
-	; else FS="|" ; for i in "$$BAD" ; do echo "BAD $$i" ; done \
+	; if test ".$$BAD" = "." \
+	; then files=`echo "$$OK" | sed -e "s:[^|]*::g" | wc -c` \
+	;  echo "= $@ $$files files OK" \
+	; else IFS="|" \
+	; for i in $$OK  ; do echo " OK $$i" ; done \
+	; for i in $$BAD ; do echo "BAD $$i" ; done \
 	; exit 1 ; fi

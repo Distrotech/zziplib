@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.76 2006-04-20 04:43:18 guidod Exp $
+# $Id: mksite.sh,v 1.77 2006-04-27 07:58:56 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1745,19 +1745,34 @@ echo_sp_PP ()
     echo "s%^\\($1$S*<a\\) \\(href=\\)%\\1 $2 \\2%"
 }
 
+echo_sp_SP ()
+{
+    echo "s%^\\($1<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<><>$1<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$S$1<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<><a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1$S<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><><a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S$S<a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><a\\) \\(href=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S<a\\) \\(href=\\)%\\1 $2 \\2%"
+}
+
 echo_sp_sp ()
 {
-    echo "s%^\\($1*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\(<>$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($S$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\(<><>$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($S$S$1*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\(<>$1<>*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($S$1$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($1<><>*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($1$S$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($1<>*<a\\) \\(name=\\)%\\1 $2 \\2%"
-    echo "s%^\\($1$S*<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<><>$1<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$S$1<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\(<>$1<><a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($S$1$S<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><><a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S$S<a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1<><a\\) \\(name=\\)%\\1 $2 \\2%"
+    echo "s%^\\($1$S<a\\) \\(name=\\)%\\1 $2 \\2%"
 }
 
 make_sitemap_init()
@@ -1782,6 +1797,7 @@ make_sitemap_init()
     echo_br_EM_PP "<br>" "<u>"      "$q3"    "sect=\"3\""     >> "$MK_GETS"
     echo_HR_PP    "<br>"            "$q3"    "sect=\"3\""     >> "$MK_GETS"
     echo_sp_PP                      "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_sp_SP                      ""       "sect=\"2\""     >> "$MK_GETS"
     echo_sp_sp                      "$q3"    "sect=\"9\""     >> "$MK_GETS"
     echo_sp_sp    "<br>"                     "sect=\"9\""     >> "$MK_GETS"
     $SED -e "s/\\(>\\)\\(\\[\\)/\\1 *\\2/" "$MK_GETS" > "$MK_PUTS"
