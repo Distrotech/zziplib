@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.78 2006-07-26 19:24:22 guidod Exp $
+# $Id: mksite.sh,v 1.79 2006-07-26 23:23:07 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1038,7 +1038,7 @@ make_listsitemap ()
         -e "s|</date>|</small></td>$_tabb_|" \
         -e "s|<long>|<td><em><!--long-->|" \
         -e "s|</long>|<!--/long--></em></td></tr>|" \
-        $INPUTS             # $++
+        "$INPUTS"             # $++
    for xx in `grep "^<$Q'use.'>name:sitemap:" $INPUTS` ; do
        xx=`echo $xx | sed -e "s/^<$Q'use.'>name:sitemap://" -e "s|<$QX>||"` 
        if test -f "$xx" ; then
@@ -1046,6 +1046,26 @@ make_listsitemap ()
        fi
    done
    echo "</table>"          # $++
+}
+
+_xi_include_=`echo \
+    "<xi:include xmlns:xi=\"http://www.w3.org/2001/XInclude\" parse=\"xml\""`
+make_xmlsitemap ()
+{   # traditional - the body contains a list with date and title extras
+   INPUTS="$1" ; test ".$INPUTS" = "." && INPUTS="$MK_DATA"
+   siteinfo2sitemap > "$MK_SITE" # have <name><long><date> addon-sed
+   _form_="<!--\"\\2\"--><name href=\"\\2\">\\3</name>"
+   _sitefile_=`sed_slash_key "$SITEFILE"`
+   $SED -e "/^<$Q'[Uu]se.'>/!d" \
+        -e "/>[$AZ$az][$AZ$az][$AZ$az][$AZ$az]*:/d" \
+        -e "s|^<$Q'[Uu]se\\(.\\)'>\\([^ ]*\\) \\(.*\\)<$QX>|$_form_|" \
+        -f "$MK_SITE" -e "/<name/!d" \
+        -e "/${_sitefile_}/d" \
+        -e "/${_sitefile_}l/d" \
+        -e "s|\\(href=\"[^<>]*\\)\\.html\\(\"\\)|\\1.xml\\2|g" \
+        -e "s|.*<name|$_xi_include_\\n   |" \
+        -e "s|>.*</name>| />|" \
+        "$INPUTS"            # $++
 }
 
 print_extension ()
@@ -1671,6 +1691,23 @@ make_xmlfile()
    echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` ">>" `ls -s $F`
 }
 
+make_xmlmaster ()
+{
+   SOURCEFILE=`xml_sourcefile "$F"`
+   X=`echo $SOURCEFILE | sed -e "y:/:~:"`
+   article="section" # book? chapter?
+   echo '<!DOCTYPE' $article 'PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"' >$F
+   echo '    "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">' >>$F
+   cat "$tmp/$MK.$X.xmlstylesheets.tmp.txt" | { while read stylesheet ; do
+       echo "<?xml-stylesheet type=\"text/css\" href=\"$stylesheet\" ?>" \
+           >> "$F"
+   done }
+   echo "<section><title>Documentation</title>" >>$F
+   make_xmlsitemap >> $F
+   echo "</section>" >> $F
+   echo "'$SOURCEFILE': " `ls -s $SOURCEFILE` ">*>" `ls -s $F`
+}
+
 # ==========================================================================
 #  
 #  During processing we will create a series of intermediate files that
@@ -2253,7 +2290,11 @@ name:*)                    skip_namespec "$F" ;;
 http:*|https:*|ftp:*|mailto:*|telnet:*|news:*|gopher:*|wais:*)              
                            skip_httpspec "$F" ;;
 ${SITEFILE}|${SITEFILE}l)  make_sitefile "$F"           # ........ SITE FILE
-    if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi ;;
+    if test ".$printerfriendly" != "." ; then make_printerfriendly "$F" ; fi 
+    if test ".$opt_xml" != "." ; then _old_F_="$F"
+         F=`echo "$F" | sed -e "s/\\.html$/.xml/"`
+         make_xmlmaster "$F"      ;F="$_old_F_"
+    fi ;;
 *@*.de) 
    echo "!! -> '$F' (skipping malformed mailto:-link)"
    ;;
