@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.77 2006-04-27 07:58:56 guidod Exp $
+# $Id: mksite.sh,v 1.78 2006-07-26 19:24:22 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1796,6 +1796,7 @@ make_sitemap_init()
     echo_br_EM_PP "<br>" "<em>"     "$q3"    "sect=\"3\""     >> "$MK_GETS"
     echo_br_EM_PP "<br>" "<u>"      "$q3"    "sect=\"3\""     >> "$MK_GETS"
     echo_HR_PP    "<br>"            "$q3"    "sect=\"3\""     >> "$MK_GETS"
+    echo_br_PP    "<u>"             "$b2"    "sect=\"2\""     >> "$MK_GETS"
     echo_sp_PP                      "$q3"    "sect=\"3\""     >> "$MK_GETS"
     echo_sp_SP                      ""       "sect=\"2\""     >> "$MK_GETS"
     echo_sp_sp                      "$q3"    "sect=\"9\""     >> "$MK_GETS"
@@ -2067,8 +2068,8 @@ head_sed_multisection() # $filename $section
         -e "s/.*/s|<a $SECTS \\\\(name=\"&\"\\\\)|<a sect=\"X\" \\\\1|/" \
         "$MK_DATA"  # $++
    done
-   echo "s|.*<a \\($SECTN href=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
-   echo "s|.*<a \\($SECTN name=[^<>]*>\\).*|<!-- \\1 -->|"  # $++
+   echo "s|.*<a \\($SECTN href=[^<>]*\\)>.*|<!-- \\1 -->|"  # $++
+   echo "s|.*<a \\($SECTN name=[^<>]*\\)>.*|<!-- \\1 -->|"  # $++
    echo "s|\\(<a $SECTS href=\"$FF\">\\)|<b>\\1</b>|"          # $++
    test ".$sectiontab" != ".no" && \
    echo "/ href=\"$SECTION\"/s|^<td class=\"[^\"]*\"|<td |"    # $++
