@@ -1,6 +1,6 @@
 MKSITE ?= perl ../../mksite.pl
 U ?= -U0
-X ?= -I name=.formatter
+X ?= -I name=.formatter -I DC.date.modified
 diff ?= diff
 sort ?= sort
 sortuniq ?= sort -u # sort | uniq
