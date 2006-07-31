@@ -8,11 +8,11 @@ The script is free software according to the established
 rules of the zlib license. Please send me all the changes
 you make to integrate them. "Do ut des!".
 
--- 2004-04-18 Guido Draheim
+-- 2004-04-18 Guido U. Draheim
                            (text copied from opensource.org)
     THE MKSITE.SH (ZLIB/LIBPNG) LICENSE  
 
-    Copyright (c) 2004 Guido Draheim <guidod@gmx.de>
+    Copyright (c) 2004 Guido U. Draheim <guidod@gmx.de>
 
     This software is provided 'as-is', without any express
     or implied warranty. In no event will the authors be

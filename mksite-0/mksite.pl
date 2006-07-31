@@ -9,7 +9,7 @@
 #
 #                                               http://zziplib.sf.net/mksite/
 #   THE MKSITE.SH (ZLIB/LIBPNG) LICENSE
-#       Copyright (c) 2004 Guido Draheim <guidod@gmx.de>
+#       Copyright (c) 2004 Guido U. Draheim <guidod@gmx.de>
 #   This software is provided 'as-is', without any express or implied warranty
 #       In no event will the authors be held liable for any damages arising
 #       from the use of this software.
@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.47 2006-07-26 19:24:22 guidod Exp $
+# $Id: mksite.pl,v 1.48 2006-07-31 14:46:42 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);

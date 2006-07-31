@@ -25,21 +25,7 @@ diffs = diff -U1
 ignore = formatter
 known = -e "/$(ignore)/d"
 
-test : test1x test2x
-test1x : test1x.html
-	@ for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; echo "    $(diff) orig=$$orig made=$$i" \
-	; sed $(known) $$orig >$$i.orig     \
-	; sed $(known) $$i    >$$i.made \
-	; $(diffs) $$i.orig $$i.made ; done \
-	; rm $@/*.orig test1x/*.made 
-test2x : test2x.html
-	@ for i in $@/*.html ; do orig=`echo $$i | sed -e "s|x/|/|"` \
-	; echo "    $(diff) orig=$$orig made=$$i" \
-	; sed $(known) $$orig >$$i.orig     \
-	; sed $(known) $$i    >$$i.made \
-	; $(diffs) $$i.orig $$i.made ; done \
-	; rm $@/*.orig test1x/*.made 
+test : 3 3x
 
 local= /vol/www/htdocs/guidod.homelinux.org/test/
 3 : 
@@ -53,39 +39,12 @@ local= /vol/www/htdocs/guidod.homelinux.org/test/
 
 HTMLPAGES= [_A-Za-z0-9-][/_A-Za-z0-9-]*[.]html
 
-test1.html : test1/*.htm mksite.sh
-	cd test1 && sh ../mksite.sh site.htm
-	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1/\\1|" \
-	    test1/index.html > $@
-	sleep 3 # done $@
-test2.html : test2/*.htm mksite.sh
-	cd test2 && sh ../mksite.sh site.htm
-	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2/\\1|" \
-	    test2/index.html > $@
-	sleep 3 # done $@
 test3.html : test3/*.htm test3/*.dbk mksite.sh
 	rm -rf test3/DEBUG ; mkdir test3/DEBUG
 	cd test3 && sh ../mksite.sh site.htm
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test3/\\1|" \
 	    test3/index.html > $@
 	sleep 3 # done $@
-
-test1x.html : test1/*.htm mksite.pl GNUmakefile
-	test ! -d test1x/ || rm -r test1x/* ; mkdir test1x ; test -d test1x
-	cp -a test1/*.htm test1x/ 
-	mkdir test1x/DEBUG
-	cd test1x && perl ../mksite.pl site.htm
-	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test1x/\\1|" \
-	    test1x/index.html > $@
-	sleep 2 # done $@
-test2x.html : test2/*.htm mksite.pl GNUmakefile
-	test ! -d test2x/ || rm -r test2x/* ; mkdir test2x ; test -d test2x
-	cp -a test2/*.htm test2x/
-	- rm test2x/*.print.* ; mkdir test2x/DEBUG
-	cd test2x && perl ../mksite.pl site.htm
-	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"test2x/\\1|" \
-	    test2x/index.html > $@
-	sleep 2 # done $@
 test3x.html : test3/*.htm test3/*.dbk mksite.pl GNUmakefile
 	test ! -d test3x/ || rm -r test3x/* ; mkdir test3x ; test -d test3x
 	cp -a test3/*.htm test3/*.dbk test3/*.css test3x/
@@ -95,7 +54,6 @@ test3x.html : test3/*.htm test3/*.dbk mksite.pl GNUmakefile
 	    test3x/index.html > $@
 	sleep 2 # done $@
 
-test1 test2  site : .FORCE ; rm $@.html ; $(MAKE) $@.html
 doc.html : doc/*.htm mksite.sh
 	cd doc && sh ../mksite.sh features.htm    "-VERSION=$(VERSION)"
 	cd doc && sh ../mksite.sh site.htm        "-VERSION=$(VERSION)"
@@ -108,12 +66,8 @@ print.html : doc/*.htm mksite.sh
 	sed -e "s|href=\"\\($(HTMLPAGES)\"\\)|href=\"doc/\\1|" \
 	    doc/index.print.html > $@
 
-check : test1.html test2.html test1x.html test2x.html
-index.html : doc.html check
+index.html : doc.html
 	cp doc.html index.html
-
-site.html : *.htm mksite.sh
-	sh mksite.sh site.htm
 
 ff :
 	cd doc && sh ../mksite.sh features.htm
@@ -247,17 +201,7 @@ uploads :
 	test -s "$(file)"
 	- scp "$(file)" $(WWWNAME)@$(WWWHOST):$(WWWPATH)/$(file)
 
-mksite_.pl : mksite.sh GNUmakefile mksiteperl.pl
-	perl mksiteperl.pl $< > $@
-
-q : mksite_.pl
-	diff -U0 mksite.pl mksite_.pl
-
-guidod-hub:
-	cp mksite.sh mksite.pl ../guidod-hub
-	$(MAKE) -C ../guidod-hub
-	$(MAKE) -C ../guidod-hub check
-
+check : selftest.pl selftest.sh
 selftest.pl :
 	$(MAKE) -C selftest "MKSITE=perl ../../mksite.pl"
 selftest.sh :
