@@ -23,7 +23,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.pl,v 1.48 2006-07-31 14:46:42 guidod Exp $
+# $Id: mksite.pl,v 1.49 2006-09-21 10:57:57 guidod Exp $
 
 use strict; use warnings; no warnings "uninitialized";
 use File::Basename qw(basename);
@@ -1220,7 +1220,19 @@ sub print_extension
 	return ".print";
     }
 }
-    
+
+sub from_sourcefile
+{
+    my ($U,$Z) = @_;
+    if (-f $U) {
+	return $U;
+    } elsif (-f "$o{src_dir}/$U") {
+	return "$o{src_dir}/$U";
+    } else {
+	return $U;
+    }
+}
+   
 sub html_sourcefile  # generally just cut away the trailing "l" (ell)
 {                    # making "page.html" argument into "page.htm" return
     my ($U,$Z) = @_;

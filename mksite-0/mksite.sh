@@ -20,7 +20,7 @@
 #    2. Altered source versions must be plainly marked as such, and must not
 #       be misrepresented as being the original software.
 #    3. This notice may not be removed or altered from any source distribution.
-# $Id: mksite.sh,v 1.80 2006-07-31 14:46:42 guidod Exp $
+# $Id: mksite.sh,v 1.81 2006-09-21 10:57:57 guidod Exp $
 
 # Zsh is not Bourne compatible without the following: (seen in autobook)
 if test -n "$ZSH_VERSION"; then
@@ -1075,6 +1075,16 @@ print_extension ()
       -*|.*) echo "$ARG" ;;   # $++
       *)     echo ".print" ;; # $++
     esac
+}
+
+from_sourcefile ()
+{
+    if test -f "$1"
+    then echo "$1"
+    elif test -f "$opt_srcdir/$1"
+    then echo    "$opt_srcdir/$1"
+    else echo "$1"
+    fi
 }
     
 html_sourcefile ()  # generally just cut away the trailing "l" (ell)
