@@ -2,7 +2,7 @@
 #define _LIBGZ_GZIO_H
 
 /* (MIT/X11 License)
-   
+
    Copyright (c) 2010 Guido U. Draheim
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,7 +22,7 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
-*/
+ */
 
 
 /* _config.h must never be installed */
