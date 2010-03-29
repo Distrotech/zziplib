@@ -6,6 +6,8 @@ BUILT_SOURCES = gzconfig.h
 pkgconfigdir=$(libdir)/pkgconfig
 pkgconfig_HEADERS= libgz.pc
 
+DISTCLEANFILES = gzconfig.h
+CLEANFILES = libgz.pc 
 # ----------------------------------------------------------------------
 libgz.pc : Makefile
 	@ echo "prefix=$(prefix)" >$@

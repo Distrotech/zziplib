@@ -213,6 +213,8 @@ pkginclude_HEADERS = gzstdio.h gzio.h gzconfig.h
 BUILT_SOURCES = gzconfig.h
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_HEADERS = libgz.pc
+DISTCLEANFILES = gzconfig.h
+CLEANFILES = libgz.pc 
 all: $(BUILT_SOURCES) _config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -419,10 +421,12 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -509,7 +513,6 @@ uninstall-am: uninstall-pkgconfigHEADERS uninstall-pkgincludeHEADERS
 	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
 	ps ps-am tags uninstall uninstall-am \
 	uninstall-pkgconfigHEADERS uninstall-pkgincludeHEADERS
-
 
 # ----------------------------------------------------------------------
 libgz.pc : Makefile

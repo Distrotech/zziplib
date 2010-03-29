@@ -1,2 +1,8 @@
-example project for a largefile-only library
+2010-03-29  guidod  <guidod@gmx.de>
+
+	* inc/Makefile.am: some more cleanfiles
+	* import into Eclipse autotools 
+
+2010-03-28  guidod  <guidod@gmx.de>
+	* example project for a largefile-only library
 
