@@ -284,9 +284,8 @@ gz_off64_t gz_filelength(GZ_FILE* stream)
     }
     if (detected_compression(stream)) {
         gz_off64_t old = gz_ftello(stream);
-        /* read data until end */
         gz_rewind(stream);
-        /* read data until pos */
+        /* read data until end */
         while (1)
         {
             char buffer[32 * 1024];
