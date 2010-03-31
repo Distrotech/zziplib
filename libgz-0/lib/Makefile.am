@@ -6,7 +6,7 @@ lib_LTLIBRARIES = libgz.la
 VERSION_INFO=@VERSION_INFO@
 RELEASE_INFO=@RELEASE_INFO@
 
-libgz_la_SOURCES = gzio.c 
+libgz_la_SOURCES = gzinfo.c gzio.c 
 libgz_la_LDFLAGS= $(RELEASE_INFO) $(VERSION_INFO)
 libgz_la_LIBADD= -lz
 

@@ -31,7 +31,10 @@
 #include <errno.h>
 
 #include <gzio.h>
+#include <gzinfo.h>
 #include <zlib.h>
+
+#include <assert.h>
 
 /* NOTE: gz_off_t / gz_off64_t are used for those platforms
    which do not export off_t / off64_t - especially WIN32.
@@ -43,157 +46,84 @@
 #define ftello _ftelli64
 #endif
 
-#define UNKNOWN -1
-
 struct _GZ_FILE
 {
     FILE* file;
-    int compressed;
-    int mask;
+    GZ_INFO info;
     gz_off64_t returnpos;
-    gz_off64_t rewindpos;
-    int gzipflags;
+    gz_off64_t filelength;
     z_stream z_buffer;
     int buf_error;
     size_t buf_avail;
     size_t buf_pos;
     unsigned char buf32k[32 * 1024];
-    gz_off64_t filelength;
 };
+
+static void buffer_init(GZ_FILE* stream)
+{
+    gz_info_reset(&stream->info);
+    stream->buf_avail = 0;
+    stream->returnpos = 0;
+    stream->filelength = -1;
+#   define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
+    inflateInit2(& stream->z_buffer, -MAX_WINDOWSIZE_BITS);
+    /* negative WINDOWSIZE = RAW BUFFER (no extra header) */
+}
+
+static int detected_compression(GZ_FILE* stream)
+{
+    if (stream->info.compressed >= 0) {
+        return stream->info.compressed;
+    } else {
+        return gz_info_detect(&stream->info, stream->file);
+    }
+}
+
+/* ----------------------------------------------------------------- */
 
 GZ_FILE* gz_fopen(const char* path, const char* mode) 
 {
-    GZ_FILE* stream = malloc(sizeof(*stream));
-    stream->file = fopen(path, mode);
-    stream->compressed = UNKNOWN;
-    stream->mask = 0;
-    stream->filelength = -1;
-    return stream;
+    FILE* file = fopen(path, mode);
+    if (file != NULL) {
+        GZ_FILE* stream = malloc(sizeof(*stream));
+        stream->file = file;
+        buffer_init(stream);
+        return stream;
+    } else {
+        return NULL;
+    }
 }
 
 GZ_FILE* gz_fdopen(int fd, const char* mode) 
 {
-    GZ_FILE* stream = malloc(sizeof(*stream));
-    stream->file = fdopen(fd, mode);
-    stream->compressed = UNKNOWN;
-    stream->mask = 0;
-    stream->filelength = -1;
-    return stream;
+    FILE* file = fdopen(fd, mode);
+    if (file != NULL)
+    {
+        GZ_FILE* stream = malloc(sizeof(*stream));
+        stream->file = file;
+        buffer_init(stream);
+        return stream;
+    } else {
+        return NULL;
+    }
 }
 
 GZ_FILE* gz_freopen(const char* path, const char* mode, GZ_FILE* stream) 
 {
-    stream->file = freopen(path, mode, stream->file);
-    stream->compressed = UNKNOWN;
-    stream->mask = 0;
-    stream->filelength = -1;
-    return stream;
+    FILE* file = freopen(path, mode, stream->file);
+    if (file == NULL) {
+        buffer_init(stream);
+        return stream;
+    } else {
+        free(stream);
+        return NULL;
+    }
 }
 
 void gz_fclose(GZ_FILE* stream)
 {
     fclose(stream->file);
     free(stream);
-}
-
-#if __STDC_VERSION__+0 > 199900L || __GNUC__ > 2
-static inline int freadchar(GZ_FILE* stream)
-{
-    return fgetc(stream->file) ^ stream->mask;
-}
-#else
-#define freadchar(__stream) (fgetc((__stream)->file) ^ (__stream)->mask);
-#endif
-
-static void buffer_init(GZ_FILE* stream)
-{
-    stream->buf_avail = 0;
-    stream->returnpos = 0;
-}
-
-typedef enum detection_error
-{
-    DETECT_OK,
-    DETECT_BAD_MAGIC_1,
-    DETECT_BAD_MAGIC_2,
-    DETECT_UNSUPPORTED_COMPRESSION,
-    DETECT_UNSUPPORTED_FLAGS,
-    DETECT_BAD_EXTRALENGTH_1,
-    DETECT_BAD_EXTRALENGTH_2,
-    DETECT_EOF_IN_EXTRAFIELD,
-    DETECT_EOF_IN_FILENAME,
-    DETECT_EOF_IN_COMMENT,
-    DETECT_EOF_IN_CRC,
-} detection_error_t;
-
-static int detected_compression(GZ_FILE* stream)
-{
-    if (stream->compressed != UNKNOWN) {
-        return stream->compressed;
-    } else {
-        detection_error_t oops = DETECT_OK;
-        register int ch = -1;
-        fseeko(stream->file, 0, SEEK_SET);
-        ch = fgetc(stream->file);
-        if (ch != 31) { oops=DETECT_BAD_MAGIC_1; goto uncompressed; }
-        ch = freadchar(stream);
-        if (ch != 139) { oops=DETECT_BAD_MAGIC_2; goto uncompressed; }
-        ch = freadchar(stream);
-        if (ch != 8) { oops=DETECT_UNSUPPORTED_COMPRESSION; goto uncompressed; }
-        stream->compressed = ch;
-        ch = freadchar(stream);
-        if (ch == EOF) { oops=DETECT_UNSUPPORTED_FLAGS; goto uncompressed; }
-        stream->gzipflags = ch;
-        ch = freadchar(stream);
-        ch = freadchar(stream);
-        ch = freadchar(stream);
-        ch = freadchar(stream);
-        /* buffer[4..7] - modification time */
-        ch = freadchar(stream);
-        /* buffer[8]    - extra flags */
-        ch = freadchar(stream);
-        /* buffer[9]    - operating system */
-        if (stream->gzipflags & 4){  /* extra field */
-            unsigned long len = 0;
-            ch = freadchar(stream);
-            if (ch == EOF) { oops=DETECT_BAD_EXTRALENGTH_1; goto uncompressed; }
-            len = ch;
-            ch = freadchar(stream);
-            if (ch == EOF) { oops=DETECT_BAD_EXTRALENGTH_2; goto uncompressed; }
-            len += (unsigned long)ch << 8;
-            ch = fseeko(stream->file, len, SEEK_CUR);
-            if (ch) { oops=DETECT_EOF_IN_EXTRAFIELD; goto uncompressed; }
-        }
-        if (stream->gzipflags & 8) { /* filename */
-            for(;;) {
-                ch = freadchar(stream);
-                if (ch == EOF) { oops=DETECT_EOF_IN_FILENAME; goto uncompressed; }
-                if (ch == 0) break;
-            }
-        }
-        if (stream->gzipflags & 16) { /* comment */
-            for(;;) {
-                ch = freadchar(stream);
-                if (ch == EOF) { oops=DETECT_EOF_IN_COMMENT; goto uncompressed; }
-                if (ch == 0) break;
-            }
-        }
-        if (stream->gzipflags & 2) { /* header crc */
-            ch = freadchar(stream);
-            if (ch == EOF) { oops=DETECT_EOF_IN_CRC; goto uncompressed; }
-            ch = freadchar(stream);
-            if (ch == EOF) { oops=DETECT_EOF_IN_CRC; goto uncompressed; }
-        }
-        stream->rewindpos = ftello(stream->file);
-#               define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
-        inflateInit2(& stream->z_buffer, -MAX_WINDOWSIZE_BITS); /* negative is RAW (no header) */
-        buffer_init(stream);
-        return stream->compressed;
-        uncompressed:
-        stream->compressed = 0;
-        stream->rewindpos = 0;
-        return stream->compressed;
-    }
 }
 
 /* ----------------------------------------------------------------- */
@@ -210,7 +140,8 @@ size_t gz_fread(void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
         do {
             if (stream->buf_error) break;
             if (stream->z_buffer.avail_in == 0) {
-                size_t avail_in = fread(stream->buf32k, sizeof(char), sizeof(stream->buf32k), stream->file);
+                size_t avail_in = fread(stream->buf32k, sizeof(char),
+                        sizeof(stream->buf32k), stream->file);
                 if (avail_in == 0) {
                     stream->buf_error = EOF;
                     break;
@@ -402,7 +333,7 @@ void gz_rewind(GZ_FILE* stream)
 {
     if (detected_compression(stream)) {
         rewind(stream->file);
-        fseeko(stream->file, stream->rewindpos, SEEK_SET);
+        fseeko(stream->file, stream->info.rewindpos, SEEK_SET);
         inflateReset(& stream->z_buffer);
         stream->buf_error = 0;
     } else {

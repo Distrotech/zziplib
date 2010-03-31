@@ -81,7 +81,7 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libgz_la_DEPENDENCIES =
-am_libgz_la_OBJECTS = gzio.lo
+am_libgz_la_OBJECTS = gzinfo.lo gzio.lo
 libgz_la_OBJECTS = $(am_libgz_la_OBJECTS)
 libgz_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgz_la_LDFLAGS) \
@@ -226,7 +226,7 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign
 DEFAULT_INCLUDES = -I$(top_builddir)/inc -I$(top_srcdir)/inc
 lib_LTLIBRARIES = libgz.la
-libgz_la_SOURCES = gzio.c 
+libgz_la_SOURCES = gzinfo.c gzio.c 
 libgz_la_LDFLAGS = $(RELEASE_INFO) $(VERSION_INFO)
 libgz_la_LIBADD = -lz
 all: all-am
@@ -303,6 +303,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gzinfo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gzio.Plo@am__quote@
 
 .c.o:

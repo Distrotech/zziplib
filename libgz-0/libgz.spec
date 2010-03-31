@@ -2,7 +2,7 @@
 %define hostproject zziplib
 Summary:      LibGZ - libZ-based File-Reader
 Name:         libgz
-Version:      0.1.1
+Version:      0.1.2
 Release:      1
 License:      Artistic
 Group:        Development/Libraries

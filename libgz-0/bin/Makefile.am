@@ -9,9 +9,9 @@ gzlib_LDADD= ../lib/libgz.la
 # ---------------------------------------------------
 check:
 	objdump -T .libs/gzlib
-	./gzlib -l test.c
-	./gzlib -l test.c.gz
-	ls -l test.c test.c.gz
+	./gzlib -l $(srcdir)/test.c
+	./gzlib -l $(srcdir)/test.c.gz
+	ls -l $(srcdir)/test.c $(srcdir)/test.c.gz
 
 EXTRA_DIST = test.c test.c.gz
 

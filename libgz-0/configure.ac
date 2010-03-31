@@ -59,7 +59,7 @@ AX_CFLAGS_GCC_OPTION(-Warray-bounds)
 AX_CFLAGS_NO_WRITABLE_STRINGS
 AX_CFLAGS_STRICT_PROTOTYPES
 # ---------------------------------------------------------------
-AC_OUTPUT([Makefile inc/Makefile lib/Makefile bin/Makefile])
+AC_OUTPUT([Makefile inc/Makefile lib/Makefile bin/Makefile]) 
 echo '-----' $PACKAGE $VERSION $prefix
 $SHELL libtool --features || true
 echo "CPPFLAGS=$CPPFLAGS"

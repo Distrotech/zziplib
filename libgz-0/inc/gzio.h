@@ -94,7 +94,7 @@ int        gz_fgetpos(GZ_FILE* stream, fpos_t* pos);
 int        gz_fsetpos(GZ_FILE* stream, fpos_t* pos);
 void       gz_rewind(GZ_FILE* stream);
 
-#if defined GZ_LARGEFILE64 && _LARGEFILE64_SOURCE && !defined GZ_RENAMED64
+#if defined GZ_LARGEFILE64 && defined _LARGEFILE64_SOURCE && !defined GZ_RENAMED64
 gz_off64_t gz_filelength64(GZ_FILE* stream);
 int        gz_fseeko64(GZ_FILE* stream, gz_off64_t offset, int whence);
 gz_off64_t gz_ftello64(GZ_FILE* stream);

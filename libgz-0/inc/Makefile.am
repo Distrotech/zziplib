@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 
-pkginclude_HEADERS = gzstdio.h gzio.h gzconfig.h
+pkginclude_HEADERS = gzinfo.h gzstdio.h gzio.h gzconfig.h
 BUILT_SOURCES = gzconfig.h
 
 pkgconfigdir=$(libdir)/pkgconfig

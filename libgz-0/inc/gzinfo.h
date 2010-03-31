@@ -1,5 +1,8 @@
+#ifndef _LIBGZ_GZINFO_H
+#define _LIBGZ_GZINFO_H
+
 /* (MIT/X11 License)
-   
+
    Copyright (c) 2010 Guido U. Draheim
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,50 +22,21 @@
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
-*/
+ */
 
-#include "_config.h" /* autoconf puts _FILE_OFFSET_BITS=64 in this file */
-
+/* atleast for gz_off64_t */
 #include <gzio.h>
-#include <string.h>
 
-const char* help =
-"gzlib <command> <GZFILE> \n"
-"commands: \n"
-"- filelength GZFILE - printlength \n"
-;
-
-int main(int argc, char** argv)
+typedef struct _GZ_INFO
 {
-    if (argc <= 1) {
-	puts(help);
-	return 0;
-    }
-    if (! strcmp(argv[1], "filelength") || ! strcmp(argv[1], "-l")) {
-	const char* filename = argv[2];
-	GZ_FILE* fp = gz_fopen(filename, "r");
-	if (! fp) { perror(filename); return 1; }
-	printf("%s: %lli\n", filename, (long long int) gz_filelength(fp));
-	gz_fclose(fp);
-	return 0;
-    } else if (! strcmp(argv[1], "cat") || ! strcmp(argv[1], "-c")) {
-	const char* filename = argv[2];
-	GZ_FILE* fp = gz_fopen(filename, "r");
-        if (! fp) { perror(filename); return 1; }
-        {
-            char buffer[1024];
-            while (! gz_feof(fp)) {
-                int len = gz_fread(buffer, sizeof(char), sizeof(buffer), fp);
-                printf("%.*s", len, buffer);
-                if (! len) break;
-            }
-	}
-	gz_fclose(fp);
-	return 0;	
-    } else {
-	puts("unknown argument");
-	puts(argv[1]);
-	puts(help);
-	return 1;
-    }
-}
+    int compressed;
+    int gzipflags;
+    int mask;
+    const char* error;
+    gz_off64_t rewindpos;
+} GZ_INFO;
+
+void gz_info_reset(GZ_INFO *info);
+int gz_info_detect(GZ_INFO* info, FILE* file);
+
+#endif
