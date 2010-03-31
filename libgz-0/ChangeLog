@@ -1,3 +1,7 @@
+2010-04-01  guidod  <guidod@gmx.de>
+
+	* lib/gzio.c (gz_fwrite): implementing gzip-compatible write
+
 2010-03-31  guidod  <guidod@gmx.de>
 
 	* lib/gzinfo.c (gz_info_detect): move gzip header parsing into

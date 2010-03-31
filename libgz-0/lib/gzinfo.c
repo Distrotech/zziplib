@@ -1,5 +1,10 @@
+#define _XOPEN_SOURCE 700 /* glibc idiots will only allow strdup with this */
+
 #include <_config.h>
 #include <gzinfo.h>
+#include <string.h>
+#include <fnmatch.h>
+#include <stdlib.h>
 
 #if defined GZ_LARGEFILE64 && defined WIN32
 #define fseeko _fseeki64
@@ -34,11 +39,11 @@ int gz_info_detect(GZ_INFO* info, FILE* file)
         register int ch = -1;
         fseeko(file, 0, SEEK_SET);
         ch = fgetc(file);
-        if (ch == EOF) { oops="eof magic 1"; goto uncompressed; }
-        if (ch != 31)  { oops="bad magic 1"; goto uncompressed; }
+        if (ch == EOF)  { oops="eof magic 1"; goto uncompressed; }
+        if (ch != 0x1F) { oops="bad magic 1"; goto uncompressed; }
         ch = freadchar(info, file);
-        if (ch == EOF) { oops="eof magic 2"; goto uncompressed; }
-        if (ch != 139) { oops="bad magic 2"; goto uncompressed; }
+        if (ch == EOF)  { oops="eof magic 2"; goto uncompressed; }
+        if (ch != 0x8B) { oops="bad magic 2"; goto uncompressed; }
         ch = freadchar(info, file);
         if (ch == EOF) { oops="eof compression field"; goto uncompressed; }
         if (ch != 8) { oops="unsupported compression"; goto uncompressed; }
@@ -98,4 +103,90 @@ int gz_info_detect(GZ_INFO* info, FILE* file)
         info->error = oops;
         return info->compressed;
     }
+}
+
+/* ----------------------------------------------------------------- */
+
+
+typedef struct _Node { const char* pattern; struct _Node* next; } Node;
+
+static Node* write_compressed = NULL;
+static Node* write_uncompressed = NULL;
+static Node* read_uncompressed = NULL;
+
+static const char* default_write_compressed = "*.gz";
+static const char* default_write_uncompressed = "/dev/*";
+static const char* default_read_uncompressed = "/dev/*";
+
+
+void gz_pattern_write_compressed(const char* pattern)
+{
+    Node* node = malloc(sizeof(*node));
+    node->pattern = strdup(pattern);
+    node->next = write_compressed; write_compressed = node;
+}
+
+void gz_pattern_write_uncompressed(const char* pattern)
+{
+    Node* node = malloc(sizeof(*node));
+    node->pattern = strdup(pattern);
+    node->next = write_uncompressed; write_uncompressed = node;
+}
+
+void gz_pattern_read_uncompressed(const char* pattern)
+{
+    Node* node = malloc(sizeof(*node));
+    node->pattern = strdup(pattern);
+    node->next = read_uncompressed; read_uncompressed = node;
+}
+
+int gz_info_read_uncompressed(const char* filename)
+{
+    if (read_uncompressed == NULL) {
+        if (! fnmatch(default_read_uncompressed, filename, 0)) {
+            return 1;
+        }
+    } else {
+        Node* node = read_uncompressed;
+        for(; node; node = node->next) {
+            if (! fnmatch(node->pattern, filename, 0)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int gz_info_write_uncompressed(const char* filename)
+{
+    if (write_uncompressed == NULL) {
+        if (! fnmatch(default_write_uncompressed, filename, 0)) {
+            return 1;
+        }
+    } else {
+        Node* node = write_uncompressed;
+        for(; node; node = node->next) {
+            if (! fnmatch(node->pattern, filename, 0)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int gz_info_write_compressed(const char* filename)
+{
+    if (write_compressed == NULL) {
+        if (! fnmatch(default_write_compressed, filename, 0)) {
+            return 1;
+        }
+    } else {
+        Node* node = write_compressed;
+        for(; node; node = node->next) {
+            if (! fnmatch(node->pattern, filename, 0)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }

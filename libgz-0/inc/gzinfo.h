@@ -39,4 +39,13 @@ typedef struct _GZ_INFO
 void gz_info_reset(GZ_INFO *info);
 int gz_info_detect(GZ_INFO* info, FILE* file);
 
+/* all patterns are fnmatch() glob patterns */
+void gz_pattern_write_uncompressed(const char* pattern);
+void gz_pattern_write_compressed(const char* pattern);
+void gz_pattern_read_uncompressed(const char* pattern);
+
+int gz_info_write_compressed(const char* filename);
+int gz_info_write_uncompressed(const char* filename);
+int gz_info_read_uncompressed(const char* filename);
+
 #endif

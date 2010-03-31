@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 #include <gzio.h>
@@ -49,10 +50,12 @@
 struct _GZ_FILE
 {
     FILE* file;
+    const char* mode;
     GZ_INFO info;
     gz_off64_t returnpos;
     gz_off64_t filelength;
     z_stream z_buffer;
+    int started;
     int buf_error;
     size_t buf_avail;
     size_t buf_pos;
@@ -65,9 +68,7 @@ static void buffer_init(GZ_FILE* stream)
     stream->buf_avail = 0;
     stream->returnpos = 0;
     stream->filelength = -1;
-#   define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
-    inflateInit2(& stream->z_buffer, -MAX_WINDOWSIZE_BITS);
-    /* negative WINDOWSIZE = RAW BUFFER (no extra header) */
+    stream->started = 0;
 }
 
 static int detected_compression(GZ_FILE* stream)
@@ -86,8 +87,15 @@ GZ_FILE* gz_fopen(const char* path, const char* mode)
     FILE* file = fopen(path, mode);
     if (file != NULL) {
         GZ_FILE* stream = malloc(sizeof(*stream));
+        stream->mode = mode;
         stream->file = file;
         buffer_init(stream);
+        if (strchr(mode, 'r') && gz_info_read_uncompressed(path))
+            stream->info.compressed = 0; /* uncompressed */
+        else if (strchr(mode, 'w') && gz_info_write_uncompressed(path))
+            stream->info.compressed = 0; /* uncompressed */
+        else if (strchr(mode, 'w') && gz_info_write_compressed(path))
+            stream->info.compressed = 8; /* zlib compressed */
         return stream;
     } else {
         return NULL;
@@ -100,6 +108,7 @@ GZ_FILE* gz_fdopen(int fd, const char* mode)
     if (file != NULL)
     {
         GZ_FILE* stream = malloc(sizeof(*stream));
+        stream->mode = mode;
         stream->file = file;
         buffer_init(stream);
         return stream;
@@ -112,7 +121,14 @@ GZ_FILE* gz_freopen(const char* path, const char* mode, GZ_FILE* stream)
 {
     FILE* file = freopen(path, mode, stream->file);
     if (file == NULL) {
+        stream->mode = mode;
         buffer_init(stream);
+        if (strchr(mode, 'r') && gz_info_read_uncompressed(path))
+            stream->info.compressed = 0; /* uncompressed */
+        else if (strchr(mode, 'w') && gz_info_write_uncompressed(path))
+            stream->info.compressed = 0; /* uncompressed */
+        else if (strchr(mode, 'w') && gz_info_write_compressed(path))
+            stream->info.compressed = 8; /* zlib compressed */
         return stream;
     } else {
         free(stream);
@@ -120,8 +136,11 @@ GZ_FILE* gz_freopen(const char* path, const char* mode, GZ_FILE* stream)
     }
 }
 
+static void _finish(GZ_FILE* stream); /* forward declaration */
+
 void gz_fclose(GZ_FILE* stream)
 {
+    _finish(stream);
     fclose(stream->file);
     free(stream);
 }
@@ -135,6 +154,15 @@ size_t gz_fread(void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
         size_t total_out = size * nmemb;
         size_t out_before;
         int err;
+        if (! stream->started) {
+            stream->started = 1;
+#           define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
+            inflateInit2(& stream->z_buffer, -MAX_WINDOWSIZE_BITS);
+            /* negative WINDOWSIZE = RAW BUFFER (no extra header) */
+            if (ftello(stream->file) != stream->info.rewindpos)
+                fseeko(stream->file, stream->info.rewindpos, SEEK_SET);
+        }
+        /* read data */
         stream->z_buffer.next_out = ptr;
         stream->z_buffer.avail_out = total_out;
         do {
@@ -168,13 +196,62 @@ size_t gz_fread(void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
     }
 }
 
+static const char gzipheader[] =
+        "\x1F\x8B\x08\00" /* magic compression gzipflags */
+        "\00\00\00\00" /* mtime */
+        "\00\00"; /* extraflags ostype */
+
 size_t gz_fwrite(const void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
 {
     if (detected_compression(stream)) {
-        errno = ENOSYS; /* NOT IMPLEMENTED */
-        return 0;
+        size_t total_out = size * nmemb;
+        int err;
+        if (! stream->started) {
+            size_t out;
+            stream->started = 1;
+#           define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
+            deflateInit(& stream->z_buffer, Z_DEFAULT_COMPRESSION);
+            /* negative WINDOWSIZE = RAW BUFFER (no extra header) */
+            out = fwrite(gzipheader, 10, 1, stream->file);
+            if (out < 10) { return 0; } /* errno is set */
+        }
+        /* write data */
+        stream->z_buffer.next_in = (void*) ptr;
+        stream->z_buffer.avail_in = total_out;
+        do {
+            if (stream->buf_error) break;
+            stream->z_buffer.next_out = stream->buf32k;
+            stream->z_buffer.avail_out = sizeof(stream->buf32k);
+            err = deflate(& stream->z_buffer, Z_NO_FLUSH);
+            if (err == Z_OK)
+            {
+                fwrite(stream->buf32k, sizeof(char),
+                        stream->z_buffer.next_out - stream->buf32k, stream->file);
+            } else {
+                stream->buf_error = err;
+                break;
+            }
+        } while (stream->z_buffer.avail_in);
+        return total_out - stream->z_buffer.avail_out;
     } else {
         return fwrite(ptr, size, nmemb, stream->file);
+    }
+}
+
+static void _finish(GZ_FILE* stream) {
+    if (strchr(stream->mode, 'w') && stream->started) {
+        /* some bits had not been pushed to full bytes to be written before */
+        stream->z_buffer.next_in = stream->buf32k + 128;
+        stream->z_buffer.avail_in = 0;
+        stream->z_buffer.next_out = stream->buf32k;
+        stream->z_buffer.avail_out = 128;
+        {
+            int err = deflate(& stream->z_buffer, Z_FINISH);
+            if (err == Z_OK) {
+                fwrite(stream->buf32k, sizeof(char),
+                        stream->z_buffer.next_out - stream->buf32k, stream->file);
+            }
+        }
     }
 }
 
@@ -274,7 +351,10 @@ long gz_ftell(GZ_FILE* stream)
 int gz_fseeko(GZ_FILE* stream, gz_off_t offset, int whence)
 {
     if (detected_compression(stream)) {
-        off64_t pos = offset;
+        gz_off64_t pos = offset;
+        if (strchr(stream->mode, 'w')) {
+            errno = EBADF; return -1;
+        }
         if (whence == SEEK_CUR) pos += stream->returnpos;
         if (whence == SEEK_END) pos = gz_filelength(stream) - offset;
         gz_rewind(stream);
