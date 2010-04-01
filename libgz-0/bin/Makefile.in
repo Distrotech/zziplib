@@ -528,6 +528,15 @@ check:
 	./gzlib -l $(srcdir)/test.c
 	./gzlib -l $(srcdir)/test.c.gz
 	ls -l $(srcdir)/test.c $(srcdir)/test.c.gz
+	cp $(srcdir)/test.c tmp.c
+	./gzlib gzip tmp.c
+	cp tmp.c.gz tmp.c1.gz
+	./gzlib gunzip tmp.c1.gz
+	diff -us tmp.c tmp.c1
+	cp tmp.c.gz tmp.c2.gz
+	- gunzip -f tmp.c2.gz
+	- diff -us tmp.c tmp.c2
+	- rm tmp.*
 
 # ---------------------------------------------------
 .c.i :

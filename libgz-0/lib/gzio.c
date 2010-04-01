@@ -60,6 +60,7 @@ struct _GZ_FILE
     size_t buf_avail;
     size_t buf_pos;
     unsigned char buf32k[32 * 1024];
+    /*zlib*/uLong crc;
 };
 
 static void buffer_init(GZ_FILE* stream)
@@ -209,11 +210,11 @@ size_t gz_fwrite(const void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
         if (! stream->started) {
             size_t out;
             stream->started = 1;
-#           define MAX_WINDOWSIZE_BITS 15 /* i.e. 32K window */
-            deflateInit(& stream->z_buffer, Z_DEFAULT_COMPRESSION);
-            /* negative WINDOWSIZE = RAW BUFFER (no extra header) */
+            err = deflateInit2(& stream->z_buffer, Z_DEFAULT_COMPRESSION,
+                    Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
             out = fwrite(gzipheader, 10, 1, stream->file);
-            if (out < 10) { return 0; } /* errno is set */
+            if (out < 1) { return 0; } /* errno is set */
+            stream->crc = crc32(0L, Z_NULL, 0);
         }
         /* write data */
         stream->z_buffer.next_in = (void*) ptr;
@@ -225,13 +226,18 @@ size_t gz_fwrite(const void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
             err = deflate(& stream->z_buffer, Z_NO_FLUSH);
             if (err == Z_OK)
             {
-                fwrite(stream->buf32k, sizeof(char),
-                        stream->z_buffer.next_out - stream->buf32k, stream->file);
+                size_t len = stream->z_buffer.next_out - stream->buf32k;
+                fwrite(stream->buf32k, sizeof(char), len, stream->file);
+            } else if (err == Z_STREAM_END) {
+                    size_t len = stream->z_buffer.next_out - stream->buf32k;
+                    fwrite(stream->buf32k, sizeof(char), len, stream->file);
+                    break;
             } else {
                 stream->buf_error = err;
                 break;
             }
         } while (stream->z_buffer.avail_in);
+        stream->crc = crc32(stream->crc, ptr, total_out);
         return total_out - stream->z_buffer.avail_out;
     } else {
         return fwrite(ptr, size, nmemb, stream->file);
@@ -241,15 +247,32 @@ size_t gz_fwrite(const void* ptr, size_t size, size_t nmemb, GZ_FILE* stream)
 static void _finish(GZ_FILE* stream) {
     if (strchr(stream->mode, 'w') && stream->started) {
         /* some bits had not been pushed to full bytes to be written before */
-        stream->z_buffer.next_in = stream->buf32k + 128;
+        stream->z_buffer.next_in = stream->buf32k + sizeof(stream->buf32k);
         stream->z_buffer.avail_in = 0;
         stream->z_buffer.next_out = stream->buf32k;
-        stream->z_buffer.avail_out = 128;
+        stream->z_buffer.avail_out = sizeof(stream->buf32k);
         {
             int err = deflate(& stream->z_buffer, Z_FINISH);
-            if (err == Z_OK) {
-                fwrite(stream->buf32k, sizeof(char),
-                        stream->z_buffer.next_out - stream->buf32k, stream->file);
+            if (err == Z_OK || err == Z_STREAM_END) {
+                size_t len = stream->z_buffer.next_out - stream->buf32k;
+                fwrite(stream->buf32k, sizeof(char), len, stream->file);
+                if (1){
+                    long value = stream->crc;
+                    int n = 4;
+                    while(n--) {
+                        fputc((int)(value & 0xFF), stream->file);
+                        value >>= 8;
+                    }
+                    value = stream->z_buffer.total_in;
+                    n = 4;
+                    while(n--) {
+                        fputc((int)(value & 0xFF), stream->file);
+                        value >>= 8;
+                    }
+                } else {
+                    fputc(0, stream->file);
+                }
+
             }
         }
     }

@@ -1,5 +1,7 @@
 2010-04-01  guidod  <guidod@gmx.de>
 
+	* this goes out as libgz-0.2.0
+	* bin/gzlib.c (main): adding "gzip"/"gunzip" and make-check for it
 	* lib/gzio.c (gz_fwrite): implementing gzip-compatible write
 
 2010-03-31  guidod  <guidod@gmx.de>

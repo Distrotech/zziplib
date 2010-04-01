@@ -31,7 +31,6 @@ typedef struct _GZ_INFO
 {
     int compressed;
     int gzipflags;
-    int mask;
     const char* error;
     gz_off64_t rewindpos;
 } GZ_INFO;

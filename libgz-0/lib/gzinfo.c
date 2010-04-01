@@ -24,10 +24,10 @@ void gz_info_reset(GZ_INFO* info)
 #if __STDC_VERSION__+0 > 199900L || __GNUC__ > 2
 static inline int freadchar(GZ_INFO* stream, FILE* file)
 {
-    return fgetc(file) ^ stream->mask;
+    return fgetc(file);
 }
 #else
-#define freadchar(__stream, __file) (fgetc((__file)) ^ (__stream)->mask));
+#define freadchar(__stream, __file) (fgetc((__file)));
 #endif
 
 int gz_info_detect(GZ_INFO* info, FILE* file)
@@ -98,6 +98,7 @@ int gz_info_detect(GZ_INFO* info, FILE* file)
         info->error = NULL;
         return info->compressed;
     uncompressed:
+        rewind(file);
         info->compressed = 0; /* allow reading as raw data */
         info->rewindpos = 0;
         info->error = oops;

@@ -24,6 +24,7 @@
 #include "_config.h" /* autoconf puts _FILE_OFFSET_BITS=64 in this file */
 
 #include <gzio.h>
+#include <gzinfo.h>
 #include <string.h>
 
 const char* help =
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
 	printf("%s: %lli\n", filename, (long long int) gz_filelength(fp));
 	gz_fclose(fp);
 	return 0;
-    } else if (! strcmp(argv[1], "cat") || ! strcmp(argv[1], "-c")) {
+    } else if (! strcmp(argv[1], "cat") || ! strcmp(argv[1], "-p")) {
 	const char* filename = argv[2];
 	GZ_FILE* fp = gz_fopen(filename, "r");
         if (! fp) { perror(filename); return 1; }
@@ -56,9 +57,64 @@ int main(int argc, char** argv)
                 printf("%.*s", len, buffer);
                 if (! len) break;
             }
+            gz_fclose(fp);
 	}
-	gz_fclose(fp);
 	return 0;	
+    } else if (! strcmp(argv[1], "gzip") || ! strcmp(argv[1], "-c")) {
+        GZ_FILE* gz;
+        const char* filename = argv[2];
+        GZ_FILE* fp = gz_fopen(filename, "r");
+        if (! fp) { perror(filename); return 1; }
+        {
+            int len = strlen(filename);
+            char* outputname = malloc(len+4);
+            memcpy(outputname, filename, len);
+            memcpy(outputname+len, ".gz", 4);
+            gz_pattern_write_compressed("*");
+            gz = gz_fopen(outputname, "w");
+            if (! gz) { perror(outputname); return 1; }
+            {
+                char buffer[1024];
+                while (! gz_feof(fp)) {
+                    int len = gz_fread(buffer, sizeof(char), sizeof(buffer), fp);
+                    if (! len) break;
+                    gz_fwrite(buffer, sizeof(char), len, gz);
+                }
+                gz_fclose(gz);
+            }
+            gz_fclose(fp);
+        }
+        return 0;
+    } else if (! strcmp(argv[1], "gunzip") || ! strcmp(argv[1], "-d")) {
+        GZ_FILE* gz;
+        const char* filename = argv[2];
+        GZ_FILE* fp = gz_fopen(filename, "r");
+        if (! fp) { perror(filename); return 1; }
+        {
+            int len = strlen(filename);
+            char* outputname = malloc(len+5);
+            if (len > 3 && !memcmp(filename+len-3, ".gz", 3)) {
+                memcpy(outputname, filename, len-3);
+                outputname[len-3] = '\0';
+            } else {
+                memcpy(outputname, filename, len);
+                memcpy(outputname+len, ".raw", 5);
+            }
+            gz_pattern_write_uncompressed("*");
+            gz = gz_fopen(outputname, "w");
+            if (! gz) { perror(outputname); return 1; }
+            {
+                char buffer[1024];
+                while (! gz_feof(fp)) {
+                    int len = gz_fread(buffer, sizeof(char), sizeof(buffer), fp);
+                    if (! len) break;
+                    gz_fwrite(buffer, sizeof(char), len, gz);
+                }
+                gz_fclose(gz);
+            }
+            gz_fclose(fp);
+        }
+        return 0;
     } else {
 	puts("unknown argument");
 	puts(argv[1]);
