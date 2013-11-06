@@ -31,14 +31,42 @@
 
 /* -------------- specify MMAP function imports --------------------------- */
 
-#if     defined  USE_POSIX_MMAP
+#if     defined  USE_POSIX_MMAP && ZZIP_TEST2
 #define USE_MMAP 1
 
-#define _zzip_mmap(user, fd, offs, len) \
+#define ZZIP_MAPHANDLE_NULL 0
+#define zzip_maphandle_t int
+
+static void* posix_mmap(zzip_maphandle_t* maphandle, int fd, zzip_off_t offs, size_t len)
+{
+    return mmap (0, len, PROT_READ, MAP_SHARED, fd, offs);
+}
+
+static void posix_munmap (zzip_maphandle_t* maphandle, char* fd_map, size_t len)
+{
+    munmap(fd_map, len);
+}
+
+#define _zzip_mmap(maphandle, fd, offs, len) \
+        posix_mmap((zzip_maphandle_t*)&maphandle, fd, offs, len)
+#define _zzip_munmap(maphandle, ptr, len) \
+        posix_munmap ((zzip_maphandle_t*)&maphandle, ptr, len)
+#define _zzip_getpagesize() getpagesize()
+
+#ifndef MAP_FAILED /* hpux10.20 does not have it */
+#define MAP_FAILED ((void*)(-1))
+#endif
+
+#elif   defined  USE_POSIX_MMAP
+#define USE_MMAP 1
+
+#define ZZIP_MAPHANDLE_NULL 0
+#define zzip_maphandle_t int
+#define _zzip_mmap(maphandle, fd, offs, len) \
               mmap (0, len, PROT_READ, MAP_SHARED, fd, offs)
-#define _zzip_munmap(user, ptr, len) \
+#define _zzip_munmap(maphandle, ptr, len) \
               munmap (ptr, len)
-#define _zzip_getpagesize(user) getpagesize()
+#define _zzip_getpagesize() getpagesize()
 
 #ifndef MAP_FAILED /* hpux10.20 does not have it */
 #define MAP_FAILED ((void*)(-1))
@@ -52,44 +80,46 @@
 /* we (ab)use the "*user" variable to store the FileMapping handle */
                  /* which assumes (sizeof(long) == sizeof(HANDLE)) */
 
+#define ZZIP_MAPHANDLE_NULL NULL
+#define zzip_maphandle_t HANDLE
 static size_t win32_getpagesize (void)
 { 
     SYSTEM_INFO si; GetSystemInfo (&si); 
     return si.dwAllocationGranularity; 
 }
-static void*  win32_mmap (long* user, int fd, zzip_off_t offs, size_t len)
+static void*  win32_mmap (zzip_maphandle_t* maphandle, int fd, zzip_off_t offs, size_t len)
 {
-    if (! user || *user != 1) /* || offs % getpagesize() */
-	return 0;
+    if (! maphandle || *maphandle != ZZIP_MAPHANDLE_NULL) /* || offs % getpagesize() */
+        return MAP_FAILED;
   {
     HANDLE hFile = (HANDLE)_get_osfhandle(fd);
     if (hFile)
-	*user = (int) CreateFileMapping (hFile, 0, PAGE_READONLY, 0, 0, NULL);
-    if (*user)
+        *maphandle = CreateFileMapping (hFile, 0, PAGE_READONLY, 0, 0, NULL);
+    if (*maphandle)
     {
-	char* p = 0;
-	p = MapViewOfFile(*(HANDLE*)user, FILE_MAP_READ, 0, offs, len);
-	if (p) return p + offs;
-	CloseHandle (*(HANDLE*)user); *user = 1;
+        char* p = 0;
+        p = MapViewOfFile(*maphandle, FILE_MAP_READ, 0, offs, len);
+        if (p) return p + offs;
+        CloseHandle (*maphandle); *maphandle = ZZIP_MAPHANDLE_NULL;
     } 
     return MAP_FAILED;
   }
 }
-static void win32_munmap (long* user, char* fd_map, size_t len)
+static void win32_munmap (zzip_maphandle_t* maphandle, char* fd_map, size_t len)
 {
     UnmapViewOfFile (fd_map);
-    CloseHandle (*(HANDLE*)user); *user = 1;
+    CloseHandle (*maphandle); *maphandle = ZZIP_MAPHANDLE_NULL;
 }
 
-#define _zzip_mmap(user, fd, offs, len) \
-        win32_mmap ((long*) &(user), fd, offs, len)
-#define _zzip_munmap(user, ptr, len) \
-        win32_munmap ((long*) &(user), ptr, len)
-#define _zzip_getpagesize(user) win32_getpagesize()
+#define _zzip_mmap(maphandle, fd, offs, len) \
+        win32_mmap ((zzip_maphandle_t*)&maphandle, fd, offs, len)
+#define _zzip_munmap(maphandle, ptr, len) \
+        win32_munmap ((zzip_maphandle_t*)&maphandle, ptr, len)
+#define _zzip_getpagesize() win32_getpagesize()
 
 #else   /* disable */
 #define USE_MMAP 0
-/* USE_MAP is intentional: we expect the compiler to do some "code removal"
+/* USE_MMAP is intentional: we expect the compiler to do some "code removal"
  * on any source code enclosed in if (USE_MMAP) {...}   i.e. the unreachable
  * branch of an if (0) {....} is not emitted to the final object binary. */
 
@@ -97,9 +127,11 @@ static void win32_munmap (long* user, char* fd_map, size_t len)
 #define MAP_FAILED  0
 #endif
 
-#define _zzip_mmap(user, fd, offs, len) (MAP_FAILED)
-#define _zzip_munmap(user, ptr, len) {}
-#define _zzip_getpagesize(user) 1
+#define ZZIP_MAPHANDLE_NULL 0
+#define zzip_maphandle_t int
+#define _zzip_mmap(maphandle, fd, offs, len) (MAP_FAILED)
+#define _zzip_munmap(maphandle, ptr, len) {}
+#define _zzip_getpagesize() 1024
 
 #endif /* USE_MMAP defines */
 
